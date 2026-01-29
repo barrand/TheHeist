@@ -1,0 +1,226 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-01-26",
+  "description": "12 heist roles for The Heist game",
+  "roles": [
+    {
+      "role_id": "mastermind",
+      "name": "Mastermind",
+      "description": "Strategic planner who coordinates the entire operation and adapts plans on the fly",
+      "minigames": []
+    },
+    {
+      "role_id": "hacker",
+      "name": "Hacker",
+      "description": "Disables security systems and manipulates electronic locks",
+      "minigames": [
+        {
+          "id": "wire_connecting",
+          "description": "Drag colored wires to match ports on both sides"
+        },
+        {
+          "id": "simon_says_sequence",
+          "description": "Memorize and tap button pattern in correct order"
+        },
+        {
+          "id": "cipher_wheel_alignment",
+          "description": "Tap when spinning cipher symbols align correctly"
+        },
+        {
+          "id": "card_swipe",
+          "description": "Swipe keycard at correct speed (not too fast or slow)"
+        }
+      ]
+    },
+    {
+      "role_id": "safe_cracker",
+      "name": "Safe Cracker",
+      "description": "Opens vaults and locks",
+      "minigames": [
+        {
+          "id": "dial_rotation",
+          "description": "Drag circular dial and stop at exact numbers"
+        },
+        {
+          "id": "lockpick_timing",
+          "description": "Tap pins when moving indicator hits green zone"
+        },
+        {
+          "id": "listen_for_clicks",
+          "description": "Tap when audio cue plays to find combination"
+        }
+      ]
+    },
+    {
+      "role_id": "driver",
+      "name": "Driver",
+      "description": "Transportation and getaway specialist",
+      "minigames": [
+        {
+          "id": "steering_obstacle_course",
+          "description": "Tilt phone or swipe to avoid obstacles while driving"
+        },
+        {
+          "id": "fuel_pump",
+          "description": "Hold button until tank is full, don't overflow"
+        },
+        {
+          "id": "parking_precision",
+          "description": "Tap brake when meter hits green zone to park perfectly"
+        }
+      ]
+    },
+    {
+      "role_id": "insider",
+      "name": "Insider",
+      "description": "Legitimate access provider with inside knowledge",
+      "minigames": [
+        {
+          "id": "badge_swipe",
+          "description": "Swipe badge at correct speed to unlock door"
+        },
+        {
+          "id": "memory_matching",
+          "description": "Remember access codes shown briefly and enter them"
+        },
+        {
+          "id": "inventory_check",
+          "description": "Tap correct items in bag before time runs out"
+        }
+      ]
+    },
+    {
+      "role_id": "grifter",
+      "name": "Grifter",
+      "description": "Social engineering expert who talks their way past security",
+      "minigames": [
+        {
+          "id": "timed_dialogue_choices",
+          "description": "Pick dialogue response before timer runs out"
+        },
+        {
+          "id": "emotion_matching",
+          "description": "Tap facial expression that matches the situation"
+        },
+        {
+          "id": "convincing_sequence",
+          "description": "Tap buttons in rhythm to be convincing"
+        }
+      ]
+    },
+    {
+      "role_id": "muscle",
+      "name": "Muscle",
+      "description": "Physical security and intimidation specialist",
+      "minigames": [
+        {
+          "id": "takedown_timing",
+          "description": "Tap when moving indicator hits green zone for stealth takedown"
+        },
+        {
+          "id": "button_mash_barrier",
+          "description": "Rapidly tap button to break through barrier"
+        },
+        {
+          "id": "reaction_time",
+          "description": "Tap immediately when prompt appears"
+        }
+      ]
+    },
+    {
+      "role_id": "lookout",
+      "name": "Lookout",
+      "description": "Surveillance and intelligence provider",
+      "minigames": [
+        {
+          "id": "spot_the_difference",
+          "description": "Find anomalies between two security camera feeds"
+        },
+        {
+          "id": "whack_a_mole_threats",
+          "description": "Tap threats as they appear on multiple camera feeds"
+        },
+        {
+          "id": "pattern_memorization",
+          "description": "Watch guard patrol pattern and repeat the sequence"
+        }
+      ]
+    },
+    {
+      "role_id": "fence",
+      "name": "Fence",
+      "description": "Equipment and forgeries supplier",
+      "minigames": [
+        {
+          "id": "item_matching",
+          "description": "Drag and match items to correct buyers"
+        },
+        {
+          "id": "haggling_slider",
+          "description": "Stop slider at best price point during negotiation"
+        },
+        {
+          "id": "quality_inspection",
+          "description": "Tap all defects in forgery before time runs out"
+        }
+      ]
+    },
+    {
+      "role_id": "cat_burglar",
+      "name": "Cat Burglar",
+      "description": "Stealth and climbing specialist",
+      "minigames": [
+        {
+          "id": "climbing_rhythm",
+          "description": "Tap in rhythm with beat to climb silently"
+        },
+        {
+          "id": "laser_maze_timing",
+          "description": "Tap to advance when lasers clear your path"
+        },
+        {
+          "id": "balance_meter",
+          "description": "Tilt phone to keep balance meter centered"
+        }
+      ]
+    },
+    {
+      "role_id": "cleaner",
+      "name": "Cleaner",
+      "description": "Evidence removal and cleanup expert",
+      "minigames": [
+        {
+          "id": "swipe_fingerprints",
+          "description": "Swipe over fingerprints to wipe them clean"
+        },
+        {
+          "id": "tap_evidence_markers",
+          "description": "Tap all evidence markers in scene before time runs out"
+        },
+        {
+          "id": "trash_disposal",
+          "description": "Drag items to trash bin quickly"
+        }
+      ]
+    },
+    {
+      "role_id": "pickpocket",
+      "name": "Pickpocket",
+      "description": "Steals small items unnoticed",
+      "minigames": [
+        {
+          "id": "timing_tap",
+          "description": "Tap when shrinking circle reaches center for perfect steal"
+        },
+        {
+          "id": "quick_pocket_search",
+          "description": "Drag items from pocket rapidly without detection"
+        },
+        {
+          "id": "distraction_meter",
+          "description": "Swipe to steal when target looks away"
+        }
+      ]
+    }
+  ]
+}

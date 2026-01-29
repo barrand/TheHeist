@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Heist - Dependency Chart</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 24px;
+        line-height: 1.4;
+        background: #0b0b0b;
+        color: #f5f5f5;
+      }
+
+      h1 {
+        margin-bottom: 8px;
+      }
+
+      .card {
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 16px;
+        max-width: 900px;
+        background: #111;
+      }
+
+      .section {
+        margin: 16px 0;
+      }
+
+      .roles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px 16px;
+      }
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      button {
+        padding: 8px 12px;
+        font-size: 14px;
+        cursor: pointer;
+        background: #1d1d1d;
+        color: #f5f5f5;
+        border: 1px solid #333;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 220px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: #0b0b0b;
+        color: #f5f5f5;
+        border: 1px solid #333;
+      }
+
+      .hint {
+        font-size: 12px;
+        color: #aaa;
+      }
+
+      select,
+      input[type="checkbox"] {
+        accent-color: #7c3aed;
+      }
+
+      select {
+        background: #0b0b0b;
+        color: #f5f5f5;
+        border: 1px solid #333;
+        padding: 6px 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Dependency Chart Generator</h1>
+    <p class="hint">
+      Start the local generator server with:
+      <code>python scripts/generate_dependency_chart.py --serve</code>
+    </p>
+
+    <div class="card">
+      <div class="section">
+        <label for="scenarioSelect">Scenario</label>
+        <select id="scenarioSelect"></select>
+      </div>
+
+      <div class="section">
+        <div>Roles</div>
+        <div id="rolesContainer" class="roles"></div>
+      </div>
+
+      <div class="section">
+        <button id="generateButton">Generate Chart</button>
+      </div>
+
+      <div class="section">
+        <label for="output">Mermaid Output</label>
+        <textarea id="output" readonly></textarea>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

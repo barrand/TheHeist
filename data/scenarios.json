@@ -1,0 +1,96 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-01-27",
+  "description": "Heist scenario taxonomy with player ranges and role compatibility",
+  "chapter": "Chapter 1: Heist Crew",
+  "scenarios": [
+    {
+      "scenario_id": "museum_gala_vault",
+      "name": "Museum Gala Vault Heist",
+      "theme": "museum_gala",
+      "objective": "Steal the jewels from the museum vault during a black-tie event.",
+      "summary": "Infiltrate a gala, secure access, crack the vault, and escape unnoticed.",
+      "roles_required": ["mastermind", "safe_cracker", "insider"]
+    },
+    {
+      "scenario_id": "mansion_panic_room",
+      "name": "Mansion Panic Room",
+      "theme": "mansion",
+      "objective": "Steal a cash ledger hidden in a panic room.",
+      "summary": "Gain entry to a private mansion, bypass security, and crack a secure room.",
+      "roles_required": ["mastermind", "safe_cracker"]
+    },
+    {
+      "scenario_id": "casino_vault_night",
+      "name": "Casino Vault Night",
+      "theme": "casino",
+      "objective": "Break into the casino vault and steal high-value chips.",
+      "summary": "Blend in on the floor, disable surveillance, and crack the vault.",
+      "roles_required": ["mastermind", "safe_cracker", "hacker"]
+    },
+    {
+      "scenario_id": "train_robbery_car",
+      "name": "Armored Train Robbery",
+      "theme": "train",
+      "objective": "Steal a guarded artifact from a moving armored car.",
+      "summary": "Board the train, bypass guards, and extract the artifact.",
+      "roles_required": ["mastermind", "muscle", "cat_burglar"]
+    },
+    {
+      "scenario_id": "secure_lab_prototype",
+      "name": "Secure Lab Prototype",
+      "theme": "research_lab",
+      "objective": "Extract a prototype from a secure lab.",
+      "summary": "Infiltrate the lab, bypass access controls, and retrieve the item.",
+      "roles_required": ["mastermind", "hacker", "insider"]
+    },
+    {
+      "scenario_id": "office_bug_plant",
+      "name": "Secure Office Bug Plant",
+      "theme": "corporate_office",
+      "objective": "Plant a surveillance bug in a secure executive office.",
+      "summary": "Social-engineer access and place a device without detection.",
+      "roles_required": ["mastermind", "grifter"]
+    },
+    {
+      "scenario_id": "art_gallery_swap",
+      "name": "Gallery Art Swap",
+      "theme": "art_gallery",
+      "objective": "Replace a famous painting with a convincing forgery.",
+      "summary": "Distract staff, swap the artwork, and exit cleanly.",
+      "roles_required": ["mastermind", "fence", "cat_burglar"]
+    },
+    {
+      "scenario_id": "bank_safe_deposit",
+      "name": "Bank Safe Deposit Box",
+      "theme": "bank",
+      "objective": "Access a specific safe deposit box and extract its contents.",
+      "summary": "Get past the lobby, reach the vault corridor, and open a target box.",
+      "roles_required": ["mastermind", "safe_cracker", "hacker"]
+    },
+    {
+      "scenario_id": "evidence_room_cleanup",
+      "name": "Police Evidence Room",
+      "theme": "police_station",
+      "objective": "Remove an evidence item and erase traces of the break-in.",
+      "summary": "Enter the station, retrieve the item, and clean evidence.",
+      "roles_required": ["mastermind", "cleaner", "hacker"]
+    },
+    {
+      "scenario_id": "prison_extract",
+      "name": "Custody Extraction",
+      "theme": "detention_center",
+      "objective": "Extract a prisoner from custody without triggering alarms.",
+      "summary": "Coordinate a diversion, access holding, and escape safely.",
+      "roles_required": ["mastermind", "muscle", "driver"]
+    },
+    {
+      "scenario_id": "dockside_container",
+      "name": "Dockside Container Heist",
+      "theme": "shipping_yard",
+      "objective": "Retrieve a crate from a guarded shipping container yard.",
+      "summary": "Navigate the yard, locate the container, and extract the cargo.",
+      "roles_required": ["mastermind", "lookout", "driver"]
+    }
+  ]
+}
