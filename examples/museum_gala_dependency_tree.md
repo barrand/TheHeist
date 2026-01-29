@@ -1,5 +1,14 @@
 # Museum Gala Vault Heist - Dependency Tree (Revised)
 
+> **Generated Example**  
+> **Scenario**: `museum_gala_vault` - Museum Gala Vault Heist  
+> **Selected Roles**: Mastermind, Fence, Hacker, Insider, Pickpocket, Grifter, Safe Cracker, Driver, Lookout, Cleaner  
+> **Player Count**: 10 players  
+> 
+> This example demonstrates the full dependency tree design patterns including NPC personalities, room inventory search mechanics, NPC request chains, and multi-step collaboration tasks.
+
+---
+
 ## Objective
 Steal the Crimson Diamond from the museum vault during the annual gala and escape cleanly.
 
