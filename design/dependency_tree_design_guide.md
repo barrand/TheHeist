@@ -89,11 +89,12 @@ Every task in a dependency tree must be one of these four types:
 
 ## Core Design Principles
 
-### 1. Social Interaction First (80/20 Rule)
-- Aim for 80% social play (NPC interactions, handoffs, info shares) 
-- 20% minigames
+### 1. Social Interaction First (60-70% Target)
+- Aim for 60-70% social play: NPC interactions (40-50%) + handoffs + info shares
+- 30-40% minigames (keep gameplay engaging)
 - Force real collaboration through dependencies
 - Encourage players to talk to each other
+- **NPCs are the heart of the experience**: Make them memorable with distinct personalities (see `npc_personalities_guide.md`)
 
 ### 2. Role Interdependency
 - No role should be able to complete the objective alone
@@ -124,6 +125,47 @@ Each task should have clear prerequisites:
 - Required roles from `data/scenarios.json` must have prominent tasks
 - Setting informs NPC interactions (guards, staff, bystanders)
 
+### 7. Location Requirements
+- Each scenario should define a list of locations/rooms
+- Every task must specify a location
+- Location creates spatial dependencies (must reach vault before cracking it)
+- Movement between locations can be tasks themselves
+- Players should see their current location and available movement options
+
+### 8. Location Design Guidelines
+
+**Scenario Location List Structure:**
+
+Each scenario in `scenarios.json` should include:
+
+```json
+{
+  "scenario_id": "museum_gala_vault",
+  "locations": [
+    "Safe House",
+    "Gas Station",
+    "Museum Front Steps",
+    "Grand Hall",
+    "Security Checkpoint",
+    "Service Corridor",
+    "Vault Corridor",
+    "Vault Room",
+    "Museum Side Entrance",
+    "Rooftop Across Street",
+    "Getaway Vehicle"
+  ]
+}
+```
+
+**Location Types:**
+- **Preparation**: Off-site (safe house, parking lots, chop shop)
+- **Entry**: Access points (front door, side entrance, roof, external ladder)
+- **Public**: Blending zones (grand hall, passenger cars, casino floor)
+- **Restricted**: Access-controlled (vault corridor, security room, armored car)
+- **Target**: Objective location (vault room, artifact container)
+- **Escape**: Exit routes (side entrance, station platform, rooftop)
+- **Mobile**: Vehicles (getaway car, train car)
+
 ---
 
 ## Validation Rules
@@ -153,6 +195,30 @@ Each task should have clear prerequisites:
 - Do tasks fit the theme and setting?
 - Are NPC interactions appropriate for the location?
 - Does the sequence make narrative sense?
+
+---
+
+## Task Documentation Format
+
+Each task should be documented with:
+
+```markdown
+**[Icon] [minigame_id or description]** - [Action Description]
+   - [Detailed explanation]
+   - *NPC: [Name] ([traits]) - "[sample dialogue]"* (if NPC interaction)
+   - *Location:* [Location Name]
+   - *Dependencies:* [What must be complete first]
+```
+
+### Example Task Documentation
+
+```markdown
+**💬 NPC** - Chat with Gas Station Attendant
+   - Learn about recent police activity in area
+   - *NPC: Kyle (burned out, obsessed with UFOs) - "Yeah, cops been around. But honestly? I saw lights in the sky last week. That's the real story."*
+   - *Location:* Gas Station
+   - *Dependencies:* fueling up
+```
 
 ---
 

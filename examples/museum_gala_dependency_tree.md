@@ -201,28 +201,53 @@ Every task in this heist is one of three types:
 ### Driver
 
 **Tasks:**
-1. **💬 NPC** - Inspect Vehicle
-   - Check car for tracking devices, ensure systems operational
+1. **💬 NPC** - Meet Contact at Safe House
+   - Talk to informant about museum security schedules
+   - *NPC: Marco (nervous, conspiracy theorist, broken English) - "I tell you, museum guard, he change shift at 8pm, but I no trust. Maybe is trap?"*
+   - *Location:* Safe House
    - *Dependencies:* None (parallel start)
 
-2. **🎮 fuel_pump** - Fuel Up Car
+2. **💬 NPC** - Inspect Vehicle with Mechanic
+   - Get car checked for tracking devices, discuss escape routes
+   - *NPC: Donna (chatty, oversharer, distracted by personal drama) - "Oh honey, this car is clean. Unlike my ex-husband—did I tell you he took the dog?"*
+   - *Location:* Chop Shop
+   - *Dependencies:* contact meeting complete
+
+3. **🎮 fuel_pump** - Fuel Up Car
    - Fill tank at gas station without overflowing
+   - *Location:* Gas Station
    - *Dependencies:* car inspected
 
-3. **🎮 parking_precision** - Park at Museum
+4. **💬 NPC** - Chat with Gas Station Attendant
+   - Learn about recent police activity in area
+   - *NPC: Kyle (burnedout, obsessed with UFOs) - "Yeah, cops been around. But honestly? I saw lights in the sky last week. That's the real story."*
+   - *Location:* Gas Station
+   - *Dependencies:* fueling up
+
+5. **🎮 parking_precision** - Park at Museum
    - Position car in front of side entrance without drawing attention
-   - *Dependencies:* car fueled
+   - *Location:* Museum Side Street
+   - *Dependencies:* car fueled, police intel gathered
 
-4. **🗣️ EXTRACTION** ← Receive Signal
+6. **💬 NPC** - Bribe Parking Attendant
+   - Convince attendant to ignore parked car
+   - *NPC: Jerome (lazy, corrupt, wants easy money) - "Look man, I don't see nothing for the right price. How much we talking?"*
+   - *Location:* Museum Side Entrance
+   - *Dependencies:* car parked
+
+7. **🗣️ EXTRACTION** ← Receive Signal
    - Monitor radio for extraction signal from Mastermind
-   - *Dependencies:* parked and waiting
+   - *Location:* In Vehicle
+   - *Dependencies:* bribe paid, waiting
 
-5. **🤝 DIAMOND** ← Receive from Safe Cracker
+8. **🤝 DIAMOND** ← Receive from Safe Cracker
    - Secure diamond in car
+   - *Location:* Museum Side Entrance
    - *Dependencies:* Safe Cracker brings diamond
 
-6. **🎮 steering_obstacle_course** - Execute Getaway
+9. **🎮 steering_obstacle_course** - Execute Getaway
    - Drive crew through city traffic, evade pursuit
+   - *Location:* City Streets
    - *Dependencies:* crew in car, diamond in car, extraction signal, route clear
 
 ---
@@ -230,28 +255,52 @@ Every task in this heist is one of three types:
 ### Lookout
 
 **Tasks:**
-1. **🎮 pattern_memorization** - Scout Guard Patrols
-   - Watch museum perimeter, memorize patrol patterns
+1. **💬 NPC** - Talk to Street Vendor
+   - Gather gossip about museum security and guard schedules
+   - *NPC: Rosa (gossipy, helpful, ESL) - "Ah yes, the guard? He very lazy. Always on phone. You want churro?"*
+   - *Location:* Street Corner Near Museum
    - *Dependencies:* None (parallel start)
 
-2. **🎮 spot_the_difference** - Monitor via Binoculars
-   - Watch for anomalies in guard behavior from rooftop
+2. **🎮 pattern_memorization** - Scout Guard Patrols
+   - Watch museum perimeter, memorize patrol patterns
+   - *Location:* Rooftop Across Street
+   - *Dependencies:* vendor intel gathered
+
+3. **💬 NPC** - Blend with Museum Visitors
+   - Pretend to be tourist, gather information from crowd
+   - *NPC: Margaret (narcissistic, chatty, fashion-obsessed) - "Oh, are you here for the gala too? Do you think my dress photographs well? The curator said it's stunning."*
+   - *Location:* Museum Front Steps
    - *Dependencies:* patrol patterns learned
 
-3. **🤝 RADIO** ← Receive from Pickpocket
+4. **🎮 spot_the_difference** - Monitor via Binoculars
+   - Watch for anomalies in guard behavior from rooftop
+   - *Location:* Rooftop Position
+   - *Dependencies:* visitor intel, positioned
+
+5. **🤝 RADIO** ← Receive from Pickpocket
    - Get stolen guard radio
+   - *Location:* Museum Interior
    - *Dependencies:* Pickpocket delivers radio
 
-4. **💬 NPC** - Listen to Guard Chatter
-   - Monitor radio for security alerts
+6. **💬 NPC** - Listen to Guard Chatter
+   - Monitor radio for security alerts, overhear guard complaints
+   - *Guards on Radio: Frank (burned out, fantasy football) - "Yeah copy that. Hey you catch the game? My RB1 is killing me."*
+   - *Location:* Monitoring Position
    - *Dependencies:* radio received
 
-5. **🎮 whack_a_mole_threats** - Spot Threats
+7. **🎮 whack_a_mole_threats** - Spot Threats
    - Identify police, suspicious activity, alert team
+   - *Location:* Multiple Surveillance Points
    - *Dependencies:* monitoring active
 
-6. **🗣️ CLEAR** → Confirm to Driver
+8. **💬 NPC** - Reassure Nervous Insider
+   - Check in with team member via radio, boost morale
+   - *Location:* Radio Communication
+   - *Dependencies:* monitoring active
+
+9. **🗣️ CLEAR** → Confirm to Driver
    - Signal that escape route is safe
+   - *Location:* Final Position
    - *Dependencies:* extraction signal, threats assessed
 
 ---
@@ -259,24 +308,52 @@ Every task in this heist is one of three types:
 ### Cleaner
 
 **Tasks:**
-1. **🎮 swipe_fingerprints** - Wipe Side Entrance
-   - Clean door handles and surfaces
+1. **💬 NPC** - Convince Museum Janitor
+   - Get janitor to leave early or look the other way
+   - *NPC: Eddie (conspiracy theorist, helpful, gossipy) - "Between you and me? I heard the curator and director arguing about insurance. Something's fishy with that diamond."*
+   - *Location:* Janitorial Closet
    - *Dependencies:* team inside
 
-2. **🎮 tap_evidence_markers** - Clean Vault Area
+2. **🎮 swipe_fingerprints** - Wipe Side Entrance
+   - Clean door handles and surfaces
+   - *Location:* Side Entrance
+   - *Dependencies:* janitor distracted
+
+3. **💬 NPC** - Chat with Caterer
+   - Blend in, gather information about staff movements
+   - *NPC: Sofia (stressed, nervous, overworked) - "Have you seen the kitchen? The shrimp are getting warm! If chef finds out I'm done!"*
+   - *Location:* Service Corridor
+   - *Dependencies:* entry cleaned
+
+4. **🎮 tap_evidence_markers** - Clean Vault Area
    - Wipe down vault surfaces, remove traces
+   - *Location:* Vault Room
    - *Dependencies:* vault open, diamond secured
 
-3. **🎮 trash_disposal** - Dispose Equipment
-   - Collect used tools/gloves, bag for disposal
+5. **💬 NPC** - Brief Disposal Service Contact
+   - Arrange for evidence pickup and disposal
+   - *NPC: Tony (lazy, corrupt, no questions asked) - "Yeah yeah, I'll pick it up. Same spot as last time. Cash only."*
+   - *Location:* Service Entrance (Phone Call)
    - *Dependencies:* vault cleaned
 
-4. **🎮 swipe_fingerprints** - Sanitize Getaway Car
+6. **🎮 trash_disposal** - Bag Equipment
+   - Collect used tools/gloves, prepare for disposal
+   - *Location:* Various Locations
+   - *Dependencies:* disposal arranged
+
+7. **💬 NPC** - Reassure Nervous Crew Member
+   - Calm down team member who's panicking
+   - *Location:* Radio Communication
+   - *Dependencies:* cleanup in progress
+
+8. **🎮 swipe_fingerprints** - Sanitize Getaway Car
    - Wipe interior surfaces, remove dropped evidence
+   - *Location:* Inside Vehicle
    - *Dependencies:* crew in car
 
-5. **🗣️ CLEAN** → Confirm to Mastermind
+9. **🗣️ CLEAN** → Confirm to Mastermind
    - Final check, signal all-clear
+   - *Location:* Vehicle/Final Position
    - *Dependencies:* all areas cleaned
 
 ---
@@ -317,15 +394,17 @@ Tasks that provide backup, intelligence, or cleanup:
 
 ## Task Summary
 
-Total tasks: 39  
+Total tasks: 49  
 Critical path tasks: 16  
-Supporting tasks: 23  
+Supporting tasks: 33  
 
 By type:
-- Minigames (🎮): 21
-- NPC/LLM interactions (💬): 11
+- Minigames (🎮): 21 (43%)
+- NPC/LLM interactions (💬): 21 (43%)
 - Item handoffs (🤝): 11
 - Info shares (🗣️): 5
+
+**Note**: This example demonstrates increased NPC interactions with personality-driven dialogue. Each NPC has distinct traits, speech patterns, and motivations (see `design/npc_personalities_guide.md`). Target ratio is 60-70% social interactions (NPC + handoffs + info shares).
 
 ---
 
