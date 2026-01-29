@@ -6,12 +6,59 @@ Steal the Crimson Diamond from the museum vault during the annual gala and escap
 ## Scenario Overview
 The Natural History Museum is hosting its annual black-tie gala. The Crimson Diamond is on display in a vault in the basement. Security includes cameras, motion sensors, armed guards, and a sophisticated vault lock. The crew must infiltrate the gala, disable security systems, crack the vault, and execute a clean getaway.
 
+## Locations
+
+This scenario takes place across the following locations:
+
+### Off-Site Preparation
+- **Safe House** - Crew meeting point for briefing
+- **Chop Shop** - Vehicle inspection and preparation
+- **Gas Station** - Refueling and local intel gathering
+- **Van (Parked Outside)** - Hacker's remote operations base
+- **Parking Garage** - Equipment handoff point
+
+### Museum Exterior
+- **Museum Front Steps** - Main entrance, public arrival point
+- **Museum Side Entrance** - Staff/service entrance (restricted)
+- **Street Corner** - Street vendor location for intel gathering
+- **Rooftop Across Street** - Lookout surveillance position
+
+### Museum Interior - Public Areas
+- **Grand Hall** - Main gala space, guest mingling
+- **Ballroom** - Formal event space, dancing, socializing
+- **Main Gallery** - Art exhibits, public viewing areas
+- **Coat Check Room** - Guest coat storage, lost & found
+
+### Museum Interior - Staff/Restricted Areas
+- **Loading Dock** - Staff entrance, deliveries
+- **Service Corridor** - Staff passages, catering station
+- **Security Checkpoint** - Access control point
+- **Security Corridor** - Path to security control room
+- **Security Control Room** - Camera feeds, security systems
+- **Security Room** - Guard station, equipment storage
+- **Janitorial Closet** - Cleaning supplies, master keys
+- **Maintenance Room** - Building systems, tools
+- **Curator's Office** - Administrative office with vault code
+
+### Museum Interior - Vault Area
+- **Vault Corridor** - Restricted passage to vault
+- **Vault Room** - Target location, diamond display
+
+### Escape
+- **Getaway Vehicle** - Driver's car for escape
+- **City Streets** - Escape route through traffic
+
+**Total Locations**: 25
+
+---
+
 ## Task Types
 
-Every task in this heist is one of three types:
+Every task in this heist is one of five types:
 
 - **🎮 Minigame**: Player-controlled action from `roles.json`
 - **💬 NPC/LLM**: Dialogue or interaction with AI-controlled character
+- **🔍 Search/Hunt**: Player searches a location for hidden items
 - **🤝 Item Handoff**: Physical item transfer between players (tracked in inventory)
 - **🗣️ Info Share**: Verbal information exchange between players (real-life conversation)
 
