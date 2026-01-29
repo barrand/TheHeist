@@ -20,44 +20,33 @@ The Natural History Museum is hosting its annual black-tie gala. The Crimson Dia
 This scenario takes place across the following locations:
 
 ### Off-Site Preparation
-- **Safe House** - Crew meeting point for briefing
-- **Chop Shop** - Vehicle inspection and preparation
+- **Safe House** - Crew meeting, briefing, vehicle prep, equipment storage
 - **Gas Station** - Refueling and local intel gathering
-- **Van (Parked Outside)** - Hacker's remote operations base
-- **Parking Garage** - Equipment handoff point
 
 ### Museum Exterior
-- **Museum Front Steps** - Main entrance, public arrival point
+- **Museum Front Steps** - Main entrance, public arrival, street vendors
 - **Museum Side Entrance** - Staff/service entrance (restricted)
-- **Street Corner** - Street vendor location for intel gathering
 - **Rooftop Across Street** - Lookout surveillance position
 
 ### Museum Interior - Public Areas
-- **Grand Hall** - Main gala space, guest mingling
-- **Ballroom** - Formal event space, dancing, socializing
-- **Main Gallery** - Art exhibits, public viewing areas
-- **Coat Check Room** - Guest coat storage, lost & found
+- **Grand Hall** - Main gala space, guest mingling, socializing, exhibits
+- **Coat Check Room** - Guest storage, lost & found
 
 ### Museum Interior - Staff/Restricted Areas
-- **Loading Dock** - Staff entrance, deliveries
-- **Service Corridor** - Staff passages, catering station
-- **Security Checkpoint** - Access control point
-- **Security Corridor** - Path to security control room
-- **Security Control Room** - Camera feeds, security systems
-- **Security Room** - Guard station, equipment storage
+- **Loading Dock** - Staff entrance, deliveries, contact meetings
+- **Service Area** - Staff passages, catering station, supplies
+- **Security Room** - Camera feeds, guard station, security systems
 - **Janitorial Closet** - Cleaning supplies, master keys
-- **Maintenance Room** - Building systems, tools
+- **Maintenance Room** - Building systems, tools, equipment
 - **Curator's Office** - Administrative office with vault code
 
-### Museum Interior - Vault Area
-- **Vault Corridor** - Restricted passage to vault
-- **Vault Room** - Target location, diamond display
+### Vault Area
+- **Vault Room** - Target location, diamond display (includes vault corridor approach)
 
 ### Escape
-- **Getaway Vehicle** - Driver's car for escape
-- **City Streets** - Escape route through traffic
+- **Getaway Vehicle** - Driver's car for escape and getaway
 
-**Total Locations**: 25
+**Total Locations**: 14
 
 ---
 
@@ -91,7 +80,8 @@ Every task in this heist is one of five types:
    - *Dependencies:* None (parallel start)
 
 4. **🤝 TOOLS** → Deliver to Safe Cracker
-   - Hand over tools case in parking garage
+   - Hand over tools case at safe house
+   - *Location:* Safe House
    - *Dependencies:* tools procured
 
 ---
@@ -127,12 +117,12 @@ Every task in this heist is one of five types:
 1. **🔍 Search** - Hunt for Ethernet Cable
    - Device needs special cable; search van's equipment box
    - *Find: CAT6 Ethernet cable (20ft)*
-   - *Location:* Van (Parked Outside)
+   - *Location:* Safe House (Remote Access)
    - *Dependencies:* None (parallel start)
 
 2. **🎮 wire_connecting** - Prep Hacking Device
    - Assemble USB device in van, connect wires correctly
-   - *Location:* Van (Parked Outside)
+   - *Location:* Safe House (Remote Access)
    - *Dependencies:* cable found
 
 3. **🤝 DEVICE** → Deliver to Grifter
@@ -197,7 +187,7 @@ Every task in this heist is one of five types:
 6. **💬 NPC** - Distract Security Supervisor
    - Keep supervisor busy while Pickpocket works
    - *NPC: Supervisor Mike (by-the-book, stressed) - "These gala events are a nightmare. Did you see the guest list? Three senators!"*
-   - *Location:* Security Checkpoint
+   - *Location:* Security Room
    - *Dependencies:* team inside
 
 7. **🔍 Search** - Find Curator's Office Key
@@ -235,22 +225,22 @@ Every task in this heist is one of five types:
 2. **🔍 Search** - Hunt for Gala Champagne
    - Supervisor won't relax until he has a drink; search catering area
    - *Find: Bottle of expensive champagne*
-   - *Location:* Service Corridor (Catering Station)
+   - *Location:* Service Area (Catering Station)
    - *Dependencies:* identified supervisor
 
 3. **🤝 CHAMPAGNE** → Give to Insider
    - Pass champagne so Insider can distract supervisor with a drink
-   - *Location:* Security Checkpoint Area
+   - *Location:* Security Room
    - *Dependencies:* found champagne
 
 4. **🎮 timing_tap** - Steal Keycard
    - Bump supervisor while he's drinking, lift keycard with perfect timing
-   - *Location:* Security Checkpoint
+   - *Location:* Security Room
    - *Dependencies:* supervisor distracted with champagne
 
 5. **🤝 KEYCARD** → Deliver to Grifter
-   - Pass keycard discreetly in ballroom
-   - *Location:* Ballroom
+   - Pass keycard discreetly in grand hall
+   - *Location:* Grand Hall
    - *Dependencies:* keycard stolen
 
 6. **🔍 Search** - Find Guard's Backup Radio
@@ -271,14 +261,14 @@ Every task in this heist is one of five types:
 **Tasks:**
 1. **🤝 KEYCARD** ← Receive from Pickpocket
    - Get security keycard
-   - *Location:* Ballroom
+   - *Location:* Grand Hall
    - *Dependencies:* Pickpocket delivers keycard
 
 2. **💬 NPC** - Approach Control Room Guard
    - Try to charm guard but he's suspicious and bored
    - *NPC: Officer Davis (bored, suspicious, lonely) - "Who are you? Staff only back here. Unless... you got a light? I'm dying for a smoke but left my lighter in the car."*
    - *Request: Bring cigarette lighter*
-   - *Location:* Security Corridor
+   - *Location:* Security Room
    - *Dependencies:* keycard received
 
 3. **🔍 Search** - Hunt for Lighter
@@ -289,13 +279,13 @@ Every task in this heist is one of five types:
 
 4. **🤝 LIGHTER** → Give to Guard
    - Hand over lighter to Officer Davis
-   - *Location:* Security Corridor
+   - *Location:* Security Room
    - *Dependencies:* found lighter
 
 5. **💬 NPC** - Build Rapport with Guard
    - Chat while guard smokes, gain trust
    - *NPC: Officer Davis - "Thanks, you're a lifesaver. This shift is killing me. Nobody to talk to all night."*
-   - *Location:* Security Corridor
+   - *Location:* Security Room
    - *Dependencies:* lighter delivered
 
 6. **🤝 DEVICE** ← Receive from Hacker
@@ -305,13 +295,13 @@ Every task in this heist is one of five types:
 
 7. **🎮 convincing_sequence** - Plant Hacking Device
    - Convince guard to let you in control room, plug device into computer
-   - *Location:* Security Control Room
+   - *Location:* Security Room
    - *Dependencies:* guard charmed, device received
 
 8. **💬 NPC** - Distract Museum Curator
-   - Keep curator occupied in gallery, away from vault corridor
+   - Keep curator occupied in grand hall, away from vault area
    - *NPC: Dr. Chen (narcissistic, art-obsessed, pedantic) - "Finally someone who appreciates art! Let me tell you about MY curation philosophy..."*
-   - *Location:* Main Gallery
+   - *Location:* Grand Hall
    - *Dependencies:* device planted
 
 ---
@@ -320,13 +310,13 @@ Every task in this heist is one of five types:
 
 **Tasks:**
 1. **🤝 TOOLS** ← Receive from Fence
-   - Get specialized cracking tools in parking garage
-   - *Location:* Parking Garage
+   - Get specialized cracking tools at safe house
+   - *Location:* Safe House
    - *Dependencies:* Fence delivers tools
 
 2. **💬 NPC** - Navigate to Vault
    - Enter via side entrance, move through basement corridors
-   - *Location:* Vault Corridor
+   - *Location:* Vault Room (Approach)
    - *Dependencies:* building access granted, motion sensors disabled
 
 3. **🔍 Search** - Hunt for Acoustic Amplifier
@@ -364,7 +354,7 @@ Every task in this heist is one of five types:
 2. **💬 NPC** - Inspect Vehicle with Mechanic
    - Get car checked for tracking devices, discuss escape routes
    - *NPC: Donna (chatty, oversharer, distracted by personal drama) - "Oh honey, this car is clean. Unlike my ex-husband—did I tell you he took the dog?"*
-   - *Location:* Chop Shop
+   - *Location:* Safe House (Vehicle Bay)
    - *Dependencies:* contact meeting complete
 
 3. **🎮 fuel_pump** - Fuel Up Car
@@ -380,7 +370,7 @@ Every task in this heist is one of five types:
 
 5. **🎮 parking_precision** - Park at Museum
    - Position car in front of side entrance without drawing attention
-   - *Location:* Museum Side Street
+   - *Location:* Museum Side Entrance
    - *Dependencies:* car fueled, police intel gathered
 
 6. **💬 NPC** - Bribe Parking Attendant
@@ -401,7 +391,7 @@ Every task in this heist is one of five types:
 
 9. **🎮 steering_obstacle_course** - Execute Getaway
    - Drive crew through city traffic, evade pursuit
-   - *Location:* City Streets
+   - *Location:* Getaway Vehicle (Escape Route)
    - *Dependencies:* crew in car, diamond in car, extraction signal, route clear
 
 ---
@@ -412,7 +402,7 @@ Every task in this heist is one of five types:
 1. **💬 NPC** - Talk to Street Vendor
    - Gather gossip about museum security and guard schedules
    - *NPC: Rosa (gossipy, helpful, ESL) - "Ah yes, the guard? He very lazy. Always on phone. You want churro?"*
-   - *Location:* Street Corner Near Museum
+   - *Location:* Museum Front Steps
    - *Dependencies:* None (parallel start)
 
 2. **🎮 pattern_memorization** - Scout Guard Patrols
@@ -476,7 +466,7 @@ Every task in this heist is one of five types:
 3. **💬 NPC** - Chat with Caterer
    - Blend in, gather information about staff movements
    - *NPC: Sofia (stressed, nervous, overworked) - "Have you seen the kitchen? The shrimp are getting warm! If chef finds out I'm done!"*
-   - *Location:* Service Corridor
+   - *Location:* Service Area
    - *Dependencies:* entry cleaned
 
 4. **🎮 tap_evidence_markers** - Clean Vault Area
