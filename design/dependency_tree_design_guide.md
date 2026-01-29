@@ -8,7 +8,7 @@ This guide defines the rules and principles for creating heist scenario dependen
 
 ## Task Types
 
-Every task in a dependency tree must be one of these four types:
+Every task in a dependency tree must be one of these five types:
 
 ### 🎮 Minigame
 **Player-controlled action from `data/roles.json`**
@@ -48,6 +48,41 @@ Every task in a dependency tree must be one of these four types:
 - Social engineering and persuasion
 - Navigation and movement through spaces
 - Any interaction that's conversational rather than mechanical
+
+**NPC Request Pattern:**
+- NPC asks for something before providing help/info
+- Creates mini fetch quest requiring other players
+- Example: Guard wants coffee before sharing intel
+- Format: Include *Request:* field in task documentation
+
+### 🔍 Search/Hunt
+**Player searches a location for items**
+
+- Used for finding items hidden in rooms/locations
+- Format: `{{🔍 Search: Location for Item}}`
+- Example: `{{🔍 Search: Kitchen for Snack}}`
+
+**When to use:**
+- Room inventory exploration
+- Finding tools, keys, consumables
+- Discovering hidden objects
+- Must specify location and what's found
+
+**Documentation format:**
+```markdown
+**🔍 Search** - Hunt for [Item]
+   - [Description of search]
+   - *Find: [Item name and description]*
+   - *Location:* [Location Name]
+   - *Dependencies:* [Prerequisites]
+```
+
+**Common searchable items:**
+- Keys, access cards, tools
+- Food, drinks, consumables
+- Documents, codes, intel
+- Disguise items, props
+- Equipment, cables, parts
 
 ### 🤝 Item Handoff
 **Physical item transfer between players (inventory-tracked)**
@@ -165,6 +200,52 @@ Each scenario in `scenarios.json` should include:
 - **Target**: Objective location (vault room, artifact container)
 - **Escape**: Exit routes (side entrance, station platform, rooftop)
 - **Mobile**: Vehicles (getaway car, train car)
+
+### Location Inventories
+
+Each location can have searchable items that players discover using 🔍 Search tasks.
+
+**Inventory Design Guidelines:**
+
+1. **Items should be thematically appropriate**
+   - Kitchen → food, utensils
+   - Security office → keys, access cards, schedules
+   - Maintenance room → tools, supplies, equipment
+   - Coat check → personal items, valuables, clothing
+
+2. **Items serve purposes**
+   - **Quest items**: Fulfill NPC requests (coffee, food, cigarettes)
+   - **Tools**: Enable tasks (keys, cables, disguises)
+   - **Intel**: Provide information (schedules, maps, codes)
+   - **Currency**: Bribes and payments (cash, valuables)
+
+3. **Discovery creates mini-objectives**
+   - Players must actively search rooms
+   - Encourages exploration and teamwork
+   - Creates "oh I remember seeing that!" moments
+
+**Example Location Inventory:**
+
+```json
+{
+  "location": "Service Corridor (Catering Station)",
+  "searchable_items": [
+    "Bottle of champagne",
+    "Catering uniform",
+    "Service schedule",
+    "Spare serving tray"
+  ]
+}
+```
+
+**Common Searchable Items by Location Type:**
+- **Safe House**: Cash, equipment, maps, burner phones
+- **Vehicles**: Tools, spare parts, supplies, weapons
+- **Staff Areas**: Uniforms, badges, keys, schedules
+- **Security Areas**: Access cards, radios, monitors, guard schedules
+- **Public Areas**: Personal items, food/drink, props for disguise
+- **Maintenance**: Tools, cleaning supplies, building schematics
+- **Storage**: Equipment, spare keys, forgotten valuables
 
 ---
 
@@ -346,6 +427,54 @@ START → Driver: Fuel Car (🎮)
 START → Lookout: Scout Area (🎮)
 START → Fence: Procure Equipment (💬)
 (All converge later)
+```
+
+### Pattern: NPC Request Chain
+**NPC asks for something before helping**
+```
+Player: Approach NPC (💬) → 
+NPC makes request → 
+Player: Search for Item (🔍) → 
+Player: Give Item to NPC (🤝) → 
+NPC: Provides Help/Info (💬)
+```
+
+**Example:**
+```
+Grifter: Approach Guard (💬 - guard wants lighter) →
+Grifter: Search Coat Check (🔍 - find lighter) →
+Grifter: Give Lighter to Guard (🤝) →
+Grifter: Guard Now Helps (💬 - grants access)
+```
+
+### Pattern: Multi-Player Fetch Quest
+**Item needed by one player, searched/delivered by another**
+```
+Player A: Approach NPC (💬) → NPC requests item →
+Player A: Tell Player B via radio (🗣️) →
+Player B: Search Location (🔍) → Find item →
+Player B: Deliver to Player A (🤝) →
+Player A: Give to NPC (🤝) →
+NPC: Provides help (💬)
+```
+
+**Example:**
+```
+Insider: Meet Contact (💬 - wants cash) →
+Insider: Tell Fence (🗣️) →
+Fence: Search Car (🔍 - find cash) →
+Fence: Give to Insider (🤝) →
+Insider: Pay Contact (🤝) →
+Contact: Gives Uniform (💬)
+```
+
+### Pattern: Room Inventory Exploration
+**Multiple searchable items in locations**
+```
+Player: Enter Location →
+Player: Search Location (🔍) → Find Item A →
+Player: Search Location again (🔍) → Find Item B →
+Items distributed to team as needed
 ```
 
 ---

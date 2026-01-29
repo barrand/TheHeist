@@ -68,28 +68,40 @@ Every task in this heist is one of three types:
 ### Hacker
 
 **Tasks:**
-1. **🎮 wire_connecting** - Prep Hacking Device
-   - Assemble USB device in van, connect wires correctly
+1. **🔍 Search** - Hunt for Ethernet Cable
+   - Device needs special cable; search van's equipment box
+   - *Find: CAT6 Ethernet cable (20ft)*
+   - *Location:* Van (Parked Outside)
    - *Dependencies:* None (parallel start)
 
-2. **🤝 DEVICE** → Deliver to Grifter
+2. **🎮 wire_connecting** - Prep Hacking Device
+   - Assemble USB device in van, connect wires correctly
+   - *Location:* Van (Parked Outside)
+   - *Dependencies:* cable found
+
+3. **🤝 DEVICE** → Deliver to Grifter
    - Pass hacking device at gala entrance
+   - *Location:* Museum Front Steps
    - *Dependencies:* device ready
 
-3. **🎮 cipher_wheel_alignment** - Disable Cameras
+4. **🎮 cipher_wheel_alignment** - Disable Cameras
    - Access security system, loop camera feeds
+   - *Location:* Remote Access (Laptop in Van)
    - *Dependencies:* device planted by Grifter
 
-4. **🗣️ CODE** ← Receive from Insider
+5. **🗣️ CODE** ← Receive from Insider
    - Get vault access code
+   - *Location:* Radio Communication
    - *Dependencies:* Insider retrieves code
 
-5. **🎮 card_swipe** - Unlock Vault Door
+6. **🎮 card_swipe** - Unlock Vault Door
    - Override electronic lock on vault anteroom
+   - *Location:* Remote Access (Laptop in Van)
    - *Dependencies:* code received, cameras disabled
 
-6. **🎮 simon_says_sequence** - Wipe Security Logs
+7. **🎮 simon_says_sequence** - Wipe Security Logs
    - Erase digital traces before leaving
+   - *Location:* Remote Access (Laptop in Van)
    - *Dependencies:* diamond secured
 
 ---
@@ -97,28 +109,60 @@ Every task in this heist is one of three types:
 ### Insider
 
 **Tasks:**
-1. **💬 NPC** - Get Staff Uniform
-   - Meet contact at loading dock, receive uniform and badge
+1. **💬 NPC** - Meet Contact at Loading Dock
+   - Try to get staff uniform, but contact wants payment first
+   - *NPC: Carlos (suspicious, greedy, nervous) - "Uniform? Yeah I got it. But prices went up. Security's been tight. I need $200 more than we agreed."*
+   - *Request: Bring cash payment*
+   - *Location:* Loading Dock
    - *Dependencies:* None (parallel start)
 
-2. **🎮 badge_swipe** - Grant Building Access
+2. **🔍 Search** - Hunt for Emergency Cash
+   - Search Fence's car for hidden stash
+   - *Find: Envelope with $300 cash*
+   - *Location:* Fence's Vehicle
+   - *Dependencies:* Carlos made request
+
+3. **🤝 CASH** → Pay Carlos
+   - Hand over cash to contact
+   - *Location:* Loading Dock
+   - *Dependencies:* found cash
+
+4. **💬 NPC** - Receive Staff Uniform
+   - Carlos hands over uniform and badge after payment
+   - *NPC: Carlos - "Alright, alright. Here's your stuff. Staff entrance code is 4782. Don't get caught."*
+   - *Location:* Loading Dock
+   - *Dependencies:* payment made
+
+5. **🎮 badge_swipe** - Grant Building Access
    - Unlock side entrance for team
+   - *Location:* Museum Side Entrance
    - *Dependencies:* uniform acquired
 
-3. **💬 NPC** - Distract Security Supervisor
+6. **💬 NPC** - Distract Security Supervisor
    - Keep supervisor busy while Pickpocket works
+   - *NPC: Supervisor Mike (by-the-book, stressed) - "These gala events are a nightmare. Did you see the guest list? Three senators!"*
+   - *Location:* Security Checkpoint
    - *Dependencies:* team inside
 
-4. **🎮 memory_matching** - Retrieve Vault Code
-   - Access curator's computer, memorize code
-   - *Dependencies:* curator distracted (by Grifter)
+7. **🔍 Search** - Find Curator's Office Key
+   - Search janitorial closet for master key ring
+   - *Find: Master key ring (includes curator's office)*
+   - *Location:* Janitorial Closet
+   - *Dependencies:* need access to curator's computer
 
-5. **🗣️ CODE** → Share with Hacker
+8. **🎮 memory_matching** - Retrieve Vault Code
+   - Access curator's computer, memorize code
+   - *Location:* Curator's Office
+   - *Dependencies:* curator distracted (by Grifter), key obtained
+
+9. **🗣️ CODE** → Share with Hacker
    - Radio vault code to Hacker
+   - *Location:* Curator's Office
    - *Dependencies:* code retrieved
 
-6. **🎮 badge_swipe** - Disable Motion Sensors
+10. **🎮 badge_swipe** - Disable Motion Sensors
    - Access maintenance panel, turn off corridor sensors
+   - *Location:* Maintenance Room
    - *Dependencies:* vault door unlocked
 
 ---
@@ -128,23 +172,41 @@ Every task in this heist is one of three types:
 **Tasks:**
 1. **💬 NPC** - Blend into Gala Crowd
    - Mingle with guests, identify security supervisor
+   - *NPC: Helen (gossipy, chatty socialite) - "Oh darling, have you SEEN the security tonight? That supervisor with the gray suit? He's been eyeing me all evening!"*
+   - *Location:* Grand Hall
    - *Dependencies:* team inside
 
-2. **🎮 timing_tap** - Steal Keycard
-   - Bump supervisor, lift keycard with perfect timing
-   - *Dependencies:* supervisor identified, supervisor distracted
+2. **🔍 Search** - Hunt for Gala Champagne
+   - Supervisor won't relax until he has a drink; search catering area
+   - *Find: Bottle of expensive champagne*
+   - *Location:* Service Corridor (Catering Station)
+   - *Dependencies:* identified supervisor
 
-3. **🤝 KEYCARD** → Deliver to Grifter
+3. **🤝 CHAMPAGNE** → Give to Insider
+   - Pass champagne so Insider can distract supervisor with a drink
+   - *Location:* Security Checkpoint Area
+   - *Dependencies:* found champagne
+
+4. **🎮 timing_tap** - Steal Keycard
+   - Bump supervisor while he's drinking, lift keycard with perfect timing
+   - *Location:* Security Checkpoint
+   - *Dependencies:* supervisor distracted with champagne
+
+5. **🤝 KEYCARD** → Deliver to Grifter
    - Pass keycard discreetly in ballroom
+   - *Location:* Ballroom
    - *Dependencies:* keycard stolen
 
-4. **🎮 quick_pocket_search** - Steal Guard Radio
-   - Swipe backup radio from guard at wine bar
+6. **🔍 Search** - Find Guard's Backup Radio
+   - Search coat check room for guard's spare equipment
+   - *Find: Guard radio (backup unit)*
+   - *Location:* Coat Check Room
    - *Dependencies:* cameras disabled
 
-5. **🤝 RADIO** → Deliver to Lookout
+7. **🤝 RADIO** → Deliver to Lookout
    - Give radio to Lookout for monitoring
-   - *Dependencies:* radio stolen
+   - *Location:* Near Museum Exit
+   - *Dependencies:* radio found
 
 ---
 
@@ -153,22 +215,47 @@ Every task in this heist is one of three types:
 **Tasks:**
 1. **🤝 KEYCARD** ← Receive from Pickpocket
    - Get security keycard
+   - *Location:* Ballroom
    - *Dependencies:* Pickpocket delivers keycard
 
-2. **💬 NPC** - Charm Control Room Guard
-   - Approach guard, build rapport and trust
+2. **💬 NPC** - Approach Control Room Guard
+   - Try to charm guard but he's suspicious and bored
+   - *NPC: Officer Davis (bored, suspicious, lonely) - "Who are you? Staff only back here. Unless... you got a light? I'm dying for a smoke but left my lighter in the car."*
+   - *Request: Bring cigarette lighter*
+   - *Location:* Security Corridor
    - *Dependencies:* keycard received
 
-3. **🤝 DEVICE** ← Receive from Hacker
+3. **🔍 Search** - Hunt for Lighter
+   - Search coat check lost & found for lighter
+   - *Find: Zippo lighter (vintage)*
+   - *Location:* Coat Check Room
+   - *Dependencies:* guard made request
+
+4. **🤝 LIGHTER** → Give to Guard
+   - Hand over lighter to Officer Davis
+   - *Location:* Security Corridor
+   - *Dependencies:* found lighter
+
+5. **💬 NPC** - Build Rapport with Guard
+   - Chat while guard smokes, gain trust
+   - *NPC: Officer Davis - "Thanks, you're a lifesaver. This shift is killing me. Nobody to talk to all night."*
+   - *Location:* Security Corridor
+   - *Dependencies:* lighter delivered
+
+6. **🤝 DEVICE** ← Receive from Hacker
    - Get hacking device
+   - *Location:* Near Security Room
    - *Dependencies:* Hacker delivers device
 
-4. **🎮 convincing_sequence** - Plant Hacking Device
-   - Convince guard to let you in, plug device into computer
+7. **🎮 convincing_sequence** - Plant Hacking Device
+   - Convince guard to let you in control room, plug device into computer
+   - *Location:* Security Control Room
    - *Dependencies:* guard charmed, device received
 
-5. **💬 NPC** - Distract Museum Curator
+8. **💬 NPC** - Distract Museum Curator
    - Keep curator occupied in gallery, away from vault corridor
+   - *NPC: Dr. Chen (narcissistic, art-obsessed, pedantic) - "Finally someone who appreciates art! Let me tell you about MY curation philosophy..."*
+   - *Location:* Main Gallery
    - *Dependencies:* device planted
 
 ---
@@ -178,22 +265,33 @@ Every task in this heist is one of three types:
 **Tasks:**
 1. **🤝 TOOLS** ← Receive from Fence
    - Get specialized cracking tools in parking garage
+   - *Location:* Parking Garage
    - *Dependencies:* Fence delivers tools
 
 2. **💬 NPC** - Navigate to Vault
    - Enter via side entrance, move through basement corridors
+   - *Location:* Vault Corridor
    - *Dependencies:* building access granted, motion sensors disabled
 
-3. **🎮 dial_rotation** - Crack Vault (Part 1)
-   - Manipulate outer dial to find first numbers
-   - *Dependencies:* vault reached, vault door unlocked, tools received
+3. **🔍 Search** - Hunt for Acoustic Amplifier
+   - Tools are missing the stethoscope; search maintenance room
+   - *Find: Maintenance stethoscope (for pipes, works for safes)*
+   - *Location:* Maintenance Room
+   - *Dependencies:* vault reached, vault door unlocked
 
-4. **🎮 listen_for_clicks** - Crack Vault (Part 2)
-   - Listen for internal clicks to complete combination
+4. **🎮 dial_rotation** - Crack Vault (Part 1)
+   - Manipulate outer dial to find first numbers
+   - *Location:* Vault Room
+   - *Dependencies:* stethoscope found, tools received
+
+5. **🎮 listen_for_clicks** - Crack Vault (Part 2)
+   - Listen for internal clicks with stethoscope to complete combination
+   - *Location:* Vault Room
    - *Dependencies:* dial rotation complete
 
-5. **🤝 DIAMOND** - Secure and Transport
+6. **🤝 DIAMOND** - Secure and Transport
    - Remove diamond from display, carry to getaway vehicle
+   - *Location:* Vault Room → Getaway Vehicle
    - *Dependencies:* vault open, extraction signal
 
 ---
@@ -394,17 +492,26 @@ Tasks that provide backup, intelligence, or cleanup:
 
 ## Task Summary
 
-Total tasks: 49  
-Critical path tasks: 16  
-Supporting tasks: 33  
+Total tasks: 62  
+Critical path tasks: 20  
+Supporting tasks: 42  
 
 By type:
-- Minigames (🎮): 21 (43%)
-- NPC/LLM interactions (💬): 21 (43%)
-- Item handoffs (🤝): 11
-- Info shares (🗣️): 5
+- Minigames (🎮): 21 (34%)
+- NPC/LLM interactions (💬): 24 (39%)
+- Search/Hunt (🔍): 5 (8%)
+- Item handoffs (🤝): 14 (23%)
+- Info shares (🗣️): 5 (8%)
 
-**Note**: This example demonstrates increased NPC interactions with personality-driven dialogue. Each NPC has distinct traits, speech patterns, and motivations (see `design/npc_personalities_guide.md`). Target ratio is 60-70% social interactions (NPC + handoffs + info shares).
+**Social interactions total**: 70% (NPC + Search + Handoffs + Info shares)
+
+**Note**: This example demonstrates:
+1. Increased NPC interactions with personality-driven dialogue
+2. **NPC requests** - NPCs ask for items/favors before helping
+3. **Room inventory & search mechanics** - Players hunt for items in locations
+4. **Multi-step dependency chains** - Search → Find → Give → NPC helps
+
+Each NPC has distinct traits, speech patterns, and motivations (see `design/npc_personalities_guide.md`).
 
 ---
 
