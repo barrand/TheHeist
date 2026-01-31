@@ -27,3 +27,6 @@ Thumbs.db
 
 # Environment variables (secrets)
 .env
+
+# Generated output files
+output/
