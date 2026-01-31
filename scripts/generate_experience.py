@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate dependency tree for a heist scenario using Gemini AI.
+Generate a complete heist experience for a scenario using Gemini AI.
 
 Usage:
-    python generate_dependency_tree.py --scenario museum_gala_vault --roles mastermind hacker safe_cracker
-    python generate_dependency_tree.py --scenario train_robbery_car --roles mastermind muscle cat_burglar --output custom_heist.md
+    python generate_experience.py --scenario museum_gala_vault --roles mastermind hacker safe_cracker
+    python generate_experience.py --scenario train_robbery_car --roles mastermind muscle cat_burglar --output custom_heist.md
 """
 
 import argparse
@@ -134,10 +134,10 @@ Now generate the complete dependency tree for the scenario above.
     return prompt
 
 
-def generate_dependency_tree(scenario_id, role_ids, output_file=None):
-    """Generate dependency tree using Gemini AI."""
+def generate_experience(scenario_id, role_ids, output_file=None):
+    """Generate complete heist experience using Gemini AI."""
     
-    print(f"🎮 Generating dependency tree...")
+    print(f"🎮 Generating heist experience...")
     print(f"   Scenario: {scenario_id}")
     print(f"   Roles: {', '.join(role_ids)}")
     print(f"   Model: {GEMINI_MODEL}")
@@ -228,13 +228,13 @@ def generate_dependency_tree(scenario_id, role_ids, output_file=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate dependency tree for a heist scenario',
+        description='Generate a complete heist experience for a scenario',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python generate_dependency_tree.py --scenario museum_gala_vault --roles mastermind hacker safe_cracker
-  python generate_dependency_tree.py --scenario train_robbery_car --roles mastermind muscle cat_burglar driver
-  python generate_dependency_tree.py --scenario museum_gala_vault --roles mastermind fence hacker insider --output my_heist.md
+  python generate_experience.py --scenario museum_gala_vault --roles mastermind hacker safe_cracker
+  python generate_experience.py --scenario train_robbery_car --roles mastermind muscle cat_burglar driver
+  python generate_experience.py --scenario museum_gala_vault --roles mastermind fence hacker insider --output my_heist.md
         """
     )
     
@@ -258,8 +258,8 @@ Examples:
     
     args = parser.parse_args()
     
-    # Generate the dependency tree
-    generate_dependency_tree(
+    # Generate the heist experience
+    generate_experience(
         scenario_id=args.scenario,
         role_ids=args.roles,
         output_file=args.output
