@@ -107,57 +107,70 @@ Start with clear objectives visible to ALL players:
 - ✅ Example: "🚪 Escape the Building"
 - Keep them action-oriented and clear
 
-### 2. Discovery Tasks (Create 4-8 discovery moments)
-Tasks that REVEAL information and SPAWN new tasks:
-- 🔍 **Examine** tasks (inspect objects/locations)
-  - Example: "Examine the Safe" → reveals it needs 6-digit code
-- 🔍 **Search** tasks (find items/clues in rooms)
-  - Example: "Search Office" → finds personnel file with clues
-- 💬 **Investigate** tasks (ask NPCs questions)
-  - Example: "Talk to Janitor" → reveals secret about guard schedule
+### 2. Discovery Tasks (Create 4-8 unique discovery moments)
+Tasks that REVEAL information and SPAWN new tasks or options:
+- 🔍 **Examine** tasks (inspect objects, locations, systems)
+- 🔍 **Search** tasks (find items, clues, hidden things)
+- 💬 **Investigate** tasks (talk to NPCs, observe behavior, eavesdrop)
+- 🤝 **Coordinate** tasks (combine what multiple players learned)
 
-**Discovery tasks MUST include:**
+**Discovery tasks should include:**
 - `[DISCOVERY]` tag in the task description
-- `Spawns:` field listing what tasks appear after completion
-- Clear description of what's discovered
+- `Spawns:` field listing what tasks/options appear after completion
+- `Discovery:` field describing what players learn
+- Be creative! Not all discoveries are codes - they can reveal locations, people, timing, methods, weaknesses
 
-### 3. NPC Clue Design (MOST IMPORTANT!)
-Create NPCs who reveal clues through **natural conversation**:
+### 3. Organic Discovery Design (MOST IMPORTANT!)
+Create diverse, creative discovery moments that feel natural to the scenario:
 
-**✅ GOOD - Subtle & Natural:**
-```
-Harold Matthews (vault manager, proud dad):
-"My three kids are my world! Emma just turned 13, Lucas is 12, 
-and Olivia is 10. I always say those three numbers - 13, 12, 10 - 
-are all I really think about!"
-```
-→ Players must DEDUCE that 131210 might be the combination
+**PRINCIPLES:**
+1. **Variety is key** - Don't repeat patterns. Each discovery should feel unique
+2. **Context matters** - Discoveries should fit the location and scenario
+3. **Natural revelation** - Information emerges through exploration, not handed over
+4. **Multiple steps** - Chain 2-4 small discoveries together
+5. **Player agency** - Give choices that lead to different information
 
-**❌ BAD - Too Obvious:**
-```
-Guard: "The safe combination is 131210."
-```
-→ No discovery, no fun!
+**DIVERSE DISCOVERY TYPES:**
 
-**Design Pattern for NPC Clues:**
-1. Give NPC a personality trait (proud parent, workaholic, collector, etc.)
-2. Have them talk about their passion naturally
-3. Weave clues into the conversation (ages, dates, addresses, names)
-4. Make it require 2-3 conversational choices to get the full clue
-5. Add misdirection (mention other numbers/facts that aren't relevant)
+**A) Object Examination**
+- Examine painting → Notice it's slightly crooked → Behind it is a hidden panel
+- Inspect vehicle → Find tracking device → Must disable or leave it
+- Check security system → See unusual wiring → Someone modified it recently
 
-**Example Clue Patterns:**
-- **Ages/Dates**: Parent mentions kids' ages → combination code
-- **Addresses**: NPC mentions childhood home → locker number
-- **Names**: Spouse's name → password
-- **Collections**: Collector mentions rare item → auction catalog number
-- **Habits**: Always drinks coffee at 3:30pm → keypad code 1530
+**B) NPC Information Exchange**
+- NPC needs favor → You help → They share what they know
+- NPC has problem → You solve it → They become ally and provide access
+- NPC is chatty → Let them ramble → Accidentally reveals useful detail
+- NPC is suspicious → Build trust over multiple conversations → Finally opens up
 
-### 4. Multiple Discovery Paths
-Create 2-3 ways to discover the same information:
-- **Path A (Direct)**: Hacker searches personnel files → finds ages
-- **Path B (Social)**: Grifter talks to NPC → hears about kids
-- **Path C (Observation)**: Anyone searches office → finds family photo with ages written on back
+**C) Environmental Storytelling**
+- Search desk → Find multiple items that together reveal a pattern
+- Notice schedule → Cross-reference with another clue → Discover timing window
+- Observe NPC behavior → They keep checking their watch → Follow them at that time
+- Find torn note → Another player finds other half → Combine to read full message
+
+**D) Team Coordination Discoveries**
+- Player A overhears conversation → Player B finds related document → Together they understand
+- Player A gets partial code → Player B gets other half → Must communicate to assemble
+- Player A distracts NPC → Player B can then access their office
+- Player A creates opportunity → Player B must be ready to exploit it
+
+**E) Unexpected Consequences**
+- Search too loudly → Guard becomes suspicious → New challenge appears
+- Take item without permission → NPC notices later → Must make amends
+- Complete task too quickly → Raises alarm → Team must adapt plan
+
+**VARIETY IN MECHANISMS:**
+- **NOT JUST CODES**: Discoveries can reveal locations, people, timing, methods, weaknesses
+- **NOT JUST NPCs**: Examine objects, search rooms, observe patterns, connect clues
+- **NOT JUST LINEAR**: Create branching paths where different discoveries lead to different solutions
+
+### 4. Multiple Discovery Paths (When Appropriate)
+Sometimes offer 2-3 ways to discover information or solve problems:
+- Create paths that suit different roles (technical vs social vs physical)
+- Each path should feel valid and interesting (not one "correct" path)
+- Paths can converge later or lead to same goal through different means
+- Don't force branching everywhere - linear is fine for some tasks
 
 ### 5. Team vs Player-Specific Tasks
 
@@ -171,54 +184,76 @@ Create 2-3 ways to discover the same information:
 - "Hack Terminal" (Hacker only)
 - Specify `Role: Safe Cracker` in task
 
-### 6. Task Spawning Chain
-Show clear progression:
+### 6. Task Spawning Chains
+Show clear progression where discoveries lead to new options:
 ```
-Initial: 🔍 Examine Safe [DISCOVERY]
-  Spawns → Team: Find Combination [TEAM TASK]
-  Spawns → Safe Cracker: Crack Safe [Locked: needs combination]
+Initial: 🔍 Eavesdrop on Guards [DISCOVERY]
+  Spawns → Team: Check Roof Access [TEAM TASK]
   
-After "Find Combination" complete:
-  Unlocks → Safe Cracker: Crack Safe [NOW AVAILABLE]
+After checking: 🔍 Check Roof Access [DISCOVERY]  
+  Discovery: "Door unlocked but camera watches it"
+  Spawns → Hacker: Disable Camera
+  Spawns → Team: Create Distraction [TEAM TASK]
+  
+After both complete: New Location Unlocked: Roof
+  New tasks available at Roof location
 ```
+Mix linear chains (A→B→C) with parallel options (A→B OR A→C) for variety
 
-### 7. Clue Integration Examples
+### 7. Make Discoveries Feel Organic
 
-**PATTERN: The Personal Connection**
-```
-NPC: Museum Director (art obsessed, detail-oriented)
-Clue embedded: "The Renaissance period, 1478 specifically, was pivotal..."
-Code revealed: 1478 (security code)
-```
+**Discoveries should emerge naturally from:**
+- Exploring the environment (searching, examining, noticing details)
+- Interacting with NPCs (conversations, observations, building relationships)  
+- Coordinating with team (combining information, timing actions)
+- Attempting tasks (failures reveal new information too!)
+- Following logical chains (A leads to B leads to C)
 
-**PATTERN: The Routine**
-```
-NPC: Security Guard (punctual, creature of habit)
-Clue embedded: "I've done the same route for 12 years. Check cameras 
-at 7:15, 9:30, and 11:45. Like clockwork."
-Code revealed: 071593011 (guard's pattern)
-```
+**Vary what discoveries reveal:**
+- Locations (hidden passages, alternative routes)
+- People (who knows what, who has access, who can help)
+- Timing (when guards change, when deliveries arrive)
+- Methods (how to bypass security, how to distract NPCs)
+- Items (what tools are needed, where to find them)
+- Weaknesses (security gaps, NPC vulnerabilities)
+- Backstory (motivations, relationships, history)
 
-**PATTERN: The Complaint**
-```
-NPC: Janitor (overworked, bitter)
-Clue embedded: "Been here since 2001. Started with just 4 floors to clean,
-now it's all 12 floors. Back in 2001, things were simpler..."
-Code revealed: 20010412 (hiring date, initial floors = 2001-04-12)
-```
+**Make NPCs feel real, not just info dispensers:**
+- Give them wants, needs, problems, quirks
+- Let conversations flow naturally, not just Q&A
+- Have them reveal info through personality, not exposition dumps
+- Make players work to get information (build trust, solve problems, trade favors)
+- Add red herrings and misdirection (NPCs don't know they're giving clues!)
 
 ## Standard Requirements
 
-1. **Follow the exact format** shown in the example
+1. **Follow the markdown format** shown in the example (structure, not content!)
 2. **Use only minigames** listed above for each role
-3. **Include NPC personalities** with traits, speech patterns, and sample dialogue
-4. **Add 🔍 Search tasks** for room inventory mechanics (8-12 search tasks)
-5. **Create NPC request chains** where NPCs ask for items before helping
-6. **Target 60-70% social interactions** (NPC + Search + Handoffs + Info shares)
-7. **Create 3-5 critical tasks per role** with clear dependencies
-8. **Include location list** at the beginning (12-18 locations)
-9. **Add generation header** showing scenario, roles, and player count
-10. **Generate both full and simplified Mermaid diagrams**
+3. **Include NPC personalities** - Make each one memorable and unique!
+4. **Add 🔍 Search tasks** for room inventory mechanics (6-10 search tasks)
+5. **Target 60-70% social interactions** (NPC + Search + Handoffs + Info shares)
+6. **Create 3-5 critical tasks per role** with clear dependencies
+7. **Include location list** at the beginning (12-18 locations)
+8. **Add generation header** showing scenario, roles, and player count
+9. **Generate both full and simplified Mermaid diagrams**
+
+## CREATIVITY GUIDELINES ⭐
+
+**BE CREATIVE! Don't copy the examples directly:**
+- Create unique discovery moments that fit YOUR scenario
+- Vary the types of discoveries (not all codes/combinations!)
+- Make each NPC distinct with different problems and personalities
+- Think about what would be fun and surprising for players
+- Create organic chains where discoveries feel natural
+- Allow multiple valid approaches when it makes sense
+- Not every task needs to be a discovery - straightforward tasks are good too!
+
+**Think about the scenario:**
+- Museum heist? Think about art, security systems, gala events, curators, collectors
+- Train robbery? Think about schedules, conductors, passengers, cargo, stations
+- Bank job? Think about vaults, managers, security protocols, customers, routines
+
+**Make each experience feel fresh and replayable!**
 
 ## Output Format
 
@@ -260,81 +295,130 @@ Generate a complete markdown file with:
 - Example WRONG: `START --> MM1_C{{💬 MM: Brief Crew}}` (underscore breaks parser!)
 - Study the example Mermaid diagrams carefully and copy that exact style
 
-## CONCRETE EXAMPLE: Safe Combination Discovery
+## CONCRETE EXAMPLES: Diverse Discovery Patterns
 
-Here's exactly how to format a discovery-based task chain:
+Show variety! Here are different discovery patterns to inspire you (don't copy exactly, create your own):
 
+### EXAMPLE 1: Environmental Discovery Chain
 ```markdown
-### TEAM OBJECTIVE: 🔓 Get Into the Safe
+1. 🔍 **Search Loading Dock** [DISCOVERY] [TEAM TASK]
+   - *Location:* Loading Dock
+   - *Description:* Check for entry points and useful equipment
+   - *Discovery:* "Loading schedule on clipboard. Next delivery: 8:30 PM tonight. Driver: Carlos"
+   - *Spawns:* "Wait for Delivery" (team), "Talk to Carlos" (team)
 
-**Safe Cracker Tasks:**
+2. 💬 **Intercept Delivery Driver** [TEAM TASK] [DISCOVERY]
+   - *Location:* Loading Dock
+   - *Description:* Meet Carlos when he arrives at 8:30 PM
+   - *Timing:* Only available after 8:30 PM game time
+   - *NPC:* Carlos (overworked, chatty, hates his boss)
+   - *Discovery:* "Carlos complains his boss makes him use the side entrance because the main loading bay is 'being fumigated' - suspicious!"
+   - *Spawns:* "Investigate Main Loading Bay" (team)
 
-1. 🔍 **Examine the Safe** [DISCOVERY]
-   - *Location:* Vault Room
-   - *Description:* Inspect the safe to determine what's needed to open it
-   - *Dependencies:* Access to Vault Room
-   - *Spawns:* "Find Vault Combination" (team), "Crack Safe" (Safe Cracker, locked)
-   - *Discovery:* "Vanderbilt Model 3200. Requires 6-digit combination. Engraved: Property of H. Matthews"
-
-2. 🎮 **Crack Safe** (safe_crack_rotation)
-   - *Location:* Vault Room
-   - *Description:* Use the combination to open the safe
-   - *Dependencies:* "Find Vault Combination" complete
-   - *Unlocks After:* Team finds combination
-
-**Team Tasks (anyone can do):**
-
-3. 💬 **Find Who H. Matthews Is** [TEAM TASK] [DISCOVERY]
-   - *Location:* Multiple (Curator's Office, Security Room, Grand Hall)
-   - *Description:* Discover the identity of the safe's owner
-   - *Dependencies:* "Examine the Safe" complete
-   - *Spawns:* "Talk to Harold Matthews" (team)
-   - *Multiple Paths:*
-     - Path A: Ask Curator → reveals he's vault manager
-     - Path B: Search Security Files → finds employee record
-     - Path C: Ask Gala Guests → hear gossip about him
-
-4. 🔍 **Search Personnel Files** [DISCOVERY]
-   - *Location:* Security Room
-   - *Description:* Search security office for employee records
-   - *Dependencies:* Access to Security Room
-   - *Discovery:* "Harold Matthews, Vault Manager. Dependents: Emma (13), Lucas (12), Olivia (10)"
-   - *Spawns:* "Talk to Harold Matthews" (team)
-
-5. 💬 **Talk to Harold Matthews** [TEAM TASK] [CLUE]
-   - *Location:* Staff Break Room
-   - *Description:* Have a conversation with the vault manager
-   - *Dependencies:* "Find Who H. Matthews Is" complete
-   - *NPC:* Harold Matthews (proud dad, kind, distracted)
-   - *Personality:* Only talks about his three kids, very predictable
-   - *Clue Design:* 
-     - If asked about family: "I have three wonderful children. Emma just turned 13, Lucas is 12, and Olivia is 10."
-     - Key line: "I always say those three numbers - 13, 12, 10 - are all I really think about!"
-     - Players must deduce: 131210 might be the combination
-   - *Spawns:* "Try Combination 131210" (Safe Cracker)
-
-**NPC: Harold Matthews**
-- Trait: Proud parent, talks constantly about kids
-- Speech Pattern: Warm, enthusiastic about family, mentions ages often
-- Sample Dialogue:
-  - "My kids are my world! Emma's 13 now, so responsible."
-  - "Lucas turned 12 last month - he's growing so fast!"
-  - "And my baby Olivia is 10. Those three numbers, that's my life!"
-- Clue Integration: Ages (13, 12, 10) = Safe combination (131210)
-- Misdirection: Also mentions other numbers (15 years employed, 3 bedroom house) to add challenge
+3. 🔍 **Investigate Suspicious Area** [DISCOVERY]
+   - *Location:* Main Loading Bay
+   - *Description:* Check why this area is supposedly "fumigated"
+   - *Discovery:* "No fumigation. But there IS a hidden security door you wouldn't have found otherwise!"
+   - *Spawns:* "Find Way Through Security Door" (Hacker)
 ```
 
-**Key Elements:**
-- `[DISCOVERY]` tag for tasks that reveal info
-- `[TEAM TASK]` for tasks anyone can do
-- `[CLUE]` for NPCs who provide puzzle clues
-- *Spawns:* field showing what unlocks
-- *Dependencies:* showing what's needed first
-- *Multiple Paths:* showing different ways to discover same info
-- *Clue Design:* section explaining how NPC weaves clue into conversation
-- NPC personality with specific dialogue showing how clue emerges naturally
+### EXAMPLE 2: Split Team Discovery
+```markdown
+1. 💬 **Eavesdrop on Guards** [DISCOVERY]
+   - *Location:* Hallway
+   - *Role:* Insider (has legitimate reason to be nearby)
+   - *Description:* Stand near guards and listen to their conversation
+   - *Discovery:* "Guard mentions: 'Did you lock the roof access after the maintenance crew left?'"
+   - *Spawns:* "Check Roof Access" (team)
 
-Now generate the complete experience file for the scenario above, following this discovery-based format.
+2. 🔍 **Check Roof Access** [TEAM TASK] [DISCOVERY]
+   - *Location:* Stairwell
+   - *Description:* Try the roof access door
+   - *Discovery:* "Door is unlocked! But there's a camera pointing at it."
+   - *Spawns:* "Disable Camera" (Hacker), "Create Distraction" (team)
+
+3. 🤝 **Coordinate Roof Entry** [TEAM COORDINATION]
+   - *Description:* Hacker disables camera, team uses roof access simultaneously
+   - *Dependencies:* Both "Disable Camera" AND "Create Distraction" complete
+   - *Spawns:* New location unlocked: Roof
+```
+
+### EXAMPLE 3: Item Assembly Discovery
+```markdown
+1. 🔍 **Search Janitor's Closet** [DISCOVERY]
+   - *Location:* Janitor's Closet
+   - *Discovery:* "Find a master key ring, but it's missing the key for the exhibit hall"
+   - *Spawns:* "Find Missing Key" (team)
+
+2. 💬 **Ask Janitor About Key** [TEAM TASK]
+   - *Location:* Break Room
+   - *NPC:* Janitor (grumpy, territorial)
+   - *Discovery:* "Janitor says security confiscated the exhibit key last week after 'an incident'"
+   - *Spawns:* "Get Key from Security" (team)
+
+3. 🔍 **Search Security Office** [DISCOVERY]
+   - *Location:* Security Office  
+   - *Dependencies:* Distract or bypass security guard
+   - *Discovery:* "Key is in evidence locker. Locker requires signature from 'Assistant Director'"
+   - *Spawns:* "Forge Signature" (team) OR "Get Real Signature" (Insider)
+```
+
+### EXAMPLE 4: Observation-Based Discovery
+```markdown
+1. 🔍 **Observe Gallery Patterns** [DISCOVERY]
+   - *Location:* Gallery
+   - *Description:* Watch guard patrol routes for 10 minutes
+   - *Discovery:* "Guard checks this room every 15 minutes. Takes 3 minutes to complete circuit. But every hour on the hour, two guards check together."
+   - *Spawns:* "Plan Heist Timing" (Mastermind)
+
+2. 📋 **Calculate Time Window** [TEAM COORDINATION]
+   - *Description:* Use patrol information to determine safe windows
+   - *Dependencies:* "Observe Gallery Patterns" complete
+   - *Discovery:* "Best window: 12 minutes after each hour. Team has 10 minute window before next patrol."
+   - *Spawns:* Timed challenges become available
+```
+
+### EXAMPLE 5: Branching Discovery (Multiple Solutions)
+```markdown
+### TEAM OBJECTIVE: Get Access to Server Room
+
+**Path A: Social Engineering**
+1. 💬 Talk to IT Admin → Learn they love retro video games
+2. 🔍 Find Rare Game Cartridge → Search office
+3. 🤝 Trade Game for Access → IT Admin gives temporary badge
+
+**Path B: Technical**  
+1. 🎮 Hack Badge System → Clone existing badge
+2. 🔍 Steal Someone's Badge → Pickpocket during event
+3. 🤝 Return Badge → Give back before noticed (optional, affects difficulty)
+
+**Path C: Physical**
+1. 🔍 Find Air Duct → Search blueprints
+2. 🎮 Navigate Ducts → Cat Burglar minigame
+3. 💪 Remove Vent Cover → Muscle helps from inside
+
+All three paths lead to same objective but require different roles and create different stories!
+```
+
+**FORMATTING RULES:**
+- Use `[DISCOVERY]` for tasks that reveal new information or spawn tasks
+- Use `[TEAM TASK]` for tasks any role can attempt
+- Use `[TEAM COORDINATION]` for tasks requiring multiple players
+- Include *Spawns:* field listing what tasks/options appear after completion
+- Include *Discovery:* field describing what players learn
+- Show *Dependencies:* for tasks that require previous completion
+- Add *Multiple Paths:* when there are different ways to achieve same goal
+- Make NPCs unique with distinct personalities (not just information vendors!)
+
+**IMPORTANT REMINDERS:**
+- Be creative! Don't copy these examples directly
+- Vary the discovery types throughout the experience
+- Not every task needs to be a discovery - mix in straightforward tasks too
+- Create organic chains where discoveries lead naturally to next steps
+- Make players feel clever for connecting information
+- Allow multiple valid approaches when possible
+
+Now generate a complete, varied experience file for the scenario above.
 """
     
     return prompt
