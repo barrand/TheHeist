@@ -393,44 +393,46 @@ Landing Page
 
 ## Screen 6: Game Screen
 
-**Purpose**: Main gameplay - show available tasks and what you've completed
+**Purpose**: Main gameplay - show objectives, available tasks, and what you've completed
 
 ### UI Elements:
 
 ```
 ┌─────────────────────────────────┐
-│ 📍 Safe House         3/12 ⏱️   │← Location, team progress, timer
+│ 📍 Vault Room         8/15 ⏱️   │← Location, team progress, timer
 │                                 │
-│  YOUR TASKS (Hacker)            │
+│  🎯 TEAM OBJECTIVES             │
+│  ┌───────────────────────────┐ │
+│  │ 🔓 Get Into the Safe      │ │← High-level goal (tappable)
+│  │ 👥 Team task              │ │
+│  │ 📍 Vault Room              │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  YOUR TASKS (Safe Cracker)      │
 │                                 │
 │  ✅ READY TO DO HERE            │
 │  ┌───────────────────────────┐ │
-│  │ 🎮 Prep Hacking Device    │ │← Can do now (tappable)
-│  │ wire_connecting           │ │
+│  │ 🔍 Examine the Safe       │ │← Discovery task (tappable)
 │  │ ⚡ Tap to start            │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
-│  │ 🔍 Search for Tools       │ │
+│  │ 🎮 Pick Lock on Toolbox   │ │
+│  │ lock_picking              │ │
 │  │ ⚡ Tap to start            │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  📍 REQUIRES TRAVEL             │
 │  ┌───────────────────────────┐ │
-│  │ 💬 Talk to Security Guard │ │← Grayed out (tappable)
-│  │ 📍 Museum Front Steps      │ │
-│  │ 👉 Tap to view location   │ │
-│  └───────────────────────────┘ │
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │ 🎮 Hack Security Terminal │ │
-│  │ 📍 Security Room           │ │
+│  │ 💬 Ask About Vault Code   │ │← Grayed out (tappable)
+│  │ 👥 Team can help          │ │← Team task indicator
+│  │ 📍 Curator's Office        │ │
 │  │ 👉 Tap to view location   │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
 │                                 │
-│  ✅ COMPLETED (2)         ⌄    │← Expandable
+│  ✅ COMPLETED (3)         ⌄    │← Expandable
 │                                 │
 │  ┌───────────────┐ ┌─────────┐│
 │  │ 🗺️ Map       │ │ 👥 Team │││← Quick actions
@@ -445,19 +447,29 @@ Landing Page
 - [ ] Team progress (X/Y tasks done)
 - [ ] Timer (optional)
 
+**Team Objectives Section:**
+- [ ] High-level goals visible to all players
+- [ ] "👥 Team task" indicator
+- [ ] Shows location if relevant
+- [ ] Tappable to see more details
+- [ ] May spawn specific tasks upon interaction
+
 **Task List:**
 - [ ] Section: "Ready to Do Here" (bright, full color)
   - [ ] Tasks available at current location
+  - [ ] Includes discovery tasks (examine, investigate, search)
   - [ ] "⚡ Tap to start" indicator
   - [ ] Fully tappable → Start task immediately
 - [ ] Section: "Requires Travel" (grayed out, but visible)
   - [ ] Tasks available but at different locations
+  - [ ] Shows "👥 Team can help" for team tasks
   - [ ] Location name shown prominently
   - [ ] "👉 Tap to view location" indicator
   - [ ] Tappable → Shows map with location highlighted
 - [ ] Each task card shows:
   - [ ] Task icon (🎮 minigame, 💬 NPC, 🔍 search, 🤝 handoff, 🗣️ info)
   - [ ] Task name
+  - [ ] Team task indicator (if applicable)
   - [ ] Minigame ID (if applicable, for "Ready" tasks)
   - [ ] Location name (for "Travel" tasks)
 - [ ] Divider line
@@ -467,20 +479,88 @@ Landing Page
 - [ ] "Map" button → Location view
 - [ ] "Team" button → Team status view
 
-**Design Notes:**
-- Only show tasks that are currently available (no locked/upcoming tasks)
-- Split by "can do here" vs "need to travel"
+**Design Notes - Discovery System:**
+- **Objectives** are high-level goals shown upfront (e.g., "Get Into the Safe")
+- **Discovery tasks** appear when players examine/investigate (e.g., "Examine the Safe")
+- **Triggered tasks** spawn after discovery (e.g., after examining safe → "Find Combination" appears for team)
+- **Team tasks** visible to multiple/all players (marked with 👥)
+- **Player-specific tasks** only visible to assigned player
+- Only show currently available tasks (no locked/upcoming tasks visible)
+- New tasks appear dynamically based on:
+  - Dependencies being met
+  - Discovery moments (examining objects, talking to NPCs)
+  - Team member actions (someone finds a clue → new task for another player)
 - Location-blocked tasks are visible but visually distinct (grayed)
-- Encourages player to decide: stay and finish local tasks or move
-- New tasks appear dynamically as dependencies are met
-- Keeps mystery and discovery in gameplay
+
+**Example Discovery Flow:**
+1. Objective shown: "🔓 Get Into the Safe" (team)
+2. Safe Cracker sees: "🔍 Examine the Safe" (at safe location)
+3. After examining → New tasks appear:
+   - "Find Combination" (team task, anyone can do)
+   - "Crack Safe" (Safe Cracker only, needs combination first)
+4. Team discovers combination → "Crack Safe" becomes available
 
 **Actions:**
-- Tap "Ready" task → Start task immediately (minigame/NPC/search)
+- Tap objective → See details and which players are working on related tasks
+- Tap "Ready" task → Start task immediately (minigame/NPC/search/discovery)
 - Tap "Travel" task → Open map view with that location highlighted
 - Tap "Completed" → Expand to show completed tasks
 - Tap "Map" → Show location map and available locations
 - Tap "Team" → Show all players and their current tasks
+
+---
+
+## Screen 6b: Team Objective Detail Modal
+
+**Purpose**: Show team objective status and who's working on it
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│  🔓 GET INTO THE SAFE       ✕   │
+│                                 │
+│  TEAM OBJECTIVE                 │
+│  📍 Location: Vault Room        │
+│                                 │
+│  Status: In Progress            │
+│                                 │
+│  TEAM MEMBERS WORKING:          │
+│  ┌───────────────────────────┐ │
+│  │ 👤 You (Safe Cracker)     │ │
+│  │ 🔍 Examining the safe     │ │
+│  └───────────────────────────┘ │
+│  ┌───────────────────────────┐ │
+│  │ 👤 Alex (Insider)         │ │
+│  │ 💬 Asking curator about   │ │
+│  │    vault code             │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  RELATED TASKS:                 │
+│  • 🔍 Examine the Safe (You)   │
+│  • 💬 Ask About Vault Code     │
+│  • 🔍 Find Combination (TBD)   │
+│                                 │
+│        Close                    │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Objective title (large)
+- [ ] Objective type (Team/Role-specific)
+- [ ] Location (if applicable)
+- [ ] Status indicator
+- [ ] Team members working on related tasks
+  - [ ] Player name and role
+  - [ ] Current task related to objective
+- [ ] Related tasks list
+  - [ ] Shows discovered and undiscovered tasks
+  - [ ] "TBD" for tasks that will appear after discovery
+- [ ] Close button
+
+**Actions:**
+- Shows coordination - who's doing what
+- Tap Close → Return to game screen
 
 ---
 
@@ -573,6 +653,69 @@ Landing Page
 - **Wrong Location:** Tap "Travel There" → Move to location → Return to game screen
 - **Wrong Location:** Tap "View on Map" → Open map with location highlighted
 - Tap "Cancel" → Return to game screen
+
+---
+
+## Screen 7c: Discovery Result Screen
+
+**Purpose**: Show what was discovered and new tasks that appeared
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│         🔍 DISCOVERY!           │
+│                                 │
+│  You examined the safe and      │
+│  found:                         │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │                           │ │
+│  │   🔐                      │ │
+│  │                           │ │
+│  │ "This is a Vanderbilt     │ │
+│  │  Model 3200. It requires  │ │
+│  │  a 6-digit combination."  │ │
+│  │                           │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ✨ NEW TASKS UNLOCKED          │
+│                                 │
+│  FOR YOUR TEAM:                 │
+│  • 💬 Find Vault Combination   │
+│    (Anyone can do this)         │
+│                                 │
+│  FOR YOU:                       │
+│  • 🎮 Crack Safe (Locked)      │
+│    Needs: Combination          │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   CONTINUE                │ │
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Discovery title with animation
+- [ ] Discovery description/flavor text
+- [ ] What was discovered (visual + text)
+- [ ] "New Tasks Unlocked" section
+- [ ] Team tasks list (marked as team)
+- [ ] Personal tasks list (your role)
+- [ ] Shows if new tasks are available or locked
+- [ ] Continue button
+
+**Design Notes:**
+- Appears after completing discovery tasks (examine, search, investigate)
+- Shows immediate impact of discovery
+- Announces new tasks to player
+- Team gets notification that new tasks available
+- Creates "aha!" moments
+
+**Actions:**
+- Tap Continue → Return to game screen with new tasks visible
+- Team members get real-time notification of new tasks
 
 ---
 
@@ -955,18 +1098,21 @@ Icon size:              24px
 3. ✅ Room Lobby (Host & Player views)
 4. ✅ Role Selection Dropdown (with minigame info)
 5. ✅ Role Detail Modal
-6. ✅ Game Screen
-7. ✅ Task Detail Modal
+6. ✅ Game Screen (with objectives & discovery)
+7. ✅ Team Objective Detail Modal
+8. ✅ Task Detail Modal (current location)
+9. ✅ Task Detail Modal (wrong location)
+10. ✅ Discovery Result Screen
 
 **Phase 2 (Should Have):**
-8. ✅ Team View
-9. ✅ NPC Conversation
-10. ✅ Search Screen
+11. ✅ Team View
+12. ✅ NPC Conversation
+13. ✅ Search Screen
 
 **Phase 3 (Nice to Have):**
-11. ✅ Map View
-12. ✅ Minigame Screens (build 2-3)
-13. ✅ Victory Screen
+14. ✅ Map View
+15. ✅ Minigame Screens (build 2-3)
+16. ✅ Victory Screen
 
 ---
 
