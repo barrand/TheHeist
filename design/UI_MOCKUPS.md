@@ -250,7 +250,6 @@ Landing Page
 │  ┌───────────────────────────┐ │
 │  │ ⭐ Mastermind             │ │
 │  │ Coordinates team actions  │ │
-│  │ 📋 3-4 tasks expected     │ │
 │  │                           │ │
 │  │ Minigames:                │ │
 │  │ • pattern_memorization    │ │
@@ -262,7 +261,6 @@ Landing Page
 │  ┌───────────────────────────┐ │
 │  │ 🔓 Safe Cracker           │ │
 │  │ Opens vaults and safes    │ │
-│  │ 📋 4-5 tasks expected     │ │
 │  │                           │ │
 │  │ Minigames:                │ │
 │  │ • safe_crack_rotation     │ │
@@ -275,7 +273,6 @@ Landing Page
 │  ┌───────────────────────────┐ │
 │  │ 💻 Hacker          ✓      │ │← Selected
 │  │ Disables security systems │ │
-│  │ 📋 5-6 tasks expected     │ │
 │  │                           │ │
 │  │ Minigames:                │ │
 │  │ • wire_connecting         │ │
@@ -288,11 +285,10 @@ Landing Page
 │  ┌───────────────────────────┐ │
 │  │ 👔 Insider                │ │
 │  │ Knows building layout     │ │
-│  │ 📋 3-4 tasks expected     │ │
 │  │                           │ │
 │  │ Minigames:                │ │
 │  │ • pattern_memorization    │ │
-│  │ Many NPC interactions     │ │
+│  │ + NPC interactions        │ │
 │  │                           │ │
 │  │      [Tap for details]    │ │
 │  └───────────────────────────┘ │
@@ -301,7 +297,6 @@ Landing Page
 │  ┌───────────────────────────┐ │
 │  │ 🚗 Driver          (Taken)│ │← Disabled
 │  │ Handles getaway vehicle   │ │
-│  │ 📋 4-5 tasks expected     │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  [Show More Roles...]           │
@@ -318,7 +313,6 @@ Landing Page
   - [ ] Role icon
   - [ ] Role name
   - [ ] Extended description (2-3 words)
-  - [ ] Expected task count
   - [ ] Associated minigames list (2-3 shown)
   - [ ] "Tap for details" link (shows full role info modal)
   - [ ] Selected indicator (checkmark + button change)
@@ -356,8 +350,6 @@ Landing Page
 │  • Coordinate with team via     │
 │    encrypted channels           │
 │                                 │
-│  EXPECTED TASKS: 5-6            │
-│                                 │
 │  MINIGAMES YOU'LL PLAY          │
 │  ┌───────────────────────────┐ │
 │  │ 🎮 Wire Connecting        │ │
@@ -371,11 +363,6 @@ Landing Page
 │  │ 🎮 IP Address Matching    │ │
 │  │ Match network addresses   │ │
 │  └───────────────────────────┘ │
-│                                 │
-│  INTERACTIONS                   │
-│  • 💬 NPCs (2-3 conversations) │
-│  • 🤝 Team handoffs (2-3)      │
-│  • 🔍 Search tasks (1-2)       │
 │                                 │
 │  ⚠️ This role is RECOMMENDED   │
 │     for this scenario           │
@@ -392,14 +379,9 @@ Landing Page
 - [ ] Role icon and name (large)
 - [ ] Full description paragraph
 - [ ] Responsibilities list
-- [ ] Expected task count
 - [ ] Minigames section
   - [ ] Each minigame with name and short description
   - [ ] 2-4 minigames shown
-- [ ] Interactions summary
-  - [ ] NPC conversation count
-  - [ ] Team handoff count
-  - [ ] Search task count
 - [ ] Role importance indicator (Required/Recommended/Optional)
 - [ ] "Select This Role" button (primary CTA)
 
