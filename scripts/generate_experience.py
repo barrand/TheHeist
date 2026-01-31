@@ -190,7 +190,7 @@ def generate_experience(scenario_id, role_ids, output_file=None):
                 'temperature': 0.7,  # Some creativity, but not too much
                 'top_p': 0.9,
                 'top_k': 40,
-                'max_output_tokens': 8192,  # Long output needed
+                'max_output_tokens': 32000,  # Long output needed for full dependency trees
             }
         )
         
