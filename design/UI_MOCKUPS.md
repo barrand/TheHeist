@@ -393,7 +393,7 @@ Landing Page
 
 ## Screen 6: Game Screen
 
-**Purpose**: Main gameplay - show tasks, location, dependencies
+**Purpose**: Main gameplay - show available tasks and what you've completed
 
 ### UI Elements:
 
@@ -403,25 +403,25 @@ Landing Page
 │                                 │
 │  YOUR TASKS (Hacker)            │
 │                                 │
-│  🟢 AVAILABLE                   │
 │  ┌───────────────────────────┐ │
 │  │ 🎮 Prep Hacking Device    │ │← Tap to start
 │  │ wire_connecting           │ │
 │  │ 📍 Safe House              │ │
 │  └───────────────────────────┘ │
 │                                 │
-│  🔒 LOCKED                      │
 │  ┌───────────────────────────┐ │
-│  │ 🎮 Disable Cameras        │ │
-│  │ cipher_wheel_alignment    │ │
-│  │ 📍 Security Room           │ │
-│  │ ⚠️ Needs: Device planted   │ │← Dependency
+│  │ 💬 Talk to Security Guard │ │
+│  │ 📍 Museum Front Steps      │ │
 │  └───────────────────────────┘ │
 │                                 │
-│  ✅ COMPLETED                   │
 │  ┌───────────────────────────┐ │
-│  │ 🔍 Find Ethernet Cable    │ │
+│  │ 🔍 Search for Tools       │ │
+│  │ 📍 Safe House              │ │
 │  └───────────────────────────┘ │
+│                                 │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                 │
+│  ✅ COMPLETED (2)         ⌄    │← Expandable
 │                                 │
 │  ┌───────────────┐ ┌─────────┐│
 │  │ 🗺️ Map       │ │ 👥 Team │││← Quick actions
@@ -437,27 +437,30 @@ Landing Page
 - [ ] Timer (optional)
 
 **Task List:**
-- [ ] Section: Available (green)
-  - [ ] Task cards (tappable)
+- [ ] Available task cards (tappable)
   - [ ] Task icon (🎮 minigame, 💬 NPC, 🔍 search, 🤝 handoff, 🗣️ info)
   - [ ] Task name
   - [ ] Minigame ID (if applicable)
-  - [ ] Location
-- [ ] Section: Locked (gray)
-  - [ ] Task cards (not tappable)
-  - [ ] Show dependencies
-  - [ ] Lock icon
-- [ ] Section: Completed (collapsed, expandable)
+  - [ ] Location requirement
+- [ ] Divider line
+- [ ] Completed section (collapsed, shows count)
+  - [ ] Tap to expand and see completed tasks
   - [ ] Checkmark icon
-  - [ ] Grayed out
+  - [ ] Grayed out when expanded
 
 **Bottom Navigation:**
 - [ ] "Map" button → Location view
 - [ ] "Team" button → Team status view
 
+**Design Notes:**
+- Only show tasks that are currently available (no locked/upcoming tasks)
+- New tasks appear dynamically as dependencies are met
+- Keeps mystery and discovery in gameplay
+- Players won't see the full dependency tree, just what's available now
+
 **Actions:**
 - Tap available task → Start task (minigame/NPC/search)
-- Tap locked task → Show dependencies
+- Tap "Completed" → Expand to show completed tasks
 - Tap "Map" → Show location map and available locations
 - Tap "Team" → Show all players and their current tasks
 
@@ -478,10 +481,8 @@ Landing Page
 │                                 │
 │  Description:                   │
 │  Assemble USB device in van,    │
-│  connect wires correctly        │
-│                                 │
-│  Dependencies:                  │
-│  ✅ Found Ethernet Cable        │
+│  connect wires correctly to     │
+│  prepare the hacking tool.      │
 │                                 │
 │  ┌───────────────────────────┐ │
 │  │   START TASK 🎮           │ │
@@ -494,11 +495,14 @@ Landing Page
 **Components:**
 - [ ] Task title
 - [ ] Task type icon
-- [ ] Location
+- [ ] Location requirement
 - [ ] Description (from generated experience)
-- [ ] Dependencies list with status
 - [ ] "Start Task" button
 - [ ] "Cancel" link
+
+**Design Notes:**
+- No dependencies shown (if task is available, dependencies are already met)
+- Keeps mystery while providing context for the task
 
 **Actions:**
 - Tap "Start Task" → Launch minigame/NPC/search screen
