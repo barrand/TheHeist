@@ -249,28 +249,62 @@ Landing Page
 │  REQUIRED (choose one)          │
 │  ┌───────────────────────────┐ │
 │  │ ⭐ Mastermind             │ │
-│  │    Coordinates team       │ │
+│  │ Coordinates team actions  │ │
+│  │ 📋 3-4 tasks expected     │ │
+│  │                           │ │
+│  │ Minigames:                │ │
+│  │ • pattern_memorization    │ │
+│  │ • time_allocation         │ │
+│  │                           │ │
+│  │      [Tap for details]    │ │
 │  └───────────────────────────┘ │
+│                                 │
 │  ┌───────────────────────────┐ │
 │  │ 🔓 Safe Cracker           │ │
-│  │    Cracks vaults          │ │
+│  │ Opens vaults and safes    │ │
+│  │ 📋 4-5 tasks expected     │ │
+│  │                           │ │
+│  │ Minigames:                │ │
+│  │ • safe_crack_rotation     │ │
+│  │ • lock_picking            │ │
+│  │                           │ │
+│  │      [Tap for details]    │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  RECOMMENDED                    │
 │  ┌───────────────────────────┐ │
 │  │ 💻 Hacker          ✓      │ │← Selected
-│  │    Disables security      │ │
+│  │ Disables security systems │ │
+│  │ 📋 5-6 tasks expected     │ │
+│  │                           │ │
+│  │ Minigames:                │ │
+│  │ • wire_connecting         │ │
+│  │ • cipher_wheel_alignment  │ │
+│  │ • match_ip_addresses      │ │
+│  │                           │ │
+│  │   [SELECT THIS ROLE] ✓    │ │
 │  └───────────────────────────┘ │
+│                                 │
 │  ┌───────────────────────────┐ │
 │  │ 👔 Insider                │ │
-│  │    Inside knowledge       │ │
+│  │ Knows building layout     │ │
+│  │ 📋 3-4 tasks expected     │ │
+│  │                           │ │
+│  │ Minigames:                │ │
+│  │ • pattern_memorization    │ │
+│  │ Many NPC interactions     │ │
+│  │                           │ │
+│  │      [Tap for details]    │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  OTHER ROLES                    │
 │  ┌───────────────────────────┐ │
 │  │ 🚗 Driver          (Taken)│ │← Disabled
+│  │ Handles getaway vehicle   │ │
+│  │ 📋 4-5 tasks expected     │ │
 │  └───────────────────────────┘ │
-│  [Show More...]                 │
+│                                 │
+│  [Show More Roles...]           │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -280,17 +314,98 @@ Landing Page
   - [ ] Required (for this scenario)
   - [ ] Recommended
   - [ ] Other roles
-- [ ] Role cards
+- [ ] Role cards (expanded)
   - [ ] Role icon
   - [ ] Role name
-  - [ ] One-line description
-  - [ ] Selected indicator (checkmark)
-  - [ ] Disabled state (if taken)
+  - [ ] Extended description (2-3 words)
+  - [ ] Expected task count
+  - [ ] Associated minigames list (2-3 shown)
+  - [ ] "Tap for details" link (shows full role info modal)
+  - [ ] Selected indicator (checkmark + button change)
+  - [ ] Disabled state (if taken, grayed out)
 - [ ] "Show More" expansion
 
 **Actions:**
-- Tap role → Select it → Close dropdown
+- Tap role card → Expand to show selection button
+- Tap "Select This Role" → Select it → Close dropdown
+- Tap "Tap for details" → Show Role Detail Modal (see below)
 - Scroll to see all roles
+
+---
+
+## Screen 5b: Role Detail Modal
+
+**Purpose**: Show comprehensive role information before selecting
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│  💻 HACKER                  ✕   │
+│                                 │
+│  DESCRIPTION                    │
+│  Tech specialist who disables   │
+│  security systems, hacks        │
+│  cameras, and provides digital  │
+│  access to restricted areas.    │
+│                                 │
+│  RESPONSIBILITIES               │
+│  • Disable security cameras     │
+│  • Hack electronic locks        │
+│  • Monitor security feeds       │
+│  • Coordinate with team via     │
+│    encrypted channels           │
+│                                 │
+│  EXPECTED TASKS: 5-6            │
+│                                 │
+│  MINIGAMES YOU'LL PLAY          │
+│  ┌───────────────────────────┐ │
+│  │ 🎮 Wire Connecting        │ │
+│  │ Match colored wires       │ │
+│  └───────────────────────────┘ │
+│  ┌───────────────────────────┐ │
+│  │ 🎮 Cipher Wheel Alignment │ │
+│  │ Align symbols to decrypt  │ │
+│  └───────────────────────────┘ │
+│  ┌───────────────────────────┐ │
+│  │ 🎮 IP Address Matching    │ │
+│  │ Match network addresses   │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  INTERACTIONS                   │
+│  • 💬 NPCs (2-3 conversations) │
+│  • 🤝 Team handoffs (2-3)      │
+│  • 🔍 Search tasks (1-2)       │
+│                                 │
+│  ⚠️ This role is RECOMMENDED   │
+│     for this scenario           │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   SELECT THIS ROLE ✓      │ │
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Close button (X)
+- [ ] Role icon and name (large)
+- [ ] Full description paragraph
+- [ ] Responsibilities list
+- [ ] Expected task count
+- [ ] Minigames section
+  - [ ] Each minigame with name and short description
+  - [ ] 2-4 minigames shown
+- [ ] Interactions summary
+  - [ ] NPC conversation count
+  - [ ] Team handoff count
+  - [ ] Search task count
+- [ ] Role importance indicator (Required/Recommended/Optional)
+- [ ] "Select This Role" button (primary CTA)
+
+**Actions:**
+- Tap "Select This Role" → Select role → Close modal → Return to lobby
+- Tap X → Close modal → Return to role selection
 
 ---
 
@@ -785,19 +900,21 @@ Icon size:              24px
 **Phase 1 (Must Have):**
 1. ✅ Landing Page
 2. ✅ Join Room Modal
-3. ✅ Room Lobby
-4. ✅ Game Screen
-5. ✅ Task Detail Modal
+3. ✅ Room Lobby (Host & Player views)
+4. ✅ Role Selection Dropdown (with minigame info)
+5. ✅ Role Detail Modal
+6. ✅ Game Screen
+7. ✅ Task Detail Modal
 
 **Phase 2 (Should Have):**
-6. ✅ Team View
-7. ✅ NPC Conversation
-8. ✅ Search Screen
+8. ✅ Team View
+9. ✅ NPC Conversation
+10. ✅ Search Screen
 
 **Phase 3 (Nice to Have):**
-9. ✅ Map View
-10. ✅ Minigame Screens (build 2-3)
-11. ✅ Victory Screen
+11. ✅ Map View
+12. ✅ Minigame Screens (build 2-3)
+13. ✅ Victory Screen
 
 ---
 
