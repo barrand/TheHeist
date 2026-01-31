@@ -4,45 +4,44 @@
 > **Selected Roles**: Mastermind, Hacker, Driver, Muscle, Lookout, Cat Burglar
 > **Player Count**: 6 players
 >
-> This document details the complete dependency tree for the "Armored Train Robbery" scenario, outlining all tasks, their dependencies, and the interactions between player roles. It incorporates NPC personalities, room inventory search mechanics, NPC request chains, and multi-step collaboration tasks to achieve the objective.
+> This document outlines the complete dependency tree for the "Armored Train Robbery" scenario, detailing tasks, dependencies, and player interactions required to achieve the objective.
 
 ---
 
 ## Objective
-Steal a guarded artifact from an armored car on a moving train and escape cleanly.
+Steal a guarded artifact from a moving armored car on a train and escape cleanly.
 
 ## Scenario Overview
-A valuable artifact is being transported via a heavily guarded armored train. The crew must infiltrate the train while it's in motion, navigate through passenger and service cars, bypass train security systems and guards, access the armored car, extract the artifact, and make a clean getaway at a pre-determined rendezvous point.
+A highly valuable artifact is being transported by an armored train. The crew's mission is to board the moving train, navigate its various cars, bypass advanced security measures and guards, access the armored car, retrieve the artifact, and execute a flawless getaway. Stealth, coordination, and quick thinking will be paramount.
 
 ## Locations
 
 This scenario takes place across the following locations:
 
 ### Off-Site Preparation
--   **Safe House** - Crew meeting, briefing, equipment storage
--   **Mechanic Shop** - Getaway vehicle inspection, tools
--   **Gas Station** - Refueling, local intel gathering
+- **Safe House** - Crew meeting, equipment staging, planning
+- **Train Station Parking Lot** - Driver's staging area, getaway vehicle prep
+- **Train Yard** - Maintenance sheds, old manifests, yard worker interactions
 
-### Train Yard / Approach
--   **Train Yard Perimeter** - Initial entry point to train area
--   **Maintenance Shed** - Storage, tools, initial guard post
--   **Trackside Tunnel** - Cover for approach, boarding point
--   **Train Roof** - Stealthy access route above the cars
+### Train Station & Platform
+- **Train Platform** - Boarding point, passenger observation, initial infiltration
+- **Vending Machine** - Quick snacks, distractions
 
-### Train Interior - Public / Service Areas
--   **Passenger Car (Dining)** - Public area, food service, passengers
--   **Passenger Car (Sleeping)** - Public area, private compartments, passengers
--   **Service Car (Crew Quarters)** - Staff-only area, supplies, crew rest
--   **Engine Car (Conductor's Cabin)** - Train controls, conductor's post
+### Train Interior - Public Areas
+- **Passenger Car (Standard)** - General seating, initial infiltration route
+- **Dining Car** - Food service, staff interactions, potential distractions
+- **Observation Car** - Panoramic views, ideal for surveillance
 
-### Train Interior - Restricted / Target Areas
--   **Security Car** - Main guard post, security monitors, armed guards
--   **Armored Car (Artifact Vault)** - High-security target location, artifact display
+### Train Interior - Restricted Areas
+- **Staff Car** - Crew quarters, train controls, network access points
+- **Luggage Car** - Storage, less trafficked route
+- **Security Car** - Armed guards, internal security systems, leading to armored car
+- **Armored Car** - Target location, artifact display (high security)
 
 ### Escape
--   **Getaway Vehicle Rendezvous Point** - Designated spot for artifact transfer and escape
+- **Getaway Vehicle** - Driver's car for escape and extraction
 
-**Total Locations**: 14
+**Total Locations**: 12
 
 ---
 
@@ -50,240 +49,264 @@ This scenario takes place across the following locations:
 
 Every task in this heist is one of five types:
 
--   **🎮 Minigame**: Player-controlled action from `roles.json`
--   **💬 NPC/LLM**: Dialogue or interaction with AI-controlled character
--   **🔍 Search/Hunt**: Player searches a location for hidden items
--   **🤝 Item Handoff**: Physical item transfer between players (tracked in inventory)
--   **🗣️ Info Share**: Verbal information exchange between players (real-life conversation)
+- **🎮 Minigame**: Player-controlled action from `roles.json`
+- **💬 NPC/LLM**: Dialogue or interaction with AI-controlled character
+- **🔍 Search/Hunt**: Player searches a location for hidden items
+- **🤝 Item Handoff**: Physical item transfer between players (tracked in inventory)
+- **🗣️ Info Share**: Verbal information exchange between players (real-life conversation)
 
 ---
 
 ## Roles & Dependencies
 
-### Mastermind
+### Mastermind (MM)
 
 **Tasks:**
-1.  **💬 NPC** - Brief Crew in Safehouse
-    -   Review train schematics, assign roles, set contingencies.
+1.  **💬 NPC** - Brief Crew
+    -   Conduct a detailed briefing on the train layout, security intel, and roles.
     -   *Location:* Safe House
     -   *Dependencies:* None (starting task)
-2.  **💬 NPC** - Coordinate Train Boarding
-    -   Direct team's synchronized entry onto the moving train.
-    -   *Location:* Trackside Tunnel
-    -   *Dependencies:* Lookout signals clear, Hacker disables comms
-3.  **💬 NPC** - Coordinate Internal Infiltration
-    -   Guide team through train cars, adapting to guard movements.
+2.  **💬 NPC** - Coordinate Infiltration
+    -   Direct initial boarding and positioning of the team members onto the train.
+    -   *Location:* Train Platform (via radio)
+    -   *Dependencies:* Crew briefed
+3.  **💬 NPC** - Monitor Progress
+    -   Maintain constant radio contact, receive updates, and adapt to changing conditions.
     -   *Location:* Safe House (Remote Command)
-    -   *Dependencies:* Team boarded train
-4.  **🗣️ EXTRACTION_SIGNAL** → Signal Crew for Extraction
-    -   Give "go" signal when artifact is secured and escape route is clear.
-    -   *Location:* Safe House (Remote Command)
-    -   *Dependencies:* Artifact secured, Driver ready
-
----
-
-### Hacker
-
-**Tasks:**
-1.  **🔍 Search** - Hunt for Hacking Cables
-    -   Device needs specific cables; search equipment box.
-    -   *Find: Fiber optic cable (5ft), USB-C adapter*
-    -   *Location:* Safe House
-    -   *Dependencies:* None (parallel start)
-2.  **🎮 wire_connecting** - Assemble Hacking Device
-    -   Connect colored wires to ports on custom device.
-    -   *Location:* Safe House
-    -   *Dependencies:* Hacking cables found
-3.  **🤝 DEVICE** → Deliver to Mastermind
-    -   Hand over the assembled hacking device for distribution.
-    -   *Location:* Safe House
-    -   *Dependencies:* Device assembled
-4.  **🎮 cipher_wheel_alignment** - Disable External Comms
-    -   Access train's external communication array, jam signals.
-    -   *Location:* Train Roof (Access Panel)
-    -   *Dependencies:* Cat Burglar grants access
-5.  **🎮 simon_says_sequence** - Disable Internal Cameras
-    -   Access train's internal security network, loop camera feeds.
-    -   *Location:* Security Car (Control Panel)
-    -   *Dependencies:* Muscle secures Security Car
-6.  **🎮 card_swipe** - Unlock Armored Car Door
-    -   Override electronic lock on the armored car's main door.
-    -   *Location:* Security Car (Control Panel)
-    -   *Dependencies:* Internal cameras disabled
-7.  **🎮 simon_says_sequence** - Wipe Security Logs
-    -   Erase all digital traces of the heist from the train's systems.
-    -   *Location:* Security Car (Control Panel)
+    -   *Dependencies:* Team on train
+4.  **🗣️ EXTRACTION** → Signal Crew
+    -   Issue the "go" signal for artifact retrieval and final escape.
+    -   *Location:* Radio Communication
     -   *Dependencies:* Artifact secured
 
 ---
 
-### Driver
+### Hacker (H)
 
 **Tasks:**
-1.  **💬 NPC** - Inspect Getaway Vehicle
-    -   Meet a mechanic to check for tracking devices and discuss performance.
-    -   *NPC: "Big Bertha" (gruff, experienced, obsessed with engine specs) - "This baby's clean, but she needs a new fuel filter if you're gonna hit those speeds. Got one?"*
-    -   *Request: Bring a specific fuel filter*
-    -   *Location:* Mechanic Shop
+1.  **🔍 Search** - Hunt for Train Blueprints
+    -   Scour old files for schematics of the train's internal network.
+    -   *Find: Train Network Schematics (digital file)*
+    -   *Location:* Safe House
     -   *Dependencies:* None (parallel start)
-2.  **🔍 Search** - Hunt for Fuel Filter
-    -   Search the mechanic's cluttered workbench for the required part.
-    -   *Find: High-performance fuel filter*
-    -   *Location:* Mechanic Shop
-    -   *Dependencies:* Mechanic made request
-3.  **🤝 FUEL_FILTER** → Give to Mechanic
-    -   Hand over the fuel filter to "Big Bertha".
-    -   *Location:* Mechanic Shop
-    -   *Dependencies:* Fuel filter found
-4.  **🎮 fuel_pump** - Fuel Up Getaway Car
-    -   Fill the tank at a gas station without overflowing.
-    -   *Location:* Gas Station
-    -   *Dependencies:* Vehicle inspected
-5.  **💬 NPC** - Chat with Gas Station Attendant
-    -   Learn about recent police activity along the train's route.
-    -   *NPC: Gary (conspiracy theorist, burned out, mumbles) - "Cops? Yeah, always around. But you ask me, they're looking for aliens. Saw lights in the sky just last night..."*
-    -   *Location:* Gas Station
-    -   *Dependencies:* Fueling up
-6.  **🎮 parking_precision** - Position Getaway Vehicle
-    -   Park the car precisely at the rendezvous point without drawing attention.
-    -   *Location:* Getaway Vehicle Rendezvous Point
-    -   *Dependencies:* Police intel gathered, Mastermind's signal
-7.  **🗣️ EXTRACTION_SIGNAL** ← Receive from Mastermind
-    -   Monitor radio for the extraction signal.
-    -   *Location:* Getaway Vehicle
-    -   *Dependencies:* Positioned vehicle
-8.  **🤝 ARTIFACT** ← Receive from Muscle
-    -   Secure the artifact in the getaway vehicle.
-    -   *Location:* Getaway Vehicle Rendezvous Point
-    -   *Dependencies:* Artifact delivered to rendezvous
-9.  **🎮 steering_obstacle_course** - Execute Getaway
-    -   Drive the crew through challenging terrain/traffic, evading pursuit.
-    -   *Location:* Getaway Vehicle (Escape Route)
-    -   *Dependencies:* Crew in car, artifact secured, route clear
+2.  **🎮 wire_connecting** - Prep Hacking Device
+    -   Assemble and configure a custom device for accessing the train's network.
+    -   *Location:* Safe House
+    -   *Dependencies:* Train blueprints found
+3.  **🤝 DEVICE** → Deliver to Cat Burglar
+    -   Pass the prepped hacking device to the Cat Burglar for discreet planting.
+    -   *Location:* Train Platform
+    -   *Dependencies:* Device prepped
+4.  **🎮 cipher_wheel_alignment** - Access Train Network
+    -   Establish a connection to the train's internal network via the planted device.
+    -   *Location:* Safe House (Remote Access)
+    -   *Dependencies:* Cat Burglar plants device
+5.  **🎮 card_swipe** - Disable Car Locks
+    -   Remotely override the electronic locks on the Security and Armored Cars.
+    -   *Location:* Safe House (Remote Access)
+    -   *Dependencies:* Train network accessed
+6.  **🎮 simon_says_sequence** - Wipe Logs
+    -   Erase all digital traces of the hack from the train's systems.
+    -   *Location:* Safe House (Remote Access)
+    -   *Dependencies:* Artifact secured
 
 ---
 
-### Muscle
+### Driver (D)
 
 **Tasks:**
-1.  **🔍 Search** - Hunt for Heavy Tools
-    -   Find bolt cutters and a crowbar for breaching barriers.
-    -   *Find: Heavy-duty bolt cutters, pry bar*
+1.  **🎮 fuel_pump** - Fuel Getaway Car
+    -   Ensure the getaway vehicle has a full tank for the escape route.
+    -   *Location:* Train Station Parking Lot
+    -   *Dependencies:* None (parallel start)
+2.  **💬 NPC** - Talk to Yard Worker
+    -   Approach a grumpy yard worker for intel, who requests a specific spare part.
+    -   *NPC: Gus (grumpy, burned out, obsessed with classic cars) - "Look, I ain't got time for chit-chat. My '78 Mustang needs a new alternator belt. You got one?"*
+    -   *Request: Find Alternator Belt*
+    -   *Location:* Train Station Parking Lot
+    -   *Dependencies:* Car fueled
+3.  **🔍 Search** - Hunt for Mechanic's Shed
+    -   Search the train yard's various sheds for the requested alternator belt.
+    -   *Find: Alternator Belt (for '78 Mustang)*
+    -   *Location:* Train Yard
+    -   *Dependencies:* Gus made request
+4.  **🤝 BELT** → Deliver to Driver
+    -   Retrieve the alternator belt from the shed.
+    -   *Location:* Train Yard
+    -   *Dependencies:* Belt found
+5.  **💬 NPC** - Give Belt to Gus
+    -   Hand over the alternator belt to the yard worker.
+    -   *NPC: Gus - "Alright, you're not entirely useless. Here, take this old manifest. Might tell ya somethin' about their cargo."*
+    -   *Location:* Train Station Parking Lot
+    -   *Dependencies:* Belt delivered
+6.  **🔍 Search** - Manifest for Artifact Info
+    -   Examine the old train manifest for any clues about valuable cargo or the artifact's location.
+    -   *Find: Manifest entry: 'Historical Relic - Car 7'*
+    -   *Location:* Train Station Parking Lot
+    -   *Dependencies:* Gus gives manifest
+7.  **🎮 parking_precision** - Position Getaway Car
+    -   Maneuver the getaway vehicle into a strategic position for a quick exit from the station.
+    -   *Location:* Train Station Parking Lot
+    -   *Dependencies:* Manifest searched
+8.  **🗣️ ALL CLEAR** → Confirm to Mastermind
+    -   Signal to the Mastermind that the escape route is clear and the getaway vehicle is ready.
+    -   *Location:* Radio Communication
+    -   *Dependencies:* Escape complete
+
+---
+
+### Muscle (M)
+
+**Tasks:**
+1.  **💬 NPC** - Acquire Sedatives
+    -   Meet with a shady contact to get sedative darts, but the contact needs a burner phone first.
+    -   *NPC: Vinnie (shady, nervous, always looking over shoulder) - "You want the good stuff? Fine. But my usual phone's hot. Get me a burner, then we talk."*
+    -   *Request: Find Burner Phone*
     -   *Location:* Safe House
     -   *Dependencies:* None (parallel start)
-2.  **🤝 TOOLS** → Deliver to Mastermind
-    -   Hand over the heavy tools for distribution.
+2.  **🔍 Search** - Hunt for Burner Phone
+    -   Search the Mastermind's office for an unused burner phone.
+    -   *Find: Burner Phone (new, untraceable)*
+    -   *Location:* Safe House (Mastermind's Office)
+    -   *Dependencies:* Vinnie's request
+3.  **🤝 PHONE** → Deliver to Muscle
+    -   Retrieve the burner phone.
     -   *Location:* Safe House
-    -   *Dependencies:* Tools found
-3.  **🎮 button_mash_barrier** - Breach Train Yard Fence
-    -   Rapidly mash button to cut through the chain-link fence.
-    -   *Location:* Train Yard Perimeter
-    -   *Dependencies:* Lookout signals clear
-4.  **🎮 takedown_timing** - Subdue Yard Guard
-    -   Execute a stealthy takedown on the patrolling yard guard.
-    -   *Location:* Maintenance Shed
-    -   *Dependencies:* Fence breached
-5.  **💬 NPC** - Distract Security Guard
-    -   Create a diversion in the Service Car to draw a guard away from the Security Car.
-    -   *NPC: Guard Miller (overconfident, ambitious, wants promotion) - "I'm telling you, I heard something in the service car! Probably just a loose panel, but I'll check it out. Can't be too careful."*
-    -   *Location:* Service Car (Crew Quarters)
-    -   *Dependencies:* Team inside train
-6.  **🎮 reaction_time** - Subdue Security Guards
-    -   Quickly neutralize guards in the Security Car.
+    -   *Dependencies:* Phone found
+4.  **💬 NPC** - Give Phone to Vinnie
+    -   Hand over the burner phone to the contact.
+    -   *NPC: Vinnie - "Alright, here's your sedatives. Remember, one shot, they're out for an hour. Don't miss."*
+    -   *Location:* Safe House
+    -   *Dependencies:* Phone delivered
+5.  **🤝 SEDATIVES** → Acquire Sedatives
+    -   Receive the sedative darts from Vinnie.
+    -   *Location:* Safe House
+    -   *Dependencies:* Sedatives acquired
+6.  **🎮 takedown_timing** - Neutralize Guard 1
+    -   Execute a stealthy takedown of a patrolling guard in a passenger car.
+    -   *Location:* Passenger Car (Standard)
+    -   *Dependencies:* Lookout intel, Sedatives acquired
+7.  **🎮 takedown_timing** - Neutralize Guard 2
+    -   Neutralize a second guard in the Security Car, clearing the path to the armored car.
     -   *Location:* Security Car
-    -   *Dependencies:* Guard distracted, internal cameras disabled
-7.  **🎮 button_mash_barrier** - Breach Armored Car Door
-    -   Force open the physical barrier of the armored car.
-    -   *Location:* Armored Car (Entrance)
-    -   *Dependencies:* Hacker unlocks armored car door
-8.  **🤝 ARTIFACT** - Secure and Transport Artifact
-    -   Take the artifact from the Cat Burglar and carry it to the rendezvous.
-    -   *Location:* Armored Car → Getaway Vehicle Rendezvous Point
-    -   *Dependencies:* Armored car breached, artifact extracted
-9.  **🗣️ EXTRACTION_SIGNAL** → Confirm to Driver
-    -   Radio the Driver that the artifact is en route to the rendezvous.
+    -   *Dependencies:* Lookout intel, Sedatives acquired
+8.  **🎮 button_mash_barrier** - Breach Armored Car Door
+    -   Force open the reinforced door of the armored car.
     -   *Location:* Armored Car
-    -   *Dependencies:* Artifact secured
+    -   *Dependencies:* Security car clear
 
 ---
 
-### Lookout
+### Lookout (L)
 
 **Tasks:**
-1.  **💬 NPC** - Talk to Train Yard Worker
-    -   Gather gossip about train schedules and yard security routines.
-    -   *NPC: Gus (grumpy, burned out, wants to be left alone) - "Another late shift. They changed the schedule again. Don't ask me why. Just get out of my way."*
-    -   *Location:* Train Yard Perimeter
+1.  **💬 NPC** - Observe Passengers
+    -   Gather intel from waiting passengers on the platform, one of whom requests a snack.
+    -   *NPC: Brenda (chatty, bored, loves gossip) - "Oh, another long wait. If only I had something to munch on. I swear, this train service is terrible. Say, you wouldn't happen to know what's in that armored car, would you?"*
+    -   *Request: Find Snack*
+    -   *Location:* Train Platform
     -   *Dependencies:* None (parallel start)
-2.  **🎮 pattern_memorization** - Scout Train Yard Patrols
-    -   Observe and memorize guard patrol patterns in the train yard.
-    -   *Location:* Train Yard Perimeter (Observation Post)
-    -   *Dependencies:* Worker intel gathered
-3.  **🗣️ CLEAR_SIGNAL** → Signal Team to Approach
-    -   Radio the team that the train yard is clear for entry.
-    -   *Location:* Train Yard Perimeter (Observation Post)
-    -   *Dependencies:* Patrols memorized
-4.  **🎮 spot_the_difference** - Monitor Exterior Threats
-    -   Watch for anomalies or approaching threats during train boarding.
-    -   *Location:* Trackside Tunnel (Cover Position)
-    -   *Dependencies:* Team approaching train
-5.  **💬 NPC** - Listen to Train Radio Chatter
-    -   Monitor guard radio frequencies for security alerts or changes.
-    -   *NPC: Guard 1 (on radio, nervous) - "Did you see that flash near the tunnel? Probably just a bird, right? Right?"*
-    -   *Location:* Service Car (Crew Quarters)
-    -   *Dependencies:* Team inside train
-6.  **🎮 whack_a_mole_threats** - Monitor Internal Threats
-    -   Identify and alert the team to any guards or suspicious passengers.
-    -   *Location:* Passenger Car (Dining) / Passenger Car (Sleeping)
-    -   *Dependencies:* Monitoring radio chatter
-7.  **🗣️ ROUTE_CLEAR** → Confirm Getaway Route
-    -   Signal the Driver that the rendezvous point and escape route are clear of threats.
-    -   *Location:* Getaway Vehicle Rendezvous Point (Observation)
-    -   *Dependencies:* Driver positioned, artifact secured
+2.  **🔍 Search** - Hunt for Snack
+    -   Find a suitable snack from the station's vending machine.
+    -   *Find: Bag of Chips (salt & vinegar)*
+    -   *Location:* Vending Machine
+    -   *Dependencies:* Brenda's request
+3.  **🤝 CHIPS** → Deliver to Lookout
+    -   Retrieve the bag of chips.
+    -   *Location:* Vending Machine
+    -   *Dependencies:* Chips found
+4.  **💬 NPC** - Give Chips to Brenda
+    -   Provide the snack to the chatty passenger.
+    -   *NPC: Brenda - "Oh, a lifesaver! You know, I overheard the conductor talking about a new security protocol for Car 7, something about 'laser grids' and 'pressure plates'. Sounds fancy!"*
+    -   *Location:* Train Platform
+    -   *Dependencies:* Chips delivered
+5.  **🗣️ SECURITY INTEL** → Share with Hacker & Cat Burglar
+    -   Relay the overheard security details about laser grids and pressure plates.
+    -   *Location:* Radio Communication
+    -   *Dependencies:* Brenda's info
+6.  **🎮 pattern_memorization** - Monitor Conductor Patrol
+    -   Observe and memorize the train conductor's patrol route and timing.
+    -   *Location:* Observation Car
+    -   *Dependencies:* Team on train
+7.  **🎮 spot_the_difference** - Scan Security Feeds
+    -   Monitor the train's internal security camera feeds for anomalies or threats.
+    -   *Location:* Observation Car (via Hacker's access)
+    -   *Dependencies:* Hacker accesses network
+8.  **🎮 whack_a_mole_threats** - Spot External Threats
+    -   Identify any external threats or suspicious activity from outside the train.
+    -   *Location:* Observation Car
+    -   *Dependencies:* Active surveillance
+9.  **🗣️ GUARD STATUS** → Share with Muscle
+    -   Provide real-time updates on guard positions and movements to the Muscle.
+    -   *Location:* Radio Communication
+    -   *Dependencies:* Monitoring guards
+10. **🗣️ ROUTE CLEAR** → Confirm to Driver
+    -   Signal that the escape route from the station is clear of immediate threats.
+    -   *Location:* Radio Communication
+    -   *Dependencies:* Escape route clear
 
 ---
 
-### Cat Burglar
+### Cat Burglar (CB)
 
 **Tasks:**
-1.  **🔍 Search** - Hunt for Climbing Gear
-    -   Find specialized climbing gloves and suction cups.
-    -   *Find: High-grip climbing gloves, industrial suction cups*
-    -   *Location:* Safe House
-    -   *Dependencies:* None (parallel start)
-2.  **🤝 GEAR** → Deliver to Mastermind
-    -   Hand over the climbing gear for distribution.
-    -   *Location:* Safe House
-    -   *Dependencies:* Gear found
-3.  **🎮 climbing_rhythm** - Climb onto Moving Train
-    -   Tap in rhythm to scale the train's side silently.
-    -   *Location:* Trackside Tunnel
-    -   *Dependencies:* Mastermind coordinates boarding
-4.  **💬 NPC** - Find External Access Panel
-    -   Locate the train's external comms panel on the roof.
-    -   *NPC: Engineer Bob (grumpy, dedicated, doesn't like interruptions) - "You shouldn't be up here! What are you doing? This panel is for authorized personnel only!"*
-    -   *Location:* Train Roof
-    -   *Dependencies:* On train roof
-5.  **🤝 ACCESS_PANEL_OPEN** → Grant Hacker Access
-    -   Open the external access panel for the Hacker.
-    -   *Location:* Train Roof
-    -   *Dependencies:* Engineer distracted/subdued
-6.  **🎮 laser_maze_timing** - Bypass Roof Sensors
-    -   Time movements perfectly to avoid infrared laser grid on the train roof.
-    -   *Location:* Train Roof (Armored Car Section)
-    -   *Dependencies:* External comms disabled
-7.  **🎮 balance_meter** - Access Armored Car Hatch
-    -   Carefully open the roof hatch of the armored car while maintaining balance.
-    -   *Location:* Armored Car (Roof Hatch)
-    -   *Dependencies:* Roof sensors bypassed
-8.  **🤝 ARTIFACT** - Extract Artifact from Display
-    -   Carefully remove the artifact from its display case.
-    -   *Location:* Armored Car (Artifact Vault)
-    -   *Dependencies:* Armored car accessed
-9.  **🤝 ARTIFACT** → Deliver to Muscle
-    -   Pass the artifact to Muscle for transport to the getaway vehicle.
-    -   *Location:* Armored Car
-    -   *Dependencies:* Artifact extracted
+1.  **🎮 climbing_rhythm** - Board Train Undetected
+    -   Stealthily climb onto the moving train without being seen by platform staff or cameras.
+    -   *Location:* Train Platform
+    -   *Dependencies:* Mastermind coordinates infiltration
+2.  **💬 NPC** - Distract Food Service Attendant
+    -   Approach a nervous food service attendant for intel; they're preoccupied with a lost item.
+    -   *NPC: Shirley (distracted, nervous, worried about losing job) - "Oh my goodness, my lucky pen! I can't believe I lost it. If the manager finds out, I'm toast! Did you see it anywhere?"*
+    -   *Request: Find Lucky Pen*
+    -   *Location:* Dining Car
+    -   *Dependencies:* Team on train
+3.  **🔍 Search** - Hunt for Lucky Pen
+    -   Search the dining car tables and floor for the attendant's lost pen.
+    -   *Find: Engraved Pen (Shirley's lucky pen)*
+    -   *Location:* Dining Car
+    -   *Dependencies:* Shirley's request
+4.  **🤝 PEN** → Deliver to Cat Burglar
+    -   Retrieve the lost pen.
+    -   *Location:* Dining Car
+    -   *Dependencies:* Pen found
+5.  **💬 NPC** - Give Pen to Shirley
+    -   Return the lucky pen to the food service attendant.
+    -   *NPC: Shirley - "Oh, thank you, thank you! You're a lifesaver! The staff entrance to Car 5 requires a specific keycard, but the manager's usually in the Staff Car, Car 4, taking a break."*
+    -   *Location:* Dining Car
+    -   *Dependencies:* Pen delivered
+6.  **🤝 DEVICE** ← Receive from Hacker
+    -   Obtain the hacking device from the Hacker.
+    -   *Location:* Train Platform
+    -   *Dependencies:* Hacker preps device
+7.  **🎮 climbing_rhythm** - Plant Hacking Device
+    -   Discreetly climb to an exterior access panel on the Staff Car and plant the hacking device.
+    -   *Location:* Staff Car Exterior
+    -   *Dependencies:* Device received, Mastermind coordinates
+8.  **🎮 laser_maze_timing** - Bypass Laser Grid
+    -   Navigate through a complex laser grid protecting the Security Car entrance.
+    -   *Location:* Security Car
+    -   *Dependencies:* Lookout intel, Hacker disables car locks
+9.  **🎮 balance_meter** - Traverse Armored Car Exterior
+    -   Balance carefully along the exterior of the armored car to reach an access point.
+    -   *Location:* Armored Car Exterior
+    -   *Dependencies:* Laser grid bypassed, Muscle breaches door
+10. **🤝 ARTIFACT** - Secure and Transport
+    -   Retrieve the artifact from its display and prepare it for extraction.
+    -   *Location:* Armored Car → Getaway Vehicle
+    -   *Dependencies:* Armored car breached
+
+---
+
+## Task Summary
+
+Total tasks: 48
+Minigames (🎮): 18 (37.5%)
+NPC/LLM interactions (💬): 17 (35.4%)
+Search/Hunt (🔍): 8 (16.7%)
+Item Handoffs (🤝): 5 (10.4%)
+Info Shares (🗣️): 3 (6.3%)
+
+**Social interactions total**: 33 tasks (68.7%) - Meets 60-70% target.
 
 ---
 
@@ -291,167 +314,137 @@ Every task in this heist is one of five types:
 
 The minimum sequence of tasks to achieve the objective:
 
-1.  **Hacker**: `🔍 Search` - Hunt for Hacking Cables
-2.  **Hacker**: `🎮 wire_connecting` - Assemble Hacking Device
-3.  **Hacker**: `🤝 DEVICE` → Deliver to Mastermind
-4.  **Cat Burglar**: `🔍 Search` - Hunt for Climbing Gear
-5.  **Cat Burglar**: `🤝 GEAR` → Deliver to Mastermind
-6.  **Muscle**: `🔍 Search` - Hunt for Heavy Tools
-7.  **Muscle**: `🤝 TOOLS` → Deliver to Mastermind
-8.  **Lookout**: `💬 NPC` - Talk to Train Yard Worker
-9.  **Lookout**: `🎮 pattern_memorization` - Scout Train Yard Patrols
-10. **Lookout**: `🗣️ CLEAR_SIGNAL` → Signal Team to Approach
-11. **Mastermind**: `💬 NPC` - Coordinate Train Boarding
-12. **Cat Burglar**: `🎮 climbing_rhythm` - Climb onto Moving Train
-13. **Cat Burglar**: `💬 NPC` - Find External Access Panel
-14. **Cat Burglar**: `🤝 ACCESS_PANEL_OPEN` → Grant Hacker Access
-15. **Hacker**: `🎮 cipher_wheel_alignment` - Disable External Comms
-16. **Muscle**: `🎮 takedown_timing` - Subdue Yard Guard
-17. **Muscle**: `💬 NPC` - Distract Security Guard
-18. **Muscle**: `🎮 reaction_time` - Subdue Security Guards
-19. **Hacker**: `🎮 simon_says_sequence` - Disable Internal Cameras
-20. **Hacker**: `🎮 card_swipe` - Unlock Armored Car Door
-21. **Muscle**: `🎮 button_mash_barrier` - Breach Armored Car Door
-22. **Cat Burglar**: `🎮 laser_maze_timing` - Bypass Roof Sensors
-23. **Cat Burglar**: `🎮 balance_meter` - Access Armored Car Hatch
-24. **Cat Burglar**: `🤝 ARTIFACT` - Extract Artifact from Display
-25. **Cat Burglar**: `🤝 ARTIFACT` → Deliver to Muscle
-26. **Driver**: `💬 NPC` - Inspect Getaway Vehicle (includes filter request/delivery)
-27. **Driver**: `🎮 fuel_pump` - Fuel Up Getaway Car
-28. **Driver**: `🎮 parking_precision` - Position Getaway Vehicle
-29. **Mastermind**: `🗣️ EXTRACTION_SIGNAL` → Signal Crew for Extraction
-30. **Muscle**: `🤝 ARTIFACT` ← Receive from Cat Burglar (at rendezvous)
-31. **Driver**: `🤝 ARTIFACT` ← Receive from Muscle
-32. **Lookout**: `🗣️ ROUTE_CLEAR` → Confirm Getaway Route
-33. **Driver**: `🎮 steering_obstacle_course` - Execute Getaway
+```
+1. Mastermind: Brief Crew (💬)
+2. Hacker: Search Train Blueprints (🔍)
+3. Hacker: Prep Hacking Device (🎮)
+4. Hacker: 🤝 DEVICE to Cat Burglar
+5. Cat Burglar: Board Train Undetected (🎮)
+6. Cat Burglar: Plant Hacking Device (🎮) [needs device]
+7. Hacker: Access Train Network (🎮) [needs planted device]
+8. Hacker: Disable Car Locks (🎮) [needs network access]
+9. Lookout: Observe Passengers (💬) -> Request for Snack
+10. Lookout: Search Vending Machine (🔍) -> Find Snack
+11. Lookout: Give Chips to Brenda (💬) -> Get Security Intel
+12. Lookout: 🗣️ SECURITY INTEL to CB
+13. Cat Burglar: Bypass Laser Grid (🎮) [needs security intel, disabled locks]
+14. Muscle: Acquire Sedatives (💬) -> Request for Burner Phone
+15. Muscle: Search Mastermind's Office (🔍) -> Find Burner Phone
+16. Muscle: Give Phone to Vinnie (💬) -> Get Sedatives
+17. Muscle: Neutralize Guard 1 (🎮) [needs sedatives]
+18. Muscle: Neutralize Guard 2 (🎮) [needs sedatives]
+19. Muscle: Breach Armored Car Door (🎮) [needs clear path]
+20. Cat Burglar: Traverse Armored Car Exterior (🎮) [needs breached door]
+21. Cat Burglar: 🤝 ARTIFACT - Secure and Transport
+22. Mastermind: 🗣️ EXTRACTION Signal [needs artifact secured]
+23. Driver: Fuel Getaway Car (🎮)
+24. Driver: Position Getaway Car (🎮)
+25. Driver: 🗣️ ALL CLEAR to MM
+26. Driver: Execute Getaway (🎮) [needs artifact, crew, clear route]
+```
 
-## Task Summary
-
-Total tasks: 45
-Critical path tasks: 33
-Supporting tasks: 12
-
-By type:
--   Minigames (🎮): 19 (42%)
--   NPC/LLM interactions (💬): 14 (31%)
--   Search/Hunt (🔍): 5 (11%)
--   Item handoffs (🤝): 10 (22%)
--   Info shares (🗣️): 4 (9%)
-
-**Social interactions total**: 73% (NPC + Search + Handoffs + Info shares) - Meets 60-70% target.
+## Key Collaboration Points
+- **Hacker & Cat Burglar**: Hacker preps device, Cat Burglar plants it.
+- **Lookout & Muscle**: Lookout provides real-time guard status for Muscle's takedowns.
+- **Lookout & Hacker/Cat Burglar**: Lookout gathers critical security intel (laser grids) from NPCs.
+- **Driver & Mastermind**: Driver provides route clearance, Mastermind signals extraction.
+- **Muscle & Cat Burglar**: Muscle breaches the final barrier, Cat Burglar accesses the artifact.
+- **NPC Request Chains**: Multiple tasks requiring one player to search for an item requested by an NPC, then hand it off, to unlock further information or access.
 
 ---
 
 ## Dependency Tree Diagrams
 
 ### Legend
--   🎮 **Minigames**: Player-controlled actions from `roles.json`
--   💬 **NPC/LLM**: Dialogue with AI characters
--   🤝 **Item Handoff**: Physical transfer (inventory-tracked)
--   🗣️ **Info Share**: Verbal exchange (real-life conversation)
--   [STATE_NAME]: Milestone or state achieved
+- 🎮 **Minigames**: Player-controlled actions from `roles.json`
+- 💬 **NPC/LLM**: Dialogue with AI characters
+- 🤝 **Item Handoff**: Physical transfer (inventory-tracked)
+- 🗣️ **Info Share**: Verbal exchange (real-life conversation)
 
 ### Full Dependency Tree
 
 ```mermaid
 flowchart TD
     START([START HEIST])
-
-    %% Mastermind Prep
-    START --> MM_P1{{💬 Mastermind: Brief Crew}}
-
-    %% Hacker Prep
-    START --> H_P1{{🔍 Hacker: Hunt Hacking Cables}}
-    H_P1 --> H_P2{{🎮 wire_connecting: Assemble Hacking Device}}
-    H_P2 --> H_P3[🤝 DEVICE to MM]
-
-    %% Driver Prep
-    START --> D_P1{{💬 Driver: Inspect Getaway Vehicle}}
-    D_P1 --> D_P2{{🔍 Driver: Hunt for Fuel Filter}}
-    D_P2 --> D_P3[🤝 FUEL_FILTER to Mechanic]
-    D_P3 --> D_P4{{🎮 fuel_pump: Fuel Up Getaway Car}}
-    D_P4 --> D_P5{{💬 Driver: Chat with Attendant}}
-
-    %% Muscle Prep
-    START --> M_P1{{🔍 Muscle: Hunt for Heavy Tools}}
-    M_P1 --> M_P2[🤝 TOOLS to MM]
-
-    %% Cat Burglar Prep
-    START --> CB_P1{{🔍 Cat Burglar: Hunt for Climbing Gear}}
-    CB_P1 --> CB_P2[🤝 GEAR to MM]
-
-    %% Lookout Prep
-    START --> L_P1{{💬 Lookout: Talk to Train Yard Worker}}
-    L_P1 --> L_P2{{🎮 pattern_memorization: Scout Train Yard Patrols}}
-
-    %% --- Infiltration Phase ---
-    L_P2 --> L_I1[🗣️ CLEAR_SIGNAL to Team]
-    MM_P1 --> MM_I1{{💬 Mastermind: Coordinate Train Boarding}}
-    MM_I1 --> L_I1
-    H_P3 --> MM_I1
-    M_P2 --> MM_I1
-    CB_P2 --> MM_I1
-
-    L_I1 --> M_I1{{🎮 button_mash_barrier: Breach Train Yard Fence}}
-    M_I1 --> M_I2{{🎮 takedown_timing: Subdue Yard Guard}}
-
-    M_I2 --> CB_I1{{🎮 climbing_rhythm: Climb onto Moving Train}}
-    CB_I1 --> CB_I2{{💬 Cat Burglar: Find External Access Panel}}
-    CB_I2 --> CB_I3[🤝 ACCESS_PANEL_OPEN to Hacker]
-
-    CB_I3 --> H_I1{{🎮 cipher_wheel_alignment: Disable External Comms}}
-    H_I1 --> TRAIN_BOARDED[TRAIN BOARDED]
-
-    %% --- Internal Execution Phase ---
-    TRAIN_BOARDED --> MM_E1{{💬 Mastermind: Coordinate Internal Infiltration}}
-    TRAIN_BOARDED --> L_E1{{💬 Lookout: Listen to Train Radio Chatter}}
-    TRAIN_BOARDED --> L_E2{{🎮 whack_a_mole_threats: Monitor Internal Threats}}
-
-    MM_E1 --> M_E1{{💬 Muscle: Distract Security Guard}}
-    M_E1 --> M_E2{{🎮 reaction_time: Subdue Security Guards}}
-    L_E1 --> M_E2
-    L_E2 --> M_E2
-
-    M_E2 --> H_E1{{🎮 simon_says_sequence: Disable Internal Cameras}}
-    H_E1 --> H_E2{{🎮 card_swipe: Unlock Armored Car Door}}
-
-    H_E2 --> M_E3{{🎮 button_mash_barrier: Breach Armored Car Door}}
-
-    H_I1 --> CB_E1{{🎮 laser_maze_timing: Bypass Roof Sensors}}
-    CB_E1 --> CB_E2{{🎮 balance_meter: Access Armored Car Hatch}}
-
-    M_E3 --> CB_E3{{🤝 ARTIFACT: Extract Artifact from Display}}
-    CB_E2 --> CB_E3
-
-    CB_E3 --> CB_E4[🤝 ARTIFACT to Muscle]
-    CB_E4 --> M_E4[🤝 ARTIFACT to Rendezvous]
-
-    ARTIFACT_SECURED([ARTIFACT SECURED])
-    CB_E3 --> ARTIFACT_SECURED
-
-    %% --- Escape Phase ---
-    D_P5 --> D_E1{{🎮 parking_precision: Position Getaway Vehicle}}
-    D_E1 --> L_E3[Lookout: Monitor Rendezvous]
-    D_E1 --> D_E2[Driver: Monitor Radio]
-
-    ARTIFACT_SECURED --> MM_ES1[🗣️ EXTRACTION_SIGNAL to Crew]
-    MM_ES1 --> D_E2
-    MM_ES1 --> M_ES1[Muscle: Confirm Artifact En Route]
-    M_E4 --> M_ES1
-
-    M_ES1 --> D_ES1[🤝 ARTIFACT from Muscle]
-    D_ES1 --> D_ES2[🤝 ARTIFACT Secured in Car]
-
-    D_ES2 --> L_ES1[🗣️ ROUTE_CLEAR to Driver]
-    L_E3 --> L_ES1
-
-    ARTIFACT_SECURED --> H_ES1{{🎮 simon_says_sequence: Wipe Security Logs}}
-    H_ES1 --> L_ES1
-
-    D_ES2 --> D_ES3{{🎮 steering_obstacle_course: Execute Getaway}}
-    L_ES1 --> D_ES3
-
-    D_ES3 --> END([SUCCESS])
+    
+    %% Mastermind Tasks
+    START --> MM1{{💬 MM: Brief Crew}}
+    MM1 --> MM2{{💬 MM: Coordinate Infiltration}}
+    MM2 --> TEAM_ON_TRAIN[TEAM ON TRAIN]
+    TEAM_ON_TRAIN --> MM3{{💬 MM: Monitor Progress}}
+    ARTIFACT_SECURED[ARTIFACT SECURED] --> MM4[🗣️ MM: EXTRACTION Signal]
+    
+    %% Hacker Tasks
+    START --> H1{{🔍 Search: Train Blueprints}}
+    H1 --> H2{{🎮 wire_connecting: Prep Hacking Device}}
+    H2 --> H3[🤝 DEVICE to CB]
+    CB7_PLANT --> H4{{🎮 cipher_wheel_alignment: Access Train Network}}
+    H4 --> H5{{🎮 card_swipe: Disable Car Locks}}
+    ARTIFACT_SECURED --> H6{{🎮 simon_says_sequence: Wipe Logs}}
+    
+    %% Driver Tasks
+    START --> D1{{🎮 fuel_pump: Fuel Getaway Car}}
+    D1 --> D2{{💬 D: Talk to Yard Worker}}
+    D2 --> D3{{🔍 Search: Mechanic's Shed}}
+    D3 --> D4[🤝 BELT to D]
+    D4 --> D5{{💬 D: Give Belt to Gus}}
+    D5 --> D6{{🔍 Search: Manifest for Artifact Info}}
+    D6 --> D7{{🎮 parking_precision: Position Getaway Car}}
+    ESCAPE_COMPLETE[ESCAPE COMPLETE] --> D8[🗣️ D: ALL CLEAR to MM]
+    
+    %% Muscle Tasks
+    START --> M1{{💬 M: Acquire Sedatives}}
+    M1 --> M2{{🔍 Search: Burner Phone}}
+    M2 --> M3[🤝 PHONE to M]
+    M3 --> M4{{💬 M: Give Phone to Vinnie}}
+    M4 --> M5[🤝 SEDATIVES to M]
+    L9_GUARD_STATUS --> M6{{🎮 takedown_timing: Neutralize Guard 1}}
+    M5 --> M6
+    M6 --> M7{{🎮 takedown_timing: Neutralize Guard 2}}
+    M7 --> M8{{🎮 button_mash_barrier: Breach Armored Car Door}}
+    
+    %% Lookout Tasks
+    START --> L1{{💬 L: Observe Passengers}}
+    L1 --> L2{{🔍 Search: Vending Machine}}
+    L2 --> L3[🤝 CHIPS to L]
+    L3 --> L4{{💬 L: Give Chips to Brenda}}
+    L4 --> L5[🗣️ L: SECURITY INTEL to H & CB]
+    TEAM_ON_TRAIN --> L6{{🎮 pattern_memorization: Monitor Conductor Patrol}}
+    H4 --> L7{{🎮 spot_the_difference: Scan Security Feeds}}
+    L6 --> L7
+    L7 --> L8{{🎮 whack_a_mole_threats: Spot External Threats}}
+    L8 --> L9[🗣️ L: GUARD STATUS to M]
+    MM4 --> L10[🗣️ L: ROUTE CLEAR to D]
+    
+    %% Cat Burglar Tasks
+    MM2 --> CB1{{🎮 climbing_rhythm: Board Train Undetected}}
+    TEAM_ON_TRAIN --> CB2{{💬 CB: Distract Food Service Attendant}}
+    CB2 --> CB3{{🔍 Search: Dining Car Tables}}
+    CB3 --> CB4[🤝 PEN to CB]
+    CB4 --> CB5{{💬 CB: Give Pen to Shirley}}
+    H3 --> CB6[🤝 DEVICE from H]
+    CB1 --> CB7{{🎮 climbing_rhythm: Plant Hacking Device}}
+    CB6 --> CB7
+    L5 --> CB8{{🎮 laser_maze_timing: Bypass Laser Grid}}
+    H5 --> CB8
+    M8 --> CB9{{🎮 balance_meter: Traverse Armored Car Exterior}}
+    CB8 --> CB9
+    CB9 --> CB10[🤝 ARTIFACT to CB]
+    CB10 --> ARTIFACT_SECURED
+    
+    %% Convergences for Extraction
+    MM4 --> ESCAPE_READY[EXTRACTION READY]
+    ARTIFACT_SECURED --> ESCAPE_READY
+    D7 --> ESCAPE_READY
+    D8 --> ESCAPE_READY
+    L10 --> ESCAPE_READY
+    H6 --> ESCAPE_READY
+    
+    ESCAPE_READY --> D_GETAWAY{{🎮 steering_obstacle_course: Execute Getaway}}
+    CB10 --> D_GETAWAY
+    
+    D_GETAWAY --> SUCCESS([CLEAN GETAWAY SUCCESS])
+    D_GETAWAY --> ESCAPE_COMPLETE
 ```
 
 ### Critical Path Only (Simplified)
@@ -459,57 +452,48 @@ flowchart TD
 ```mermaid
 flowchart TD
     START([START])
-
-    START --> H1{{🔍 Hacker: Hunt Cables}}
-    H1 --> H2{{🎮 Hacker: Assemble Device}}
-
-    START --> CB1{{🔍 Cat Burglar: Hunt Gear}}
-    CB1 --> CB2{{🎮 Cat Burglar: Climb Train}}
-
-    START --> M1{{🔍 Muscle: Hunt Tools}}
-    M1 --> M2{{🎮 Muscle: Breach Fence}}
-
-    START --> L1{{💬 Lookout: Talk Worker}}
-    L1 --> L2{{🎮 Lookout: Scout Patrols}}
-    L2 --> L3[🗣️ Lookout: CLEAR SIGNAL]
-
-    H2 --> MM1{{💬 MM: Coordinate Boarding}}
-    CB2 --> MM1
-    M2 --> MM1
-    L3 --> MM1
-
-    MM1 --> CB3{{💬 Cat Burglar: Find Access Panel}}
-    CB3 --> H3{{🎮 Hacker: Disable External Comms}}
-
-    H3 --> M3{{🎮 Muscle: Subdue Yard Guard}}
-    M3 --> M4{{💬 Muscle: Distract Guard}}
-    M4 --> M5{{🎮 Muscle: Subdue Guards}}
-
-    M5 --> H4{{🎮 Hacker: Disable Cameras}}
-    H4 --> H5{{🎮 Hacker: Unlock Armored Car}}
-
-    H5 --> M6{{🎮 Muscle: Breach Armored Car}}
-
-    H3 --> CB4{{🎮 Cat Burglar: Bypass Roof Sensors}}
-    CB4 --> CB5{{🎮 Cat Burglar: Access Hatch}}
-
-    M6 --> CB6{{🤝 Artifact: Extract}}
-    CB5 --> CB6
-
-    CB6 --> M7[🤝 Artifact to Muscle]
-    M7 --> D1[🤝 Artifact to Driver]
-
-    START --> D2{{💬 Driver: Inspect Car}}
-    D2 --> D3{{🎮 Driver: Fuel Car}}
-    D3 --> D4{{🎮 Driver: Position Car}}
-
-    CB6 --> MM2[🗣️ MM: EXTRACTION SIGNAL]
-    D4 --> MM2
-
-    MM2 --> L4[🗣️ Lookout: ROUTE CLEAR]
-
-    D1 --> D5{{🎮 Driver: Execute Getaway}}
-    L4 --> D5
-
-    D5 --> SUCCESS([SUCCESS])
+    
+    START --> MM1{{💬 MM: Brief Crew}}
+    
+    MM1 --> H1{{🔍 Search: Train Blueprints}}
+    H1 --> H2{{🎮 wire_connecting: Prep Hacking Device}}
+    H2 --> H3[🤝 DEVICE to CB]
+    
+    MM1 --> CB1{{🎮 climbing_rhythm: Board Train Undetected}}
+    H3 --> CB2{{🎮 climbing_rhythm: Plant Hacking Device}}
+    CB1 --> CB2
+    
+    CB2 --> H4{{🎮 cipher_wheel_alignment: Access Train Network}}
+    H4 --> H5{{🎮 card_swipe: Disable Car Locks}}
+    
+    START --> L1{{💬 L: Observe Passengers}}
+    L1 --> L2{{🔍 Search: Vending Machine}}
+    L2 --> L3{{💬 L: Give Chips to Brenda}}
+    L3 --> L4[🗣️ L: SECURITY INTEL to CB]
+    
+    H5 --> CB3{{🎮 laser_maze_timing: Bypass Laser Grid}}
+    L4 --> CB3
+    
+    START --> M1{{💬 M: Acquire Sedatives}}
+    M1 --> M2{{🔍 Search: Burner Phone}}
+    M2 --> M3{{💬 M: Give Phone to Vinnie}}
+    M3 --> M4{{🎮 takedown_timing: Neutralize Guard 1}}
+    M4 --> M5{{🎮 takedown_timing: Neutralize Guard 2}}
+    M5 --> M6{{🎮 button_mash_barrier: Breach Armored Car Door}}
+    
+    CB3 --> CB4{{🎮 balance_meter: Traverse Armored Car Exterior}}
+    M6 --> CB4
+    
+    CB4 --> CB5[🤝 ARTIFACT to CB]
+    CB5 --> MM2[🗣️ MM: EXTRACTION Signal]
+    
+    START --> D1{{🎮 fuel_pump: Fuel Getaway Car}}
+    D1 --> D2{{🎮 parking_precision: Position Getaway Car}}
+    D2 --> D3[🗣️ D: ALL CLEAR to MM]
+    
+    MM2 --> D4{{🎮 steering_obstacle_course: Execute Getaway}}
+    CB5 --> D4
+    D3 --> D4
+    
+    D4 --> SUCCESS([SUCCESS])
 ```

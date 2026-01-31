@@ -128,6 +128,17 @@ Generate a complete markdown file with:
 - Follow dependencies logically (can't crack safe before reaching it)
 - Make it fun and replayable with quirky NPCs!
 
+**CRITICAL - Mermaid Diagram Rules**:
+- Node IDs MUST be simple: `MM1`, `H2`, `SC3`, `I4` (letters + numbers ONLY)
+- NEVER use underscores in node IDs: `MM1_S` ❌ BAD, `MM1` ✅ GOOD
+- NEVER use special characters in node IDs: `SC2_H` ❌ BAD, `SC2` ✅ GOOD
+- Colons ARE allowed in labels: `{{🎮 wire_connecting: Prep Device}}` ✅ GOOD
+- Use square brackets for handoffs: `MM1[🤝 DEVICE to Hacker]`
+- Use double curly braces for tasks: `H2{{💬 Hacker: Disable System}}`
+- Example CORRECT: `START --> MM1{{💬 MM: Brief Crew}}`
+- Example WRONG: `START --> MM1_C{{💬 MM: Brief Crew}}` (underscore breaks parser!)
+- Study the example Mermaid diagrams carefully and copy that exact style
+
 Now generate the complete dependency tree for the scenario above.
 """
     
