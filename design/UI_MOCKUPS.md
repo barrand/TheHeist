@@ -403,20 +403,29 @@ Landing Page
 │                                 │
 │  YOUR TASKS (Hacker)            │
 │                                 │
+│  ✅ READY TO DO HERE            │
 │  ┌───────────────────────────┐ │
-│  │ 🎮 Prep Hacking Device    │ │← Tap to start
+│  │ 🎮 Prep Hacking Device    │ │← Can do now (tappable)
 │  │ wire_connecting           │ │
-│  │ 📍 Safe House              │ │
-│  └───────────────────────────┘ │
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │ 💬 Talk to Security Guard │ │
-│  │ 📍 Museum Front Steps      │ │
+│  │ ⚡ Tap to start            │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
 │  │ 🔍 Search for Tools       │ │
-│  │ 📍 Safe House              │ │
+│  │ ⚡ Tap to start            │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  📍 REQUIRES TRAVEL             │
+│  ┌───────────────────────────┐ │
+│  │ 💬 Talk to Security Guard │ │← Grayed out (tappable)
+│  │ 📍 Museum Front Steps      │ │
+│  │ 👉 Tap to view location   │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ 🎮 Hack Security Terminal │ │
+│  │ 📍 Security Room           │ │
+│  │ 👉 Tap to view location   │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
@@ -437,16 +446,22 @@ Landing Page
 - [ ] Timer (optional)
 
 **Task List:**
-- [ ] Available task cards (tappable)
+- [ ] Section: "Ready to Do Here" (bright, full color)
+  - [ ] Tasks available at current location
+  - [ ] "⚡ Tap to start" indicator
+  - [ ] Fully tappable → Start task immediately
+- [ ] Section: "Requires Travel" (grayed out, but visible)
+  - [ ] Tasks available but at different locations
+  - [ ] Location name shown prominently
+  - [ ] "👉 Tap to view location" indicator
+  - [ ] Tappable → Shows map with location highlighted
+- [ ] Each task card shows:
   - [ ] Task icon (🎮 minigame, 💬 NPC, 🔍 search, 🤝 handoff, 🗣️ info)
   - [ ] Task name
-  - [ ] Minigame ID (if applicable)
-  - [ ] Location requirement
+  - [ ] Minigame ID (if applicable, for "Ready" tasks)
+  - [ ] Location name (for "Travel" tasks)
 - [ ] Divider line
 - [ ] Completed section (collapsed, shows count)
-  - [ ] Tap to expand and see completed tasks
-  - [ ] Checkmark icon
-  - [ ] Grayed out when expanded
 
 **Bottom Navigation:**
 - [ ] "Map" button → Location view
@@ -454,21 +469,24 @@ Landing Page
 
 **Design Notes:**
 - Only show tasks that are currently available (no locked/upcoming tasks)
+- Split by "can do here" vs "need to travel"
+- Location-blocked tasks are visible but visually distinct (grayed)
+- Encourages player to decide: stay and finish local tasks or move
 - New tasks appear dynamically as dependencies are met
 - Keeps mystery and discovery in gameplay
-- Players won't see the full dependency tree, just what's available now
 
 **Actions:**
-- Tap available task → Start task (minigame/NPC/search)
+- Tap "Ready" task → Start task immediately (minigame/NPC/search)
+- Tap "Travel" task → Open map view with that location highlighted
 - Tap "Completed" → Expand to show completed tasks
 - Tap "Map" → Show location map and available locations
 - Tap "Team" → Show all players and their current tasks
 
 ---
 
-## Screen 7: Task Detail Modal (Before Starting)
+## Screen 7a: Task Detail Modal - Current Location
 
-**Purpose**: Show task details before starting
+**Purpose**: Show task details before starting (when at correct location)
 
 ### UI Elements:
 
@@ -477,7 +495,7 @@ Landing Page
 │  PREP HACKING DEVICE            │
 │                                 │
 │  🎮 Minigame: wire_connecting   │
-│  📍 Location: Safe House        │
+│  📍 Location: Safe House ✓      │
 │                                 │
 │  Description:                   │
 │  Assemble USB device in van,    │
@@ -495,17 +513,65 @@ Landing Page
 **Components:**
 - [ ] Task title
 - [ ] Task type icon
-- [ ] Location requirement
+- [ ] Location requirement (with checkmark if at location)
 - [ ] Description (from generated experience)
-- [ ] "Start Task" button
+- [ ] "Start Task" button (enabled)
+- [ ] "Cancel" link
+
+---
+
+## Screen 7b: Task Detail Modal - Wrong Location
+
+**Purpose**: Show task details when player needs to travel
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│  TALK TO SECURITY GUARD         │
+│                                 │
+│  💬 NPC Conversation            │
+│  📍 Location: Museum Front Steps│
+│                                 │
+│  Description:                   │
+│  Approach the guard at the      │
+│  front entrance and convince    │
+│  him you're a VIP guest.        │
+│                                 │
+│  ⚠️ You must travel to this     │
+│     location first              │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   📍 VIEW ON MAP          │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   🚶 TRAVEL THERE         │ │
+│  └───────────────────────────┘ │
+│                                 │
+│        Cancel                   │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Task title
+- [ ] Task type icon
+- [ ] Location requirement (highlighted)
+- [ ] Description (from generated experience)
+- [ ] Warning message (not at correct location)
+- [ ] "View on Map" button
+- [ ] "Travel There" button (moves player to that location)
 - [ ] "Cancel" link
 
 **Design Notes:**
 - No dependencies shown (if task is available, dependencies are already met)
 - Keeps mystery while providing context for the task
+- Clear indication when player needs to move
 
 **Actions:**
-- Tap "Start Task" → Launch minigame/NPC/search screen
+- **Current Location:** Tap "Start Task" → Launch minigame/NPC/search screen
+- **Wrong Location:** Tap "Travel There" → Move to location → Return to game screen
+- **Wrong Location:** Tap "View on Map" → Open map with location highlighted
 - Tap "Cancel" → Return to game screen
 
 ---
