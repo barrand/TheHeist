@@ -2,7 +2,11 @@
 """
 Generate NPC character images using Google's Imagen 4.
 
-Art style: The Heist Game (bright, cartoony, fun, stylized, low-poly 3D)
+Art style: The Heist Game (bright, cartoony, fun, stylized 2D)
+
+CURRENT STYLE: Comic Book / Borderlands (Option 1)
+- Change the HEIST_GAME_ART_STYLE constant below to switch styles
+- See comments for 5+ popular recognizable 2D art styles
 
 Usage:
     python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --clothing "reflective vest and uniform" --background "parking garage" --expression "bored"
@@ -25,11 +29,69 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 # ============================================
 # HEIST GAME ART STYLE - ALWAYS CONSISTENT
 # ============================================
-HEIST_GAME_ART_STYLE = """3D render, cartoonish style,
-cell-shaded, exaggerated features,
-bright saturated colors, simplified geometry, stylized facial features,
-clean flat shading, game character design, toon shader, minimal detail,
-low-poly 3D model, mobile game art style"""
+# Choose ONE style below and update the constant:
+
+# OPTION 1: Comic Book / Borderlands Style
+HEIST_GAME_ART_STYLE = """2D illustration, comic book art style,
+bold thick outlines, cell-shaded, flat colors with subtle gradients,
+Borderlands game aesthetic, graphic novel style,
+vibrant saturated colors, stylized proportions, hand-drawn look,
+inked linework, simplified details, expressive characters"""
+
+# OPTION 2: Cartoon Network / Adventure Time Style  
+# HEIST_GAME_ART_STYLE = """2D cartoon illustration, Adventure Time inspired,
+# simple clean lines, flat bright colors, minimal shading,
+# quirky expressive faces, rounded shapes, playful proportions,
+# modern cartoon network aesthetic, bold solid colors,
+# whimsical character design, vector art style"""
+
+# OPTION 3: Retro 1930s Cartoon / Cuphead Style
+# HEIST_GAME_ART_STYLE = """2D illustration, 1930s cartoon style,
+# rubber hose animation aesthetic, Cuphead inspired,
+# vintage cartoon look, thick black outlines, limited color palette,
+# exaggerated expressions, bouncy proportions, hand-drawn cel animation,
+# retro game character design, classic animation style"""
+
+# OPTION 4: Flat Vector / Kurzgesagt Style
+# HEIST_GAME_ART_STYLE = """2D flat illustration, vector art style,
+# Kurzgesagt inspired, geometric shapes, clean minimal design,
+# solid flat colors, no gradients, simple rounded forms,
+# infographic character style, modern flat design aesthetic,
+# bold color blocking, simplified features"""
+
+# OPTION 5: Comic Book with Halftone / Spider-Verse Style
+# HEIST_GAME_ART_STYLE = """2D illustration, comic book art style,
+# Into the Spider-Verse inspired, bold ink outlines,
+# halftone dots and texture, pop art aesthetic,
+# vibrant saturated colors, graphic novel character design,
+# stylized proportions, dynamic composition, hand-drawn ink style,
+# Ben-Day dots, comic book shading"""
+
+# OPTION 6: Don't Starve / Tim Burton Style
+# HEIST_GAME_ART_STYLE = """2D illustration, Don't Starve game art style,
+# Tim Burton inspired, gothic whimsical aesthetic,
+# thin scratchy linework, elongated proportions, dark outlines,
+# muted colors with pops of saturation, hand-drawn texture,
+# spindly limbs, big expressive eyes, quirky character design"""
+
+# OPTION 7: South Park / Paper Cutout Style
+# HEIST_GAME_ART_STYLE = """2D illustration, paper cutout style,
+# South Park inspired, simple geometric shapes, flat colors,
+# no gradients, construction paper aesthetic, minimal detail,
+# basic shapes for features, solid black outlines, layered paper look"""
+
+# OPTION 8: Rick and Morty / Adult Animation Style
+# HEIST_GAME_ART_STYLE = """2D cartoon illustration, adult animation style,
+# Rick and Morty inspired, bold clean lines, cell animation look,
+# expressive exaggerated faces, vibrant colors with gradients,
+# sci-fi cartoon aesthetic, dynamic poses, detailed backgrounds"""
+
+# BONUS: Popular Digital Artists (AI recognizes these!)
+# "Loish style" - painterly, soft colors, whimsical
+# "Jazza style" - bold cartoons, expressive
+# "Chibi style" - super deformed, cute, big heads
+# "Pixel art style" - retro game sprites (if you want 8-bit!)
+# "Ghibli style" - beautiful but more realistic/detailed
 
 
 def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=None, 
