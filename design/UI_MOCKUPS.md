@@ -903,56 +903,154 @@ Landing Page
 
 ## Screen 10: NPC Conversation Screen
 
-**Purpose**: Chat with an NPC character
+**Purpose**: Chat with an NPC character to extract information
 
 ### UI Elements:
 
 ```
 ┌─────────────────────────────────┐
-│  < Back                         │
-│                                 │
-│         CARLOS                  │
-│    (suspicious, greedy)         │
+│  < Back               [Info] ℹ️  │
 │                                 │
 │  ┌───────────────────────────┐ │
-│  │ "Uniform? Yeah I got it.  │ │← NPC message
-│  │  But prices went up.       │ │
-│  │  Security's been tight.    │ │
-│  │  I need $200 more."        │ │
+│  │                           │ │
+│  │        [NPC Image]        │ │← Character portrait
+│  │     280x280 Borderlands   │ │   (nano-banana)
+│  │                           │ │
 │  └───────────────────────────┘ │
 │                                 │
-│  ┌───────────────────────────┐ │
-│  │ [You]: Here's the cash    │ │← Your previous response
-│  └───────────────────────────┘ │
+│       BRENDA WILLIAMS           │
+│    chatty, bored, gossipy       │← Personality
 │                                 │
-│  CHOOSE YOUR RESPONSE:          │
-│  ┌───────────────────────────┐ │
-│  │ A) Negotiate price down   │ │← Dialogue options
-│  └───────────────────────────┘ │
-│  ┌───────────────────────────┐ │
-│  │ B) Pay the extra $200     │ │
-│  └───────────────────────────┘ │
-│  ┌───────────────────────────┐ │
-│  │ C) Threaten him           │ │
-│  └───────────────────────────┘ │
+│ ┌──── CHAT HISTORY ──────────┐ │
+│ │                             │ │
+│ │ [Brenda]                    │ │← NPC messages
+│ │ Ugh, this train is SO late! │ │   (left-aligned,
+│ │ Been waiting forever...     │ │    gray bubble)
+│ │                             │ │
+│ │              [You]          │ │← Your messages
+│ │     Yeah, tell me about it! │ │   (right-aligned,
+│ │                             │ │    gold bubble)
+│ │                             │ │
+│ │ [Brenda]                    │ │
+│ │ I overheard the conductor   │ │
+│ │ mention something about     │ │
+│ │ laser grids in Car 7...     │ │
+│ │                             │ │
+│ └─────────────────────────────┘ │← Scrollable
+│                                 │
+│ QUICK RESPONSES:                │
+│ ┌─────────────────────────────┐│
+│ │ 💬 Tell me more about that  ││← Option 1
+│ └─────────────────────────────┘│
+│ ┌─────────────────────────────┐│
+│ │ 💬 Did you hear anything    ││← Option 2
+│ │    else?                    ││
+│ └─────────────────────────────┘│
+│                                 │
+│ ┌─────────────────────────────┐│
+│ │ ✍️  Write your own...       ││← Free-form option
+│ └─────────────────────────────┘│
+│                                 │
+└─────────────────────────────────┘
+```
+
+**When "Write your own" is tapped:**
+
+```
+┌─────────────────────────────────┐
+│  < Back               [Info] ℹ️  │
+│                                 │
+│ ┌──── CHAT HISTORY ──────────┐ │
+│ │                             │ │
+│ │ [Brenda]                    │ │
+│ │ I overheard the conductor   │ │
+│ │ mention laser grids...      │ │
+│ │                             │ │
+│ └─────────────────────────────┘ │
+│                                 │
+│ ┌─────────────────────────────┐│
+│ │ Type your response...       ││← Text input
+│ └─────────────────────────────┘│
+│  [SEND] [QUICK RESPONSES]       │← Send + back button
 │                                 │
 └─────────────────────────────────┘
 ```
 
 **Components:**
-- [ ] Back button
-- [ ] NPC name
-- [ ] NPC personality traits
-- [ ] Chat history
-  - [ ] NPC messages (left-aligned)
-  - [ ] Your messages (right-aligned)
-- [ ] Response options (3-4 buttons)
-- [ ] Success/failure indicator (after response)
+- [ ] Back button (returns to game screen)
+- [ ] Info button (shows objective reminder)
+- [ ] NPC character portrait (large, 280x280px, Borderlands style)
+- [ ] NPC name (prominent)
+- [ ] NPC personality traits (small text, under name)
+- [ ] Chat history area (scrollable)
+  - [ ] NPC messages (left-aligned, gray bubble)
+  - [ ] Your messages (right-aligned, gold bubble)
+  - [ ] Message labels ("Brenda" / "You")
+  - [ ] Timestamps (optional)
+  - [ ] Auto-scroll to bottom on new messages
+- [ ] Quick response options (2-3 pre-written suggestions)
+  - [ ] Speech bubble icon 💬
+  - [ ] Short, context-appropriate responses
+  - [ ] Generated dynamically by LLM based on conversation
+- [ ] "Write your own..." button (switches to free-form mode)
+  - [ ] Pencil icon ✍️
+  - [ ] Opens text input field
+- [ ] Text input field (when in free-form mode)
+  - [ ] Placeholder: "Type your response..."
+  - [ ] Send button
+  - [ ] "Quick Responses" button (returns to quick mode)
+- [ ] Success/failure indicator (modal overlay)
+  - [ ] Green success banner when info obtained
+  - [ ] Red failure banner when NPC shuts down
+
+**Hybrid Interaction System:**
+
+**Quick Response Mode (Default):**
+- Shows 2-3 contextual response options
+- Easy for players who want guidance
+- Faster interaction
+- Good for new players
+
+**Free-Form Mode:**
+- Tap "Write your own..."
+- Text input appears
+- Full freedom to say anything
+- Good for experienced players / social engineering
+- Can return to quick responses anytime
 
 **Actions:**
-- Tap response option → Send to LLM → Get NPC reaction
-- Success → Task complete, unlock next task
-- Failure → Retry or alternative path
+- Tap quick response → Send to LLM → Get NPC reaction → Show new quick options
+- Tap "Write your own..." → Show text input field
+- Type message → Tap "Send" → Get NPC reaction
+- Tap "Quick Responses" → Return to quick response mode
+- Success detection (LLM-based) → Show success modal
+- Failure detection (NPC shuts down) → Show failure modal
+- Tap Info (ℹ️) → Show objective reminder modal
+- Tap Back → Return to game screen (conversation saved)
+
+**Design Notes:**
+
+**Why Hybrid Approach:**
+- ✅ **Accessibility**: Quick responses lower barrier to entry
+- ✅ **Depth**: Free-form allows skilled social engineering
+- ✅ **Flexibility**: Players choose their comfort level
+- ✅ **Replayability**: Different approaches each time
+- ✅ **Difficulty scaling**: Easy mode = use quick responses, Hard mode = need free-form finesse
+
+**Quick Response Generation:**
+- Generated by LLM based on:
+  - Current conversation context
+  - NPC personality
+  - Player's objective
+  - Difficulty level
+- Always include 1 safe option, 1 risky option, 1 creative option
+- Update after each exchange
+
+**Visual Inspiration:**
+- Based on working prototype: `prototype/npc_chat_test.html`
+- Chat UI similar to messaging apps (familiar UX)
+- Character portrait from `generate_npc_image.py` (Borderlands style)
+- Clean, dark theme matching overall game aesthetic
 
 ---
 
@@ -1187,7 +1285,7 @@ Icon size:              24px
 
 **Phase 2 (Should Have):**
 11. ✅ Team View
-12. ✅ NPC Conversation
+12. ✅ NPC Conversation (hybrid: quick responses + free-form text)
 13. ✅ Search Screen
 
 **Phase 3 (Nice to Have):**
