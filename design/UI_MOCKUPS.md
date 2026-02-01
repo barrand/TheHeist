@@ -1141,13 +1141,14 @@ Landing Page
 ┌─────────────────────────────────┐
 │  < Back                         │
 │                                 │
-│  🎯 YOUR OBJECTIVE          ✅  │← High confidence
+│  🎯 WHAT THE TEAM NEEDS         │
 │  ┌───────────────────────────┐ │
-│  │ Find out about Car 7's    │ │← What to learn
-│  │ security systems          │ │
+│  │ 🟢🟢🟢 Car 7 security    │ │← High confidence
+│  │ 🟡🟡⚪ Vault code        │ │← Medium confidence
+│  │ 🔴⚪⚪ Escape routes     │ │← Low confidence
 │  │                           │ │
-│  │ 🟢🟢🟢 Brenda likely     │ │← Confidence meter
-│  │         knows this!       │ │
+│  │ Brenda likely knows       │ │← Summary
+│  │ about security!           │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
@@ -1224,25 +1225,28 @@ Landing Page
 - [ ] Back button (returns to game screen)
 - [ ] Objective section (always visible at top)
   - [ ] Header adapts to context:
-    - "🎯 YOUR OBJECTIVE ✅" (high confidence - NPC has info)
-    - "🎯 YOUR GOAL 🤔" (medium confidence - might help)
-    - "🎯 WHAT YOU'RE SEEKING ❓" (low confidence - probably doesn't know)
+    - "🎯 YOUR OBJECTIVE ✅" (single objective, high confidence)
+    - "🎯 WHAT THE TEAM NEEDS" (multiple objectives, mixed confidence)
+    - "🎯 WHAT YOU'RE SEEKING ❓" (low confidence overall)
     - "🎯 YOUR OBJECTIVE ⚠️" (action needed - complete request first)
-  - [ ] Clear description of what to learn/accomplish
-  - [ ] Confidence indicator (visual meter)
-    - [ ] 🟢🟢🟢 = High (NPC likely knows)
-    - [ ] 🟡🟡⚪ = Medium (might know)
-    - [ ] 🔴⚪⚪ = Low (probably doesn't know)
-    - [ ] 🟠🟠🟠 = Action needed (give item first)
-  - [ ] Confidence message:
-    - "[NPC Name] likely knows this!"
-    - "[NPC Name] might know something"
-    - "[NPC Name] probably doesn't know"
-    - "Complete request first!"
-  - [ ] Compact but readable (3-4 lines with indicator)
+  - [ ] Objective list (1-4 items typically)
+    - [ ] Each objective has individual confidence indicator
+    - [ ] 🟢🟢🟢 = High (NPC likely knows THIS specific info)
+    - [ ] 🟡🟡⚪ = Medium (might know THIS)
+    - [ ] 🔴⚪⚪ = Low (probably doesn't know THIS)
+    - [ ] 🟠 = Prerequisite (need to complete trade/request first)
+  - [ ] Smart summary message below objectives:
+    - Highlights what NPC likely knows
+    - Examples:
+      - "Rosa likely knows about guard schedules!"
+      - "Rosa knows all of this!" (if all green)
+      - "Tommy probably doesn't know any of this" (if all red)
+      - "Eddie might know something" (if mixed)
+  - [ ] Shows up to 4 team objectives at once
+  - [ ] Compact but readable (4-6 lines total)
   - [ ] Golden/yellow text to stand out
   - [ ] Stays visible while scrolling chat
-  - [ ] Provides context even if talking to wrong NPC
+  - [ ] Provides full context - player can ask about any/all objectives
 - [ ] NPC character portrait (large, 280x280px, Borderlands style)
 - [ ] NPC name (prominent)
 - [ ] NPC personality traits (small text, under name)
@@ -1326,7 +1330,7 @@ Landing Page
 
 **Visual Examples of Objective Box:**
 
-*HIGH CONFIDENCE - NPC definitely has info (from task):*
+*SINGLE OBJECTIVE - HIGH CONFIDENCE:*
 ```
 🎯 YOUR OBJECTIVE          ✅
 ┌───────────────────────────┐
@@ -1338,40 +1342,78 @@ Landing Page
 └───────────────────────────┘
 ```
 
-*MEDIUM CONFIDENCE - Exploring, might help:*
+*MULTIPLE OBJECTIVES - Mixed Confidence (Most Common):*
 ```
-🎯 YOUR GOAL              🤔
+🎯 WHAT THE TEAM NEEDS
 ┌───────────────────────────┐
-│ Team: Steal the artifact  │
-│ Talk to Eddie, see what   │
-│ he knows                  │
+│ 🟢🟢🟢 Guard schedules   │← High (knows this!)
+│ 🟡🟡⚪ Vault code        │← Medium (might know)
+│ 🔴⚪⚪ Escape routes     │← Low (probably not)
 │                           │
-│ 🟡🟡⚪ Eddie might       │← Yellow/gray = medium
-│         know something    │
+│ Rosa likely knows about   │← Smart summary
+│ guard schedules!          │
 └───────────────────────────┘
 ```
 
-*LOW CONFIDENCE - Probably wrong NPC:*
+*ALL HIGH CONFIDENCE - Jackpot NPC:*
+```
+🎯 WHAT THE TEAM NEEDS     ✅
+┌───────────────────────────┐
+│ 🟢🟢🟢 Loading dock code │
+│ 🟢🟢🟢 Shift change time │
+│ 🟢🟢🟢 Security gaps     │
+│                           │
+│ Rosa knows all of this!   │← Talk to her!
+└───────────────────────────┘
+```
+
+*ALL LOW CONFIDENCE - Wrong NPC:*
 ```
 🎯 WHAT YOU'RE SEEKING    ❓
 ┌───────────────────────────┐
-│ Find the vault            │
-│ combination (ask around)  │
+│ 🔴⚪⚪ Vault code        │
+│ 🔴⚪⚪ Guard schedule    │
+│ 🔴⚪⚪ Escape route      │
 │                           │
-│ 🔴⚪⚪ Tommy probably    │← Red/gray = low
-│         doesn't know      │
+│ Tommy probably doesn't    │← Try someone else
+│ know any of this          │
 └───────────────────────────┘
 ```
 
-*NPC REQUEST - Need to complete trade first:*
+*NPC REQUEST (Before Sharing):*
 ```
 🎯 YOUR OBJECTIVE          ⚠️
 ┌───────────────────────────┐
-│ Give Brenda chips →       │
-│ Learn about security      │
+│ 🟠 Give Brenda chips      │← Must do first
+│ 🟢 Then: Learn security   │← After trade
 │                           │
-│ 🟠🟠🟠 Complete request  │← Orange = action needed
-│         first!            │
+│ Complete request first!   │
+└───────────────────────────┘
+```
+
+*AFTER LEARNING INFO (Progress Update):*
+```
+🎯 WHAT THE TEAM NEEDS
+┌───────────────────────────┐
+│ ✅ Guard schedules        │← Learned!
+│ 🟡🟡⚪ Vault code        │← Still seeking
+│ 🔴⚪⚪ Escape routes     │← Still seeking
+│                           │
+│ Keep talking, Rosa might  │← Encouragement
+│ know more!                │
+└───────────────────────────┘
+```
+
+*ALL OBJECTIVES COMPLETE:*
+```
+🎯 OBJECTIVES COMPLETE     🎉
+┌───────────────────────────┐
+│ ✅ Guard schedules        │
+│ ✅ Loading dock code      │
+│ ✅ Shift change time      │
+│                           │
+│ Success! Mission info     │
+│ obtained!                 │
 └───────────────────────────┘
 ```
 
@@ -1405,12 +1447,99 @@ Landing Page
 - Header: "YOUR OBJECTIVE" + ⚠️
 - Message: "Complete request first!"
 
-**How Confidence is Determined:**
-- **Task metadata**: If task says "Talk to [Specific NPC]" → High
-- **NPC role**: Security guard for security questions → Medium
-- **Location context**: NPC at relevant location → Medium
-- **Random NPC**: Street vendor for vault questions → Low
-- **Prerequisite exists**: Need to give item first → Action Needed
+**How Confidence is Determined (Per Objective):**
+
+Each objective gets its own confidence rating based on:
+
+**HIGH (🟢🟢🟢) Confidence:**
+- Specific task mentions this NPC by name for this objective
+- NPC's role directly relates to this info (security guard → guard schedules)
+- Generated experience explicitly links NPC to this info
+- Task description says "Talk to [NPC] - Learn [specific thing]"
+
+**MEDIUM (🟡🟡⚪) Confidence:**
+- NPC's role tangentially relates (parking attendant → security schedules)
+- NPC at location relevant to objective (kitchen staff → food locations)
+- General connection but not confirmed
+
+**LOW (🔴⚪⚪) Confidence:**
+- NPC role unrelated to objective (food vendor → vault codes)
+- Random NPC, player exploring
+- No logical connection
+
+**ACTION NEEDED (🟠):**
+- Prerequisite task exists (give item, complete favor)
+- Must do something before NPC will share
+
+**Multiple Objectives Example:**
+
+Team needs 3 things, talking to security guard Rosa:
+- 🟢🟢🟢 Guard schedules (her job = definitely knows)
+- 🟡🟡⚪ Loading dock access (might know, related)
+- 🔴⚪⚪ Vault combination (not her area)
+
+**Conversation Strategy:**
+Players can ask about ALL objectives in one conversation:
+1. Start with high confidence (🟢) - most likely to succeed
+2. If going well, ask about medium (🟡) - worth trying
+3. If rapport strong, try low (🔴) - might surprise you!
+
+**Benefits of Per-Objective Confidence:**
+- Shows which questions to prioritize
+- Players can strategize conversation flow
+- One NPC might help with multiple things
+- Clear what to ask vs what to skip
+- Encourages asking about unexpected connections
+
+**Multi-Objective Conversation Flow:**
+
+**Example conversation with 3 objectives:**
+
+*Start of conversation:*
+```
+Team Needs:
+🟢🟢🟢 Guard schedules
+🟡🟡⚪ Vault code
+🔴⚪⚪ Escape routes
+```
+
+*Player asks about guard schedules → Success!*
+```
+Team Needs:
+✅ Guard schedules        ← Learned!
+🟡🟡⚪ Vault code
+🔴⚪⚪ Escape routes
+
+Keep talking!
+```
+
+*Player asks about vault code → NPC doesn't know*
+```
+Team Needs:
+✅ Guard schedules
+❌ Vault code            ← Asked, doesn't know
+🔴⚪⚪ Escape routes
+
+Rosa didn't know about vault
+```
+
+*Player can still ask about escape routes (worth shot)*
+
+**Benefits:**
+- One conversation can cover multiple objectives
+- Clear visual progress (checkmarks appear)
+- Prioritize high-confidence questions first
+- Try medium/low if conversation going well
+- Players know what's been covered vs still seeking
+
+**Why Multi-Objective Display:**
+- ✅ **Full Context**: Show everything team needs
+- ✅ **Priority Guidance**: Green first, then yellow, then red
+- ✅ **Efficient Conversations**: Ask multiple things in one chat
+- ✅ **Progress Tracking**: Checkmarks show what's learned
+- ✅ **Encourage Exploration**: Low confidence still visible (try anyway!)
+- ✅ **Realistic**: One NPC can help with multiple things
+- ✅ **Strategic**: Players plan question order based on confidence
 
 **Why Confidence Indicators:**
 - ✅ **Instant feedback**: Know if you're talking to right person
