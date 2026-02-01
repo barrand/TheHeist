@@ -5,6 +5,7 @@ Generate NPC character images using Google's Gemini 2.5 Flash Image (nano-banana
 Art style: Borderlands-style 2D illustration (cell-shaded comic book aesthetic)
 - Bold thick outlines, vibrant colors, graphic novel style
 - Hand-drawn look with simplified details and expressive characters
+- Integrates UI theme accent colors for visual consistency
 
 Benefits of nano-banana:
 - ⚡ Lightning fast (optimized for high-volume, low-latency)
@@ -12,9 +13,17 @@ Benefits of nano-banana:
 - 🎭 Character consistency across multiple generations
 - ✨ Conversational editing capabilities
 
+Color Schemes:
+- "gold" - Classic heist luxury (gold jewelry, bronze accents)
+- "blue" - Tech heist (cyan glowing, purple LEDs)
+- "purple" - Night heist (vibrant purple, magenta)
+- "red" - High stakes (red bandanas, orange highlights)
+- "green" - Money heist (emerald details, gold jewelry)
+- "orange" - Vintage heist (warm orange, mustard yellow)
+
 Usage:
-    python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --ethnicity "Latina" --clothing "reflective vest and uniform" --background "parking garage" --expression "bored"
-    python generate_npc_image.py --name "Brenda Williams" --role "Train Passenger" --gender female --ethnicity "Black" --clothing "cardigan" --background "train platform" --expression "chatty"
+    python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --ethnicity "Latina" --clothing "reflective vest" --background "parking garage" --expression "bored" --accent-colors "gold"
+    python generate_npc_image.py --name "Alex Kim" --role "Hacker" --gender person --ethnicity "Asian" --clothing "tech hoodie" --background "server room" --expression "focused" --accent-colors "blue"
     
 Requirements:
     pip install google-genai pillow
@@ -42,7 +51,7 @@ inked linework, simplified details, expressive characters"""
 
 def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=None, 
                        background=None, expression="friendly", details=None, 
-                       attitude="approachable", output_file=None):
+                       attitude="approachable", accent_colors=None, output_file=None):
     """Generate NPC character portrait using Gemini 2.5 Flash Image (nano-banana) in Borderlands style.
     
     Args:
@@ -55,6 +64,8 @@ def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=Non
         expression: Facial expression (default: "friendly")
         details: Additional visual details (e.g., "holding clipboard", "wearing glasses")
         attitude: Overall vibe (e.g., "approachable", "tired", "cheerful")
+        accent_colors: List of color accents for UI theme consistency (e.g., ["gold jewelry", "bronze badge"])
+                      or color scheme name (e.g., "gold", "blue", "purple", "red", "green", "orange")
         output_file: Custom output path (optional)
     """
     
@@ -72,7 +83,27 @@ def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=Non
     if details:
         print(f"   Details: {details}")
     print(f"   Attitude: {attitude}")
+    if accent_colors:
+        print(f"   Accent Colors: {accent_colors}")
     print()
+    
+    # Process accent colors - map scheme names to specific color instructions
+    color_instructions = None
+    if accent_colors:
+        if isinstance(accent_colors, str):
+            # Scheme name provided - map to color palette
+            scheme_map = {
+                "gold": ["gold jewelry and accessories", "bronze belt buckle or badge", "warm metallic accents"],
+                "blue": ["cyan glowing elements", "electric blue tech accessories", "purple LED accents"],
+                "purple": ["vibrant purple clothing accents", "magenta accessories", "cyan highlights"],
+                "red": ["red bandana or scarf", "orange highlights", "warm tones in clothing"],
+                "green": ["emerald green money-themed details", "gold jewelry", "turquoise accents"],
+                "orange": ["warm orange clothing elements", "mustard yellow accessories", "retro warm color palette"]
+            }
+            color_instructions = scheme_map.get(accent_colors.lower(), None)
+        elif isinstance(accent_colors, list):
+            # Custom color list provided
+            color_instructions = accent_colors
     
     # Build character description
     character_parts = []
@@ -90,6 +121,10 @@ def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=Non
     # Clothing
     if clothing:
         character_parts.append(f"wearing {clothing}")
+    
+    # Accent colors (integrated into character description)
+    if color_instructions:
+        character_parts.append(", ".join(color_instructions))
     
     # Additional details
     if details:
@@ -181,24 +216,27 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Latina female parking attendant
+  # Latina female parking attendant (Gold Heist scheme)
   python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" \\
     --gender female --ethnicity "Latina" \\
     --clothing "reflective vest and uniform" \\
     --background "parking garage with security monitors and cars" \\
-    --expression "bored" --details "looking at phone" --attitude "observant but tired"
+    --expression "bored" --details "looking at phone" --attitude "observant but tired" \\
+    --accent-colors "gold"
   
-  # Asian male food truck owner
+  # Asian male food truck owner (Electric Blue scheme)
   python generate_npc_image.py --name "Tommy Chen" --role "Food Truck Owner" \\
     --gender male --ethnicity "Asian" \\
     --clothing "chef's apron and hat" --background "food truck with menu board" \\
-    --expression "friendly" --details "holding coffee cup" --attitude "chatty"
+    --expression "friendly" --details "holding coffee cup" --attitude "chatty" \\
+    --accent-colors "blue"
   
-  # Black male security guard
+  # Black male security guard (Custom colors)
   python generate_npc_image.py --name "Marcus Johnson" --role "Security Guard" \\
     --gender male --ethnicity "Black" \\
     --clothing "security uniform and badge" --background "museum hallway with artwork" \\
-    --expression "serious" --attitude "professional"
+    --expression "serious" --attitude "professional" \\
+    --accent-colors "gold badge, emerald green tie, bronze buttons"
         """
     )
     
@@ -254,11 +292,25 @@ Examples:
     )
     
     parser.add_argument(
+        '--accent-colors',
+        help='Color scheme for UI consistency: "gold", "blue", "purple", "red", "green", "orange", or custom colors (e.g., "gold jewelry, cyan glowing eyes")'
+    )
+    
+    parser.add_argument(
         '--output',
         help='Output file path (default: output/npc_images/{name}.png)'
     )
     
     args = parser.parse_args()
+    
+    # Process accent colors - split comma-separated string into list if needed
+    accent_colors = None
+    if args.accent_colors:
+        # Check if it's a scheme name (single word) or custom colors (comma-separated)
+        if ',' in args.accent_colors:
+            accent_colors = [c.strip() for c in args.accent_colors.split(',')]
+        else:
+            accent_colors = args.accent_colors
     
     # Generate the NPC image
     generate_npc_image(
@@ -271,6 +323,7 @@ Examples:
         expression=args.expression,
         details=args.details,
         attitude=args.attitude,
+        accent_colors=accent_colors,
         output_file=args.output
     )
 
