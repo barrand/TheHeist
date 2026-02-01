@@ -1135,7 +1135,13 @@ Landing Page
 
 ```
 ┌─────────────────────────────────┐
-│  < Back               [Info] ℹ️  │
+│  < Back                         │
+│                                 │
+│  🎯 YOUR OBJECTIVE              │
+│  ┌───────────────────────────┐ │
+│  │ Find out about Car 7's    │ │← What to learn
+│  │ security systems          │ │
+│  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
 │  │                           │ │
@@ -1184,7 +1190,10 @@ Landing Page
 
 ```
 ┌─────────────────────────────────┐
-│  < Back               [Info] ℹ️  │
+│  < Back                         │
+│                                 │
+│  🎯 Find out about Car 7's      │← Objective stays
+│     security systems            │   visible
 │                                 │
 │ ┌──── CHAT HISTORY ──────────┐ │
 │ │                             │ │
@@ -1204,7 +1213,17 @@ Landing Page
 
 **Components:**
 - [ ] Back button (returns to game screen)
-- [ ] Info button (shows objective reminder)
+- [ ] Objective section (always visible at top)
+  - [ ] "🎯 YOUR OBJECTIVE" header
+  - [ ] Clear description of what info to extract
+  - [ ] Examples:
+    - "Find out about Car 7's security systems"
+    - "Learn where the stolen painting is stored"
+    - "Discover the vault combination"
+    - "Get the access code for the loading dock"
+  - [ ] Compact but readable (2-3 lines max)
+  - [ ] Golden/yellow text to stand out
+  - [ ] Stays visible while scrolling chat
 - [ ] NPC character portrait (large, 280x280px, Borderlands style)
 - [ ] NPC name (prominent)
 - [ ] NPC personality traits (small text, under name)
@@ -1249,12 +1268,25 @@ Landing Page
 - Tap "Write your own..." → Show text input field
 - Type message → Tap "Send" → Get NPC reaction
 - Tap "Quick Responses" → Return to quick response mode
-- Success detection (LLM-based) → Show success modal
+- Success detection (LLM-based) → Show success modal with what was learned
 - Failure detection (NPC shuts down) → Show failure modal
-- Tap Info (ℹ️) → Show objective reminder modal
-- Tap Back → Return to game screen (conversation saved)
+- Tap Back → Return to game screen (conversation saved, progress persists)
 
 **Design Notes:**
+
+**Why Show Objective at Top:**
+- ✅ **Constant Reminder**: Players always know what they're trying to learn
+- ✅ **Reduces Confusion**: No wondering "what am I doing here?"
+- ✅ **Guides Conversation**: Players can steer chat toward goal
+- ✅ **No Hidden Info Button**: Important info should be visible, not buried
+- ✅ **Strategic Context**: Helps players choose quick responses or craft free-form messages
+- ✅ **Success Recognition**: Players know when they've achieved the objective
+
+**Objective Examples:**
+- "Find out about Car 7's security systems" (general)
+- "Learn the exact time of the artifact shipment" (specific)
+- "Get the 6-digit vault combination" (very specific)
+- "Discover which exit is least guarded" (exploratory)
 
 **Why Hybrid Approach:**
 - ✅ **Accessibility**: Quick responses lower barrier to entry
