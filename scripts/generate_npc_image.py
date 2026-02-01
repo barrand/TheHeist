@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """
-Generate NPC character images using Google's Imagen 4.
+Generate NPC character images using Google's Gemini 2.5 Flash Image (nano-banana).
 
 Art style: Borderlands-style 2D illustration (cell-shaded comic book aesthetic)
 - Bold thick outlines, vibrant colors, graphic novel style
 - Hand-drawn look with simplified details and expressive characters
 
+Benefits of nano-banana:
+- ⚡ Lightning fast (optimized for high-volume, low-latency)
+- 💰 Significantly cheaper than Imagen 4
+- 🎭 Character consistency across multiple generations
+- ✨ Conversational editing capabilities
+
 Usage:
-    python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --clothing "reflective vest and uniform" --background "parking garage" --expression "bored"
-    python generate_npc_image.py --name "Tommy Chen" --role "Food Truck Owner" --gender male --clothing "chef's apron and hat" --background "food truck" --details "holding spatula"
+    python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --ethnicity "Latina" --clothing "reflective vest and uniform" --background "parking garage" --expression "bored"
+    python generate_npc_image.py --name "Brenda Williams" --role "Train Passenger" --gender female --ethnicity "Black" --clothing "cardigan" --background "train platform" --expression "chatty"
     
 Requirements:
     pip install google-genai pillow
@@ -37,7 +43,7 @@ inked linework, simplified details, expressive characters"""
 def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=None, 
                        background=None, expression="friendly", details=None, 
                        attitude="approachable", output_file=None):
-    """Generate NPC character portrait using Imagen 4 in Borderlands style.
+    """Generate NPC character portrait using Gemini 2.5 Flash Image (nano-banana) in Borderlands style.
     
     Args:
         name: Character name
@@ -110,19 +116,14 @@ portrait view, centered, waist-up composition"""
     print()
     
     try:
-        print("🚀 Calling Imagen 4 API...")
-        print("   This may take 10-20 seconds...")
+        print("🚀 Calling Gemini 2.5 Flash Image (nano-banana)...")
+        print("   Lightning fast generation...")
         print()
         
-        # Use Imagen 4 for image generation
-        response = client.models.generate_images(
-            model='imagen-4.0-generate-001',
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio='1:1',  # Square portrait
-                person_generation='allow_adult'  # Allow generating people
-            )
+        # Use Gemini 2.5 Flash Image (nano-banana) for fast, cheap image generation
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=prompt,
         )
         
         # Determine output path
@@ -135,33 +136,39 @@ portrait view, centered, waist-up composition"""
         
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Save the first (and only) generated image
-        if response.generated_images:
-            image = response.generated_images[0].image
-            image.save(str(output_path))
-            
-            print(f"✅ Generated character portrait!")
-            print(f"💾 Saved to: {output_path}")
-            
-            # Try to get dimensions (may not work with all PIL Image types)
-            try:
-                print(f"📏 Size: {image.width}x{image.height}")
-            except:
-                pass
-            
-            print()
-            print("ℹ️  Note: Image includes SynthID watermark (Google's authenticity mark)")
-            print()
-            
-            return str(output_path)
-        else:
-            print("❌ Error: No images generated")
+        # Extract image from response parts
+        image_saved = False
+        for part in response.parts:
+            if part.inline_data is not None:
+                # Convert inline_data to PIL Image and save
+                image = part.as_image()
+                image.save(str(output_path))
+                
+                print(f"✅ Generated character portrait!")
+                print(f"💾 Saved to: {output_path}")
+                
+                # Try to get dimensions
+                try:
+                    print(f"📏 Size: {image.width}x{image.height}")
+                except:
+                    pass
+                
+                print()
+                print("ℹ️  Note: Image includes SynthID watermark (Google's authenticity mark)")
+                print("⚡ Generated using nano-banana (fast & cost-effective!)")
+                print()
+                
+                image_saved = True
+                return str(output_path)
+        
+        if not image_saved:
+            print("❌ Error: No image generated in response")
             sys.exit(1)
         
     except Exception as e:
         print(f"❌ Error generating image: {e}")
         print(f"   This might be because:")
-        print(f"   - Imagen API is not enabled on your account (check Google AI Studio)")
+        print(f"   - Gemini API is not enabled on your account (check Google AI Studio)")
         print(f"   - Image generation is not available in your region")
         print(f"   - API quota exceeded")
         print(f"   - Missing dependency: 'google-genai' (run: pip install google-genai)")
@@ -170,7 +177,7 @@ portrait view, centered, waist-up composition"""
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate NPC character portraits using Imagen 4 (Borderlands art style)',
+        description='Generate NPC character portraits using Gemini 2.5 Flash Image / nano-banana (Borderlands art style)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
