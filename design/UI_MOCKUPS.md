@@ -1,12 +1,23 @@
 # The Heist - UI Mockups & Screen Flow
 
+> 💡 **For detailed design specs (colors, typography, spacing, components), see:** [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md)
+
 ## 🎨 Design Principles
 
 - **Mobile-First**: All screens designed for mobile web (portrait orientation)
-- **Dark Theme**: Heist/noir aesthetic (black/dark gray background, white/gold text)
+- **Dark Theme**: Heist/noir aesthetic (black #0F0F0F background, white/gold #D4AF37 text)
 - **Large Touch Targets**: Minimum 44x44pt for buttons (accessibility)
 - **Simple Navigation**: No more than 2 taps to any action
 - **Real-Time Updates**: Show live changes when teammates act
+- **Borderlands Art Style**: Character portraits (2D, cell-shaded, comic book)
+
+**Quick Color Reference:**
+- Background: `#0F0F0F` (deep black), `#1E1E1E` (cards)
+- Accent/Gold: `#D4AF37` (buttons, highlights)
+- Text: `#FFFFFF` (primary), `#B0B0B0` (secondary)
+- Success: `#4CAF50` (green)
+- Warning: `#FFA726` (orange)
+- Danger: `#E53935` (red)
 
 ---
 
