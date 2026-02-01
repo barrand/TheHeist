@@ -37,50 +37,32 @@ def generate_npc_image(name, role, scenario="heist", traits=None, output_file=No
     # Build character description
     trait_text = f", {traits}" if traits else ""
     
-    # Build scenario context
-    scenario_context = {
-        "museum": "museum security, art gallery, sophisticated setting",
-        "train": "train station, railway, vintage locomotive setting",
-        "bank": "bank vault, financial institution, professional setting",
-        "mansion": "luxury estate, wealthy household, elegant setting",
-        "casino": "casino floor, gambling hall, glamorous setting",
-        "heist": "crime scene, urban setting, nighttime atmosphere"
-    }.get(scenario.lower(), "urban heist setting")
+    # Build character description
+    character_desc = f"{role}"
+    if traits:
+        # Add personality traits to description
+        trait_words = traits.split(',')
+        character_desc += f", {', '.join(trait_words)}"
     
-    # Construct prompt in Prison Boss style
-    prompt = f"""Character portrait of {name}, a {role}{trait_text}.
-
-ART STYLE: Prison Boss mobile game style
-- Bright, vibrant, saturated colors
-- Cartoony and stylized (NOT realistic)
-- Bold outlines and cel-shaded look
-- Exaggerated features and expressions
-- Fun, playful, slightly quirky
-- Mobile game character design aesthetic
-- Clean, simple shapes with personality
-
-CHARACTER DETAILS:
-- Profession: {role}
-- Context: {scenario_context}
-- Make them memorable and distinctive
-- Show personality through pose and expression
-- Appropriate clothing/uniform for their role
-- Friendly but characterful
-
-COMPOSITION:
-- Portrait style (chest up or waist up)
-- Centered character
-- Simple, clean background (subtle scene context)
-- Well-lit, bright mood
-- Professional mobile game character art quality
-
-AVOID:
-- Photorealism
-- Dark, gritty, or serious tones
-- Complex, busy backgrounds
-- Weapons or threatening elements
-- Overly detailed or realistic rendering
-"""
+    # Build scenario-specific background
+    scenario_background = {
+        "museum": "museum setting",
+        "train": "train station setting", 
+        "bank": "bank setting",
+        "mansion": "luxury mansion setting",
+        "casino": "casino setting",
+        "heist": "urban setting"
+    }.get(scenario.lower(), "simple background")
+    
+    # Construct prompt in Prison Boss low-poly 3D style
+    prompt = f"""low-poly 3D render of a {character_desc} character, cartoonish style,
+cell-shaded, exaggerated features, 
+bright saturated colors, simplified geometry, stylized facial features,
+clean flat shading, playful friendly expression, game character design,
+{scenario_background}, VR game aesthetic, toon shader, minimal detail,
+portrait view, centered character, mobile game art style,
+Prison Boss game aesthetic, fun and approachable look,
+appropriate clothing for {role}, distinctive personality"""
     
     print("📝 Prompt:")
     print(f"   '{name}' as Prison Boss-style {role}")
