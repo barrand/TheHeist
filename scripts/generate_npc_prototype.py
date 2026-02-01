@@ -553,14 +553,20 @@ def generate_npc_prototype_html(
             <div class="form-group">
                 <label class="form-label">Gemini API Key</label>
                 <input 
-                    type="text" 
+                    type="password" 
                     id="apiKeyInput" 
                     class="form-input" 
                     placeholder="Enter your API key..."
                     value=""
                 >
-                <div style="font-size: 11px; color: #888888; margin-top: 4px;">
-                    Get your key from <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #B565FF;">Google AI Studio</a>
+                <div style="font-size: 11px; color: #888888; margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Get your key from <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #B565FF;">Google AI Studio</a></span>
+                    <button 
+                        onclick="clearSavedApiKey(event)" 
+                        style="background: none; border: none; color: #FF6B9D; font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;"
+                    >
+                        Clear Saved Key
+                    </button>
                 </div>
             </div>
             
@@ -681,6 +687,27 @@ You are VERY protective of this information. You will only reveal it if the play
         let gameOver = false;
         let systemPrompt = '';
         
+        // Load saved API key from localStorage on page load
+        window.addEventListener('DOMContentLoaded', function() {{
+            const savedApiKey = localStorage.getItem('theheist_gemini_api_key');
+            if (savedApiKey) {{
+                document.getElementById('apiKeyInput').value = savedApiKey;
+            }}
+            
+            // Load saved difficulty preference
+            const savedDifficulty = localStorage.getItem('theheist_difficulty');
+            if (savedDifficulty) {{
+                DIFFICULTY = savedDifficulty;
+                document.querySelectorAll('.difficulty-option').forEach(opt => {{
+                    opt.classList.remove('selected');
+                    if (opt.dataset.difficulty === savedDifficulty) {{
+                        opt.classList.add('selected');
+                        document.getElementById('difficultyDesc').textContent = difficultyDescriptions[savedDifficulty];
+                    }}
+                }});
+            }}
+        }});
+        
         // Setup screen handlers
         document.querySelectorAll('.difficulty-option').forEach(option => {{
             option.addEventListener('click', function() {{
@@ -688,8 +715,17 @@ You are VERY protective of this information. You will only reveal it if the play
                 this.classList.add('selected');
                 DIFFICULTY = this.dataset.difficulty;
                 document.getElementById('difficultyDesc').textContent = difficultyDescriptions[DIFFICULTY];
+                // Save difficulty preference
+                localStorage.setItem('theheist_difficulty', DIFFICULTY);
             }});
         }});
+        
+        function clearSavedApiKey(event) {{
+            event.preventDefault();
+            localStorage.removeItem('theheist_gemini_api_key');
+            document.getElementById('apiKeyInput').value = '';
+            alert('Saved API key cleared');
+        }}
         
         function startConversation() {{
             API_KEY = document.getElementById('apiKeyInput').value.trim();
@@ -698,6 +734,9 @@ You are VERY protective of this information. You will only reveal it if the play
                 alert('Please enter your Gemini API key');
                 return;
             }}
+            
+            // Save API key to localStorage
+            localStorage.setItem('theheist_gemini_api_key', API_KEY);
             
             systemPrompt = npcPrompts[DIFFICULTY];
             
