@@ -2,14 +2,17 @@
 NPC Conversation Service
 Handles real-time NPC chat interactions using Google Gemini API
 
-Uses gemini-1.5-flash-8b for fast, cost-effective conversations during gameplay.
+Uses gemini-2.5-flash for fast, cost-effective conversations during gameplay.
 This service is specifically for NPC dialogue - not for image generation or 
 experience creation (those are separate services).
+
+Uses direct REST API instead of google-generativeai library to avoid gRPC issues.
 """
 
 import logging
 from typing import Optional
-import google.generativeai as genai
+import requests
+import json
 
 from app.models.npc import Objective, NPCInfo, ConfidenceLevel
 from app.core.config import get_settings
@@ -35,9 +38,10 @@ class NPCConversationService:
     def __init__(self):
         """Initialize Gemini service with API key from settings"""
         settings = get_settings()
-        genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel(settings.gemini_model)
-        logger.info(f"Initialized Gemini service with model: {settings.gemini_model}")
+        self.api_key = settings.gemini_api_key
+        self.model_name = settings.gemini_model
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta"
+        logger.info(f"Initialized Gemini service with model: {self.model_name}")
     
     def get_difficulty_instructions(self, difficulty: str) -> str:
         """Get NPC behavior instructions based on difficulty setting"""
@@ -133,8 +137,25 @@ Respond naturally as {npc.name}:"""
         
         try:
             prompt = self.build_npc_prompt(npc, objectives, player_message, difficulty)
-            response = self.model.generate_content(prompt)
-            npc_text = response.text
+            
+            # Use direct REST API call
+            url = f"{self.base_url}/{self.model_name}:generateContent?key={self.api_key}"
+            
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }],
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "maxOutputTokens": 200,
+                }
+            }
+            
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            
+            data = response.json()
+            npc_text = data["candidates"][0]["content"]["parts"][0]["text"]
             
             logger.info(f"NPC response: '{npc_text}'")
             return npc_text

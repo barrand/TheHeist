@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     class Config:
-        env_file = ".env"
+        env_file = "../.env"  # Load from project root
         case_sensitive = False
 
 
@@ -48,4 +48,11 @@ def get_settings() -> Settings:
     Get cached application settings
     Use @lru_cache to load settings once and reuse across requests
     """
+    # Force load from .env file, ignoring environment variables
+    import os
+    from dotenv import load_dotenv
+    
+    # Load .env and override any existing environment variables
+    load_dotenv("../.env", override=True)
+    
     return Settings()
