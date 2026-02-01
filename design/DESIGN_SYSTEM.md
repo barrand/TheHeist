@@ -11,20 +11,24 @@
 
 ## 🎨 Color Palette
 
+> **🌆 LOCKED IN: Neon Purple Theme** - Night heist, stylish, distinctive
+
 ### Primary Colors
 
 **Background:**
 ```css
---color-bg-primary:    #0F0F0F  /* Deep black - main background */
---color-bg-secondary:  #1E1E1E  /* Dark gray - cards, modals */
---color-bg-tertiary:   #2A2A2A  /* Medium gray - inputs, hover states */
+--color-bg-primary:    #0D0517  /* Deep purple-black - main background */
+--color-bg-secondary:  #1A0F2E  /* Dark purple - cards, modals */
+--color-bg-tertiary:   #2A1A45  /* Medium purple - inputs, hover states */
 ```
 
 **Accent/Interactive:**
 ```css
---color-accent-primary:   #D4AF37  /* Gold - primary buttons, highlights */
---color-accent-hover:     #E5C158  /* Lighter gold - hover state */
---color-accent-pressed:   #B8941F  /* Darker gold - pressed state */
+--color-accent-primary:   #B565FF  /* Vibrant purple - primary buttons, highlights */
+--color-accent-hover:     #D199FF  /* Light purple - hover state */
+--color-accent-pressed:   #8B3FCC  /* Deep purple - pressed state */
+--color-accent-secondary: #FF00FF  /* Hot magenta - secondary accents */
+--color-accent-tertiary:  #00E5FF  /* Cyan blue - cool accents */
 ```
 
 **Text:**
