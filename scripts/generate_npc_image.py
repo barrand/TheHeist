@@ -119,7 +119,13 @@ AVOID:
             
             print(f"✅ Generated character portrait!")
             print(f"💾 Saved to: {output_path}")
-            print(f"📏 Size: {image.width}x{image.height}")
+            
+            # Try to get dimensions (may not work with all PIL Image types)
+            try:
+                print(f"📏 Size: {image.width}x{image.height}")
+            except:
+                pass
+            
             print()
             print("ℹ️  Note: Image includes SynthID watermark (Google's authenticity mark)")
             print()
