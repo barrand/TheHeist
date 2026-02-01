@@ -1,5 +1,11 @@
 # Google Gemini API
 google-generativeai>=0.3.0
 
+# Google Imagen API (for NPC image generation)
+google-genai>=0.1.0
+
 # Environment variable management
 python-dotenv>=1.0.0
+
+# Image processing
+pillow>=10.0.0

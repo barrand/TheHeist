@@ -33,3 +33,6 @@ output/
 
 # Prototype files (contains API keys for testing)
 prototype/
+
+# Generated NPC images (can be large)
+output/npc_images/
