@@ -33,14 +33,16 @@ VR game aesthetic, toon shader, minimal detail,
 low-poly 3D model, mobile game art style"""
 
 
-def generate_npc_image(name, role, gender="person", clothing=None, background=None, 
-                       expression="friendly", details=None, attitude="approachable", output_file=None):
+def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=None, 
+                       background=None, expression="friendly", details=None, 
+                       attitude="approachable", output_file=None):
     """Generate NPC character portrait using Imagen 4 in Prison Boss style.
     
     Args:
         name: Character name
         role: Character's job/role (e.g., "Security Guard", "Food Truck Owner")
         gender: "male", "female", or "person" (default: "person")
+        ethnicity: Character ethnicity (e.g., "Latina", "Asian", "Black", "White", "Middle Eastern")
         clothing: What they wear (e.g., "reflective vest and uniform", "chef's apron")
         background: Setting (e.g., "parking garage", "food truck", "museum hall")
         expression: Facial expression (default: "friendly")
@@ -53,6 +55,8 @@ def generate_npc_image(name, role, gender="person", clothing=None, background=No
     print(f"   Name: {name}")
     print(f"   Role: {role}")
     print(f"   Gender: {gender}")
+    if ethnicity:
+        print(f"   Ethnicity: {ethnicity}")
     if clothing:
         print(f"   Clothing: {clothing}")
     if background:
@@ -65,6 +69,10 @@ def generate_npc_image(name, role, gender="person", clothing=None, background=No
     
     # Build character description
     character_parts = []
+    
+    # Ethnicity (if specified)
+    if ethnicity:
+        character_parts.append(ethnicity)
     
     # Gender and role
     if gender in ["male", "female"]:
@@ -82,9 +90,12 @@ def generate_npc_image(name, role, gender="person", clothing=None, background=No
     
     character_description = ", ".join(character_parts)
     
-    # Background setting
+    # Build detailed background setting
     if not background:
-        background = "simple indoor setting"
+        background = "simple colorful indoor setting with ambient lighting"
+    else:
+        # Enhance background with Prison Boss style details
+        background = f"{background}, vibrant colorful environment, good lighting, detailed scene elements"
     
     # Build final prompt
     prompt = f"""{PRISON_BOSS_STYLE},
@@ -163,19 +174,23 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Female parking attendant
+  # Latina female parking attendant
   python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" \\
-    --gender female --clothing "reflective vest and uniform" --background "parking garage" \\
-    --expression "bored" --attitude "helpful"
+    --gender female --ethnicity "Latina" \\
+    --clothing "reflective vest and uniform" \\
+    --background "parking garage with security monitors and cars" \\
+    --expression "bored" --details "looking at phone" --attitude "observant but tired"
   
-  # Male food truck owner
+  # Asian male food truck owner
   python generate_npc_image.py --name "Tommy Chen" --role "Food Truck Owner" \\
-    --gender male --clothing "chef's apron and hat" --background "food truck" \\
-    --expression "friendly" --details "holding spatula"
+    --gender male --ethnicity "Asian" \\
+    --clothing "chef's apron and hat" --background "food truck with menu board" \\
+    --expression "friendly" --details "holding coffee cup" --attitude "chatty"
   
-  # Security guard
+  # Black male security guard
   python generate_npc_image.py --name "Marcus Johnson" --role "Security Guard" \\
-    --gender male --clothing "security uniform and badge" --background "museum hallway" \\
+    --gender male --ethnicity "Black" \\
+    --clothing "security uniform and badge" --background "museum hallway with artwork" \\
     --expression "serious" --attitude "professional"
         """
     )
@@ -197,6 +212,11 @@ Examples:
         default='person',
         choices=['male', 'female', 'person'],
         help='Gender (male, female, or person) - default: person'
+    )
+    
+    parser.add_argument(
+        '--ethnicity',
+        help='Character ethnicity (e.g., "Latina", "Asian", "Black", "White", "Middle Eastern", "South Asian")'
     )
     
     parser.add_argument(
@@ -238,6 +258,7 @@ Examples:
         name=args.name,
         role=args.role,
         gender=args.gender,
+        ethnicity=args.ethnicity,
         clothing=args.clothing,
         background=args.background,
         expression=args.expression,
