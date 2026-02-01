@@ -133,7 +133,7 @@ class BackendService {
         'conversation_history': conversationHistory.map((msg) => {
           'text': msg.text,
           'isPlayer': msg.isPlayer,
-          'timestamp': msg.timestamp,
+          'timestamp': msg.timestamp.toIso8601String(),
         }).toList(),
       };
       
