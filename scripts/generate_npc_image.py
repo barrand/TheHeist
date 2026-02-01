@@ -2,11 +2,11 @@
 """
 Generate NPC character images using Google's Imagen 4.
 
-Art style: Prison Boss mobile game (bright, cartoony, fun, stylized)
+Art style: Prison Boss mobile game (bright, cartoony, fun, stylized, low-poly 3D)
 
 Usage:
-    python generate_npc_image.py --name "Maria Santos" --role "Security Guard" --scenario museum
-    python generate_npc_image.py --name "Carlos" --role "Delivery Driver" --traits "overworked,chatty" --output carlos.png
+    python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --clothing "reflective vest and uniform" --background "parking garage" --expression "bored"
+    python generate_npc_image.py --name "Tommy Chen" --role "Food Truck Owner" --gender male --clothing "chef's apron and hat" --background "food truck" --details "holding spatula"
     
 Requirements:
     pip install google-genai pillow
@@ -22,50 +22,80 @@ from config import GEMINI_API_KEY
 # Configure Imagen client
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+# ============================================
+# PRISON BOSS STYLE - ALWAYS CONSISTENT
+# ============================================
+PRISON_BOSS_STYLE = """3D render, cartoonish style,
+cell-shaded, exaggerated features,
+bright saturated colors, simplified geometry, stylized facial features,
+clean flat shading, game character design,
+VR game aesthetic, toon shader, minimal detail,
+low-poly 3D model, mobile game art style"""
 
-def generate_npc_image(name, role, scenario="heist", traits=None, output_file=None):
-    """Generate NPC character portrait using Imagen 4 in Prison Boss style."""
+
+def generate_npc_image(name, role, gender="person", clothing=None, background=None, 
+                       expression="friendly", details=None, attitude="approachable", output_file=None):
+    """Generate NPC character portrait using Imagen 4 in Prison Boss style.
+    
+    Args:
+        name: Character name
+        role: Character's job/role (e.g., "Security Guard", "Food Truck Owner")
+        gender: "male", "female", or "person" (default: "person")
+        clothing: What they wear (e.g., "reflective vest and uniform", "chef's apron")
+        background: Setting (e.g., "parking garage", "food truck", "museum hall")
+        expression: Facial expression (default: "friendly")
+        details: Additional visual details (e.g., "holding clipboard", "wearing glasses")
+        attitude: Overall vibe (e.g., "approachable", "tired", "cheerful")
+        output_file: Custom output path (optional)
+    """
     
     print(f"🎨 Generating character portrait...")
     print(f"   Name: {name}")
     print(f"   Role: {role}")
-    print(f"   Scenario: {scenario}")
-    if traits:
-        print(f"   Traits: {traits}")
+    print(f"   Gender: {gender}")
+    if clothing:
+        print(f"   Clothing: {clothing}")
+    if background:
+        print(f"   Background: {background}")
+    print(f"   Expression: {expression}")
+    if details:
+        print(f"   Details: {details}")
+    print(f"   Attitude: {attitude}")
     print()
     
     # Build character description
-    trait_text = f", {traits}" if traits else ""
+    character_parts = []
     
-    # Build character description
-    character_desc = f"{role}"
-    if traits:
-        # Add personality traits to description
-        trait_words = traits.split(',')
-        character_desc += f", {', '.join(trait_words)}"
+    # Gender and role
+    if gender in ["male", "female"]:
+        character_parts.append(f"{gender} {role}")
+    else:
+        character_parts.append(role)
     
-    # Build scenario-specific background
-    scenario_background = {
-        "museum": "museum setting",
-        "train": "train station setting", 
-        "bank": "bank setting",
-        "mansion": "luxury mansion setting",
-        "casino": "casino setting",
-        "heist": "urban setting"
-    }.get(scenario.lower(), "simple background")
+    # Clothing
+    if clothing:
+        character_parts.append(f"wearing {clothing}")
     
-    # Construct prompt in Prison Boss low-poly 3D style
-    prompt = f"""low-poly 3D render of a {character_desc} character, cartoonish style,
-cell-shaded, exaggerated features, 
-bright saturated colors, simplified geometry, stylized facial features,
-clean flat shading, playful friendly expression, game character design,
-{scenario_background}, VR game aesthetic, toon shader, minimal detail,
-portrait view, centered character, mobile game art style,
-Prison Boss game aesthetic, fun and approachable look,
-appropriate clothing for {role}, distinctive personality"""
+    # Additional details
+    if details:
+        character_parts.append(details)
+    
+    character_description = ", ".join(character_parts)
+    
+    # Background setting
+    if not background:
+        background = "simple indoor setting"
+    
+    # Build final prompt
+    prompt = f"""{PRISON_BOSS_STYLE},
+{expression} expression, {attitude} personality,
+character: {character_description},
+background: {background},
+portrait view, centered, waist-up composition,
+Prison Boss game aesthetic"""
     
     print("📝 Prompt:")
-    print(f"   '{name}' as Prison Boss-style {role}")
+    print(f"   {gender} {role} in Prison Boss style")
     print()
     
     try:
@@ -133,33 +163,67 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python generate_npc_image.py --name "Maria Santos" --role "Security Guard" --scenario museum
-  python generate_npc_image.py --name "Carlos" --role "Delivery Driver" --traits "tired,overworked"
-  python generate_npc_image.py --name "Harold Matthews" --role "Vault Manager" --traits "proud dad" --output harold.png
+  # Female parking attendant
+  python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" \\
+    --gender female --clothing "reflective vest and uniform" --background "parking garage" \\
+    --expression "bored" --attitude "helpful"
+  
+  # Male food truck owner
+  python generate_npc_image.py --name "Tommy Chen" --role "Food Truck Owner" \\
+    --gender male --clothing "chef's apron and hat" --background "food truck" \\
+    --expression "friendly" --details "holding spatula"
+  
+  # Security guard
+  python generate_npc_image.py --name "Marcus Johnson" --role "Security Guard" \\
+    --gender male --clothing "security uniform and badge" --background "museum hallway" \\
+    --expression "serious" --attitude "professional"
         """
     )
     
     parser.add_argument(
         '--name',
         required=True,
-        help='NPC name (e.g., "Maria Santos")'
+        help='NPC name (e.g., "Rosa Martinez")'
     )
     
     parser.add_argument(
         '--role',
         required=True,
-        help='NPC role/job (e.g., "Security Guard", "Janitor")'
+        help='NPC role/job (e.g., "Parking Attendant", "Security Guard")'
     )
     
     parser.add_argument(
-        '--scenario',
-        default='heist',
-        help='Scenario type (museum, train, bank, mansion, casino, heist) - default: heist'
+        '--gender',
+        default='person',
+        choices=['male', 'female', 'person'],
+        help='Gender (male, female, or person) - default: person'
     )
     
     parser.add_argument(
-        '--traits',
-        help='Personality traits (comma-separated, e.g., "tired,chatty,frustrated")'
+        '--clothing',
+        help='What they wear (e.g., "reflective vest and uniform", "chef apron")'
+    )
+    
+    parser.add_argument(
+        '--background',
+        help='Setting/background (e.g., "parking garage", "food truck", "museum")'
+    )
+    
+    parser.add_argument(
+        '--expression',
+        default='friendly',
+        help='Facial expression (e.g., "friendly", "bored", "serious") - default: friendly'
+    )
+    
+    parser.add_argument(
+        '--details',
+        help='Additional details (e.g., "holding clipboard", "wearing glasses")'
+    )
+    
+    parser.add_argument(
+        '--attitude',
+        default='approachable',
+        help='Overall personality vibe (e.g., "approachable", "tired", "cheerful") - default: approachable'
     )
     
     parser.add_argument(
@@ -173,8 +237,12 @@ Examples:
     generate_npc_image(
         name=args.name,
         role=args.role,
-        scenario=args.scenario,
-        traits=args.traits,
+        gender=args.gender,
+        clothing=args.clothing,
+        background=args.background,
+        expression=args.expression,
+        details=args.details,
+        attitude=args.attitude,
         output_file=args.output
     )
 
