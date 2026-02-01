@@ -518,6 +518,10 @@ Landing Page
 │  ┌───────────────┐ ┌─────────┐│
 │  │ 🗺️ Map       │ │ 👥 Team │││← Quick actions
 │  └───────────────┘ └─────────┘││
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ 🔍 SEARCH THIS ROOM       │ │← Exploration
+│  └───────────────────────────┘ │
 └─────────────────────────────────┘
 ```
 
@@ -588,6 +592,10 @@ Landing Page
 - Tap "Completed" → Expand to show completed tasks
 - Tap "Map" → Show location map and available locations
 - Tap "Team" → Show all players and their current tasks
+- Tap "Search This Room" → Open search screen in exploration mode (no specific target)
+  - Always available at any location
+  - Discover items, trigger new tasks
+  - Encourages player communication
 
 ---
 
@@ -1056,18 +1064,20 @@ Landing Page
 
 ## Screen 11: Search/Hunt Screen
 
-**Purpose**: Search a location for items
+**Purpose**: Search a location for items or explore to discover new things
 
-### UI Elements:
+### Mode 1: Specific Search Task (Knows Target)
+
+When player has a task like "🔍 Search: Hunt for Burner Phone"
 
 ```
 ┌─────────────────────────────────┐
 │  < Back                         │
 │                                 │
 │  🔍 SEARCHING                   │
-│  Safe House                     │
+│  Safe House - Office            │
 │                                 │
-│  Looking for: Ethernet Cable    │
+│  📋 TASK: Find Burner Phone     │← From task
 │                                 │
 │  ┌───────────────────────────┐ │
 │  │                           │ │
@@ -1082,17 +1092,98 @@ Landing Page
 └─────────────────────────────────┘
 ```
 
+### Mode 2: General Exploration (No Specific Target)
+
+When player just wants to look around without a task
+
+```
+┌─────────────────────────────────┐
+│  < Back                         │
+│                                 │
+│  🔍 EXPLORING                   │
+│  Museum Kitchen                 │
+│                                 │
+│  💡 See what you can find...    │← No specific target
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │                           │ │
+│  │   🍞  🥤  🍎  🗄️        │ │← Different items
+│  │                           │ │
+│  │   🔪  🍔  ☕  🧊        │ │
+│  │                           │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  Tap items to examine...        │
+│  Items found: 🍎 🥤            │← Inventory shown
+│                                 │
+└─────────────────────────────────┘
+```
+
 **Components:**
 - [ ] Back button
 - [ ] Location name
-- [ ] What you're looking for
+- [ ] Mode indicator (SEARCHING vs EXPLORING)
+- [ ] Task description (if specific search)
+  - [ ] Only shown when have search task
+  - [ ] Shows what you're looking for
+- [ ] General exploration hint (if no specific target)
+  - [ ] "See what you can find..."
+  - [ ] Encourages discovery
 - [ ] Interactive area with items to tap
+  - [ ] Room-specific items (context-aware)
+  - [ ] Visual feedback on tap
+- [ ] Items found counter (exploration mode)
+  - [ ] Shows collected items
+  - [ ] Goes into player inventory
 - [ ] Instruction text
 
+**Two Search Modes:**
+
+**Specific Task Search:**
+- Have a task that says "🔍 Hunt for X"
+- Screen shows "Looking for: X"
+- Tapping correct item completes task immediately
+- Tapping wrong items gives hints
+- Clear success state
+
+**General Exploration:**
+- No active search task
+- Can search any room from map
+- Discover items that might be useful later
+- Items go into inventory
+- Team members can share what they found (verbal communication!)
+- May trigger discovery tasks
+
 **Actions:**
-- Tap wrong items → "Not here" feedback
-- Tap correct item → Success animation → Item found
-- Found item → Complete task → Return to game screen
+
+**Specific Search Mode:**
+- Tap wrong items → "Not here" or hint feedback
+- Tap correct item → Success animation → Item found → Task complete → Return to game screen
+
+**Exploration Mode:**
+- Tap items → Examine them
+- Find useful items → Add to inventory with animation
+- Find quest items → May trigger new tasks
+- Nothing found → Try other items
+- Can search multiple times
+- Tap Back → Return to game with items collected
+
+**Design Notes:**
+
+**Why General Exploration:**
+- ✅ Encourages player communication ("Has anyone found cable?")
+- ✅ Creates emergent gameplay (find things before you know you need them)
+- ✅ Rewards thorough players
+- ✅ Builds tension (searching without knowing what's important)
+- ✅ More D&D-like (exploring and discovering)
+
+**Room Inventory System:**
+- Each room has searchable items
+- Some items are quest-critical (burner phone, cable)
+- Some items are useful but not required (snacks, coffee, tools)
+- Some items are flavor/red herrings (magazines, photos)
+- Items persist (if someone already found it, it's gone)
+- Real-time updates (if teammate finds something, you see it's gone)
 
 ---
 
@@ -1286,7 +1377,7 @@ Icon size:              24px
 **Phase 2 (Should Have):**
 11. ✅ Team View
 12. ✅ NPC Conversation (hybrid: quick responses + free-form text)
-13. ✅ Search Screen
+13. ✅ Search Screen (two modes: specific task search + general exploration)
 
 **Phase 3 (Nice to Have):**
 14. ✅ Map View
