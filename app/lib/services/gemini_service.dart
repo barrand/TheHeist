@@ -16,33 +16,51 @@ class GeminiService {
   Future<void> initialize({String? apiKey}) async {
     String? key = apiKey;
     
+    print('🔧 GeminiService: Initializing...');
+    
     // If no API key provided, try loading from .env
     if (key == null || key.isEmpty) {
       try {
         await dotenv.load(fileName: ".env");
         key = dotenv.env['GEMINI_API_KEY'];
+        print('🔧 GeminiService: Loaded API key from .env');
       } catch (e) {
         // .env might not exist in web build, that's okay
-        print('Could not load .env: $e');
+        print('⚠️ GeminiService: Could not load .env: $e');
       }
+    } else {
+      print('🔧 GeminiService: Using provided API key');
     }
     
     if (key == null || key.isEmpty) {
       throw Exception('API key required. Please provide in settings.');
     }
     
-    // Model for chat interactions (fast and cheap)
-    // Use model name without "models/" prefix - package adds it automatically
-    _chatModel = GenerativeModel(
-      model: 'gemini-pro',
-      apiKey: key,
-    );
+    print('🔧 GeminiService: API key present (${key.substring(0, 10)}...)');
     
-    // Model for content generation (same for now)
-    _model = GenerativeModel(
-      model: 'gemini-pro',
-      apiKey: key,
-    );
+    // Model for chat interactions
+    // Use gemini-pro which IS available in v1beta API
+    try {
+      print('🔧 GeminiService: Creating model with gemini-pro (v1beta compatible)');
+      _chatModel = GenerativeModel(
+        model: 'gemini-pro',
+        apiKey: key,
+        generationConfig: GenerationConfig(
+          temperature: 0.7,
+          maxOutputTokens: 200,
+        ),
+      );
+      
+      _model = GenerativeModel(
+        model: 'gemini-pro',
+        apiKey: key,
+      );
+      
+      print('✅ GeminiService: Models initialized with gemini-pro');
+    } catch (e) {
+      print('❌ GeminiService: Error creating models: $e');
+      rethrow;
+    }
   }
   
   /// Generate quick response suggestions based on conversation context
@@ -93,6 +111,8 @@ Output ONLY the 3 responses, one per line, no numbers or labels.
     required List<ChatMessage> conversationHistory,
     String difficulty = 'medium',
   }) async {
+    print('💬 GeminiService: Getting NPC response for: "$playerMessage"');
+    
     final systemPrompt = '''
 You are ${npc.name}, a ${npc.role}.
 Personality: ${npc.personality}
@@ -126,24 +146,32 @@ Respond naturally to their question.
 ''';
 
     try {
+      print('💬 GeminiService: Creating chat with ${conversationHistory.length} history messages');
+      
       final chat = _chatModel.startChat(
         history: conversationHistory.take(conversationHistory.length - 1).map((msg) {
           return Content.text(msg.text);
         }).toList(),
       );
       
-      final response = await chat.sendMessage(Content.text(playerMessage));
+      print('💬 GeminiService: Sending message to Gemini...');
+      final response = await chat.sendMessage(Content.text('$systemPrompt\n\nPlayer: $playerMessage\n\nRespond as ${npc.name}:'));
+      print('💬 GeminiService: Got response from Gemini');
+      
       final npcText = response.text ?? 'I\'m not sure what to say to that.';
+      print('💬 GeminiService: Response text: "$npcText"');
       
       // Check if any objectives were revealed
       final revealedObjectives = _detectRevealedObjectives(npcText, objectives);
+      print('💬 GeminiService: Revealed objectives: $revealedObjectives');
       
       return NPCResponse(
         text: npcText,
         revealedObjectives: revealedObjectives,
       );
-    } catch (e) {
-      print('Error getting NPC response: $e');
+    } catch (e, stackTrace) {
+      print('❌ GeminiService: ERROR getting NPC response: $e');
+      print('❌ GeminiService: Stack trace: $stackTrace');
       return NPCResponse(
         text: 'Sorry, I didn\'t catch that. Could you repeat?',
         revealedObjectives: [],
