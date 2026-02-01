@@ -40,6 +40,9 @@ dependencies:
   
   # Environment variables
   flutter_dotenv: ^5.2.1
+  
+  # Local storage for web
+  shared_preferences: ^2.3.4
 
 dev_dependencies:
   flutter_test:

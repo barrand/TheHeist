@@ -12,26 +12,36 @@ class GeminiService {
   
   GeminiService._internal();
   
-  /// Initialize the service with API key from environment
-  Future<void> initialize() async {
-    await dotenv.load(fileName: ".env");
-    final apiKey = dotenv.env['GEMINI_API_KEY'];
+  /// Initialize the service with API key (directly or from environment)
+  Future<void> initialize({String? apiKey}) async {
+    String? key = apiKey;
     
-    if (apiKey == null || apiKey.isEmpty) {
-      throw Exception('GEMINI_API_KEY not found in .env file');
+    // If no API key provided, try loading from .env
+    if (key == null || key.isEmpty) {
+      try {
+        await dotenv.load(fileName: ".env");
+        key = dotenv.env['GEMINI_API_KEY'];
+      } catch (e) {
+        // .env might not exist in web build, that's okay
+        print('Could not load .env: $e');
+      }
+    }
+    
+    if (key == null || key.isEmpty) {
+      throw Exception('API key required. Please provide in settings.');
     }
     
     // Model for chat interactions (fast and cheap)
     // Use model name without "models/" prefix - package adds it automatically
     _chatModel = GenerativeModel(
       model: 'gemini-pro',
-      apiKey: apiKey,
+      apiKey: key,
     );
     
     // Model for content generation (same for now)
     _model = GenerativeModel(
       model: 'gemini-pro',
-      apiKey: apiKey,
+      apiKey: key,
     );
   }
   

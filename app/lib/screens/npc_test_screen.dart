@@ -3,7 +3,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../models/npc.dart';
 import '../widgets/common/section_header.dart';
-import 'npc_conversation_screen.dart';
+import 'npc_config_screen.dart';
 
 /// Test harness for NPC conversation screen
 /// Allows testing with different scenarios
@@ -84,7 +84,7 @@ class NPCTestScreen extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NPCConversationScreen(
+        builder: (context) => NPCConfigScreen(
           npc: npc,
           objectives: _getObjectivesForNPC(npc.id),
         ),

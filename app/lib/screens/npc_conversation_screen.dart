@@ -15,11 +15,15 @@ import '../widgets/common/heist_text_field.dart';
 class NPCConversationScreen extends StatefulWidget {
   final NPC npc;
   final List<Objective> objectives;
+  final String apiKey;
+  final String difficulty;
 
   const NPCConversationScreen({
     Key? key,
     required this.npc,
     required this.objectives,
+    required this.apiKey,
+    this.difficulty = 'medium',
   }) : super(key: key);
 
   @override
@@ -54,7 +58,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
 
   Future<void> _initializeGemini() async {
     try {
-      await _geminiService.initialize();
+      await _geminiService.initialize(apiKey: widget.apiKey);
       setState(() {
         _isInitialized = true;
       });
@@ -148,7 +152,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         objectives: _objectives,
         playerMessage: text,
         conversationHistory: _messages,
-        difficulty: 'medium',
+        difficulty: widget.difficulty,
       );
       
       setState(() {
@@ -298,47 +302,54 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
               ),
             ),
             
-            // Large NPC portrait section
+            // MASSIVE NPC portrait section (80-90% width)
             if (widget.npc.imageUrl != null)
               Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppDimensions.containerPadding,
-                  vertical: AppDimensions.spaceSM,
+                  vertical: AppDimensions.spaceMD,
                 ),
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.accentPrimary,
-                      width: 4,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accentPrimary.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      widget.npc.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: AppColors.bgTertiary,
-                          child: Icon(
-                            Icons.person,
-                            color: AppColors.textSecondary,
-                            size: 80,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final imageSize = constraints.maxWidth * 0.85; // 85% of screen width
+                    return Center(
+                      child: Container(
+                        width: imageSize,
+                        height: imageSize,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.accentPrimary,
+                            width: 5,
                           ),
-                        );
-                      },
-                    ),
-                  ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.accentPrimary.withValues(alpha: 0.4),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.asset(
+                            widget.npc.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: AppColors.bgTertiary,
+                                child: Icon(
+                                  Icons.person,
+                                  color: AppColors.textSecondary,
+                                  size: imageSize * 0.4,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             
