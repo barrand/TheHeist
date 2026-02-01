@@ -1,6 +1,10 @@
 """
-Gemini AI Service
-Handles all interactions with Google Gemini API
+NPC Conversation Service
+Handles real-time NPC chat interactions using Google Gemini API
+
+Uses gemini-1.5-flash-8b for fast, cost-effective conversations during gameplay.
+This service is specifically for NPC dialogue - not for image generation or 
+experience creation (those are separate services).
 """
 
 import logging
@@ -13,8 +17,20 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-class GeminiService:
-    """Service for interacting with Google Gemini API"""
+class NPCConversationService:
+    """
+    Service for real-time NPC conversations during gameplay
+    
+    Responsibilities:
+    - Generate NPC responses to player messages
+    - Detect when objectives are revealed
+    - Generate quick response suggestions
+    - Manage conversation difficulty levels
+    
+    NOT responsible for:
+    - Image generation (see image_generation_service.py in scripts)
+    - Experience generation (see experience_generation_service.py in scripts)
+    """
     
     def __init__(self):
         """Initialize Gemini service with API key from settings"""

@@ -12,22 +12,22 @@ from app.models.npc import (
     QuickResponsesRequest,
     QuickResponsesResponse,
 )
-from app.services.gemini_service import GeminiService
+from app.services.npc_conversation_service import NPCConversationService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/npc", tags=["npc"])
 
 
-def get_gemini_service() -> GeminiService:
-    """Dependency injection for Gemini service"""
-    return GeminiService()
+def get_npc_service() -> NPCConversationService:
+    """Dependency injection for NPC conversation service"""
+    return NPCConversationService()
 
 
 @router.post("/chat", response_model=ChatResponse)
 async def npc_chat(
     request: ChatRequest,
-    gemini_service: GeminiService = Depends(get_gemini_service)
+    npc_service: NPCConversationService = Depends(get_npc_service)
 ) -> ChatResponse:
     """
     Get NPC response to player message
@@ -43,8 +43,8 @@ async def npc_chat(
     try:
         logger.info(f"💬 Chat request: {request.npc.name} <- '{request.player_message}'")
         
-        # Get NPC response from Gemini
-        npc_text = await gemini_service.get_npc_response(
+        # Get NPC response from conversation service
+        npc_text = await npc_service.get_npc_response(
             npc=request.npc,
             objectives=request.objectives,
             player_message=request.player_message,
@@ -52,7 +52,7 @@ async def npc_chat(
         )
         
         # Detect revealed objectives
-        revealed = gemini_service.detect_revealed_objectives(
+        revealed = npc_service.detect_revealed_objectives(
             npc_text=npc_text,
             objectives=request.objectives
         )
@@ -76,7 +76,7 @@ async def npc_chat(
 @router.post("/quick-responses", response_model=QuickResponsesResponse)
 async def generate_quick_responses(
     request: QuickResponsesRequest,
-    gemini_service: GeminiService = Depends(get_gemini_service)
+    npc_service: NPCConversationService = Depends(get_npc_service)
 ) -> QuickResponsesResponse:
     """
     Generate 3 quick response suggestions for the player
@@ -93,7 +93,7 @@ async def generate_quick_responses(
         # Convert Pydantic models to dicts for service
         history_dicts = [msg.model_dump(by_alias=True) for msg in request.conversation_history]
         
-        responses = await gemini_service.generate_quick_responses(
+        responses = await npc_service.generate_quick_responses(
             npc=request.npc,
             objectives=request.objectives,
             conversation_history=history_dicts

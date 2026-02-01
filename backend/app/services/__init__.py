@@ -1,5 +1,5 @@
 """Business logic services"""
 
-from .gemini_service import GeminiService
+from .npc_conversation_service import NPCConversationService
 
-__all__ = ["GeminiService"]
+__all__ = ["NPCConversationService"]
