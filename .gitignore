@@ -30,3 +30,6 @@ Thumbs.db
 
 # Generated output files
 output/
+
+# Prototype files (contains API keys for testing)
+prototype/
