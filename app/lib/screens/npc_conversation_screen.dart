@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../models/npc.dart';
-import '../services/gemini_service.dart';
+import '../services/backend_service.dart';
 import '../widgets/npc/objective_card.dart';
 import '../widgets/npc/chat_bubble.dart';
 import '../widgets/npc/quick_response_button.dart';
@@ -10,12 +10,14 @@ import '../widgets/common/heist_primary_button.dart';
 import '../widgets/common/heist_text_field.dart';
 
 /// NPC Conversation Screen (Screen 10)
-/// Free-form conversation with NPCs using LLM
+/// Free-form conversation with NPCs using LLM via Python backend
 /// Hybrid interaction: Quick responses + free-form text
+/// 
+/// Architecture: Flutter UI -> BackendService -> Python FastAPI -> Gemini
 class NPCConversationScreen extends StatefulWidget {
   final NPC npc;
   final List<Objective> objectives;
-  final String apiKey;
+  final String apiKey;  // NOTE: Not used anymore, backend has the key
   final String difficulty;
 
   const NPCConversationScreen({
@@ -33,7 +35,7 @@ class NPCConversationScreen extends StatefulWidget {
 class _NPCConversationScreenState extends State<NPCConversationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final GeminiService _geminiService = GeminiService();
+  final BackendService _backendService = BackendService();
   
   List<ChatMessage> _messages = [];
   List<Objective> _objectives = [];
@@ -46,7 +48,8 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   void initState() {
     super.initState();
     _objectives = List.from(widget.objectives);
-    _initializeGemini();
+    _checkBackendHealth();
+    _generateInitialQuickResponses();
   }
 
   @override
@@ -56,19 +59,33 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     super.dispose();
   }
 
-  Future<void> _initializeGemini() async {
+  Future<void> _checkBackendHealth() async {
+    print('🏥 Checking backend health...');
     try {
-      await _geminiService.initialize(apiKey: widget.apiKey);
+      final isHealthy = await _backendService.checkHealth();
       setState(() {
-        _isInitialized = true;
+        _isInitialized = isHealthy;
       });
-      _initializeConversation();
+      
+      if (isHealthy) {
+        print('✅ Backend is healthy');
+        _initializeConversation();
+      } else {
+        print('⚠️ Backend health check failed');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Backend server is not responding. Make sure it\'s running on http://localhost:8000'),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+      }
     } catch (e) {
-      print('Error initializing Gemini: $e');
-      // Show error to user
+      print('❌ Error checking backend health: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to initialize AI: $e')),
+          SnackBar(content: Text('Failed to connect to backend: $e')),
         );
       }
     }
@@ -84,8 +101,11 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         timestamp: DateTime.now(),
       ));
     });
-    
-    // Generate initial quick responses
+  }
+  
+  Future<void> _generateInitialQuickResponses() async {
+    // Wait a bit for health check to complete
+    await Future.delayed(const Duration(milliseconds: 500));
     _generateQuickResponses();
   }
 
@@ -100,7 +120,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
 
   Future<void> _generateQuickResponses() async {
     if (!_isInitialized) {
-      // Use fallback responses if not initialized
+      // Use fallback responses if backend not available
       setState(() {
         _quickResponses = [
           "Hi, I'm new here. Just getting oriented.",
@@ -112,7 +132,8 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     }
 
     try {
-      final responses = await _geminiService.generateQuickResponses(
+      print('🎲 Generating quick responses via backend...');
+      final responses = await _backendService.generateQuickResponses(
         npc: widget.npc,
         objectives: _objectives,
         conversationHistory: _messages,
@@ -121,8 +142,9 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       setState(() {
         _quickResponses = responses;
       });
+      print('✅ Got ${responses.length} quick responses');
     } catch (e) {
-      print('Error generating quick responses: $e');
+      print('❌ Error generating quick responses: $e');
       // Keep existing responses or use fallback
     }
   }
@@ -146,15 +168,17 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     _scrollToBottom();
 
     try {
-      // Get NPC response from Gemini (using direct REST API)
-      final response = await _geminiService.getNPCResponseViaREST(
+      print('💬 Sending message to backend...');
+      // Get NPC response from backend (which calls Gemini)
+      final response = await _backendService.getNPCResponse(
         npc: widget.npc,
         objectives: _objectives,
         playerMessage: text,
         conversationHistory: _messages,
-        apiKey: widget.apiKey,
         difficulty: widget.difficulty,
       );
+      
+      print('✅ Got NPC response: "${response.text}"');
       
       setState(() {
         // Add NPC response
@@ -170,6 +194,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
           final index = _objectives.indexWhere((o) => o.id == objectiveId);
           if (index != -1) {
             _objectives[index] = _objectives[index].copyWith(isCompleted: true);
+            print('🎯 Objective completed: ${_objectives[index].description}');
           }
         }
         
@@ -185,7 +210,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       if (response.revealedObjectives.isNotEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('✅ Information obtained!'),
               backgroundColor: AppColors.success,
               duration: Duration(seconds: 2),
@@ -194,7 +219,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         }
       }
     } catch (e) {
-      print('Error getting NPC response: $e');
+      print('❌ Error getting NPC response: $e');
       setState(() {
         _messages.add(ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),

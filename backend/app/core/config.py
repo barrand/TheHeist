@@ -22,7 +22,13 @@ class Settings(BaseSettings):
     port: int = 8000
     
     # CORS Configuration
-    allowed_origins: list[str] = ["http://localhost:8087", "http://localhost:3000"]
+    allowed_origins: list[str] = [
+        "http://localhost:8087",
+        "http://localhost:8088",
+        "http://localhost:8089",
+        "http://localhost:8090",
+        "http://localhost:3000",
+    ]
     
     # Gemini API Configuration
     gemini_api_key: str
