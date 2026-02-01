@@ -3,6 +3,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../widgets/common/heist_primary_button.dart';
 import '../widgets/common/heist_secondary_button.dart';
+import 'npc_test_screen.dart';
 
 /// Landing Page - First screen of the app
 /// Users can create a new room or join an existing one
@@ -17,6 +18,13 @@ class LandingPage extends StatelessWidget {
   void _onJoinRoom(BuildContext context) {
     // TODO: Show Join Room modal
     print('Join Room tapped');
+  }
+
+  void _onTestNPC(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => NPCTestScreen()),
+    );
   }
 
   void _onHowToPlay(BuildContext context) {
@@ -83,6 +91,15 @@ class LandingPage extends StatelessWidget {
                 text: 'JOIN ROOM',
                 icon: Icons.login,
                 onPressed: () => _onJoinRoom(context),
+              ),
+              
+              SizedBox(height: AppDimensions.spaceLG),
+              
+              // Test NPC Button (for development)
+              HeistSecondaryButton(
+                text: 'TEST NPC CONVERSATION',
+                icon: Icons.chat_bubble_outline,
+                onPressed: () => _onTestNPC(context),
               ),
               
               Spacer(flex: 3),
