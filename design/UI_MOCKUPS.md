@@ -132,6 +132,11 @@ Landing Page
 │  └───────────────────────────┘ │
 │  [Show More...]                 │
 │                                 │
+│  🎭 YOUR ROLE                   │
+│  ┌───────────────────────────┐ │
+│  │  Mastermind            >  │ │← Tap to change role
+│  └───────────────────────────┘ │
+│                                 │
 │  👥 PLAYERS                     │
 │  ┌───────────────────────────┐ │
 │  │ 👑 You - Mastermind ✓     │ │← Host (crown)
@@ -157,6 +162,11 @@ Landing Page
   - [ ] Show scenario name
   - [ ] Show required roles
   - [ ] Visual checkmark when selected
+- [ ] Your role selector (tappable button with visual indicators)
+  - [ ] Shows selected role name OR "Select Your Role"
+  - [ ] Right chevron icon `>` (indicates opens modal)
+  - [ ] Button styling (border/background to show it's tappable)
+  - [ ] Tap → Opens Screen 5 (Role Selection Modal)
 - [ ] Players list
   - [ ] Host indicator (crown icon)
   - [ ] Player name
@@ -173,9 +183,37 @@ Landing Page
 - ✓ 3-12 players
 - ✓ Required roles for scenario are covered
 
+**Role Selector Visual States:**
+
+*When no role selected (needs attention):*
+```
+│  🎭 YOUR ROLE                   │
+│  ┌───────────────────────────┐ │
+│  │  Select Your Role      ▼  │ │← Gray text, down chevron
+│  └───────────────────────────┘ │
+│  Tap to browse all roles        │← Hint text
+```
+
+*When role is selected:*
+```
+│  🎭 YOUR ROLE                   │
+│  ┌───────────────────────────┐ │
+│  │  Mastermind           ▼   │ │← White text, can change
+│  └───────────────────────────┘ │
+│  Tap to change role             │← Hint text
+```
+
+*Alternative with more explicit button styling:*
+```
+│  🎭 YOUR ROLE                   │
+│  ┌───────────────────────────┐ │
+│  │ ⚪ Mastermind         [▼] │ │← Icon + boxed chevron
+│  └───────────────────────────┘ │
+```
+
 **Actions:**
 - Tap scenario → Select it (show required roles)
-- Tap role selector → Opens role selection modal (Screen 5)
+- Tap role selector button → Opens role selection modal (Screen 5)
 - Player joins → Add to list (real-time)
 - Player leaves → Remove from list (real-time)
 - Tap "Start Heist" → Generate experience → Go to Game Screen
@@ -200,7 +238,7 @@ Landing Page
 │                                 │
 │  🎭 YOUR ROLE                   │
 │  ┌───────────────────────────┐ │
-│  │ Hacker              ✓     │ │← Tap to open modal
+│  │  Hacker                >  │ │← Tap to change role
 │  └───────────────────────────┘ │
 │                                 │
 │  👥 PLAYERS                     │
@@ -221,17 +259,61 @@ Landing Page
 - [ ] Player count indicator
 - [ ] Scenario name (read-only, set by host)
 - [ ] Required roles list
-- [ ] Your role selector (button that opens modal)
-  - [ ] Tap to open full role selection modal
-  - [ ] Shows currently selected role or "Select Role"
+- [ ] Your role selector (tappable button with visual indicators)
+  - [ ] Shows selected role name OR "Select Your Role"
+  - [ ] Right chevron icon `>` (indicates opens modal)
+  - [ ] Button styling (border/background to show it's tappable)
+  - [ ] Tap → Opens Screen 5 (Role Selection Modal)
 - [ ] Players list (same as host view)
 - [ ] Waiting indicator
 - [ ] "Leave Room" link
 
+**Role Selector Visual States:**
+
+*When no role selected (needs attention):*
+```
+│  🎭 YOUR ROLE                   │
+│  ┌───────────────────────────┐ │
+│  │  Select Your Role      ▼  │ │← Gray text, down chevron
+│  └───────────────────────────┘ │
+│  Tap to browse all roles        │← Hint text
+```
+
+*When role is selected:*
+```
+│  🎭 YOUR ROLE                   │
+│  ┌───────────────────────────┐ │
+│  │  Hacker               ▼   │ │← White text, can change
+│  └───────────────────────────┘ │
+│  Tap to change role             │← Hint text
+```
+
 **Actions:**
-- Tap role selector → Opens role selection modal (Screen 5)
+- Tap role selector button → Opens role selection modal (Screen 5)
 - Player joins/leaves → Update list (real-time)
 - Host starts game → Go to Game Screen
+
+---
+
+## 🎯 Design Note: Role Selector Button
+
+**Making it obvious this button opens a modal:**
+
+### Visual Indicators:
+1. **Chevron Icon `>`** on the right (universal "tap to open" signal)
+2. **Button Styling**: Border + slight background color (not just text)
+3. **Interactive State**: Show pressed/hover state when tapped
+4. **Hint Text**: When empty, show "Select Your Role" in lighter gray
+
+### Alternative Visual Approaches:
+- Add small text below: "Tap to browse roles"
+- Use chevron down `▼` instead of right `>`
+- Add subtle drop shadow to make it "pop"
+- Pulsing animation when no role selected (draw attention)
+
+### iOS/Android Patterns:
+- Similar to Settings app rows (Name > chevron → opens detail)
+- Similar to contact picker (Select Contact > → opens modal)
 
 ---
 
