@@ -1211,10 +1211,10 @@ Landing Page
 ┌─────────────────────────────────┐
 │  < Back                         │
 │                                 │
-│  🎯 YOUR OBJECTIVE          ✅  │
-│  Find out about Car 7's         │← Objective +
-│  security systems               │   confidence
-│  🟢🟢🟢 Brenda likely knows!   │   stays visible
+│  🎯 WHAT THE TEAM NEEDS         │
+│  🟢🟢🟢 Car 7 security         │← Multiple
+│  🟡🟡⚪ Vault code             │   objectives
+│  Brenda likely knows security! │   visible
 │                                 │
 │ ┌──── CHAT HISTORY ──────────┐ │
 │ │                             │ │
