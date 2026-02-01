@@ -1,32 +1,75 @@
 # The Heist - Backend Server
 
-Python FastAPI backend for The Heist multiplayer game.
+Production-ready Python FastAPI backend for The Heist multiplayer game.
+
+## Architecture
+
+```
+backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # FastAPI app initialization
+│   ├── api/                 # API routes
+│   │   ├── __init__.py
+│   │   └── npc.py          # NPC endpoints
+│   ├── core/               # Configuration
+│   │   ├── __init__.py
+│   │   └── config.py       # Settings management
+│   ├── models/             # Pydantic models
+│   │   ├── __init__.py
+│   │   └── npc.py         # NPC data models
+│   └── services/           # Business logic
+│       ├── __init__.py
+│       └── gemini_service.py  # Gemini AI integration
+├── run.py                  # Entry point
+├── requirements.txt        # Dependencies
+├── .env.example           # Environment template
+└── README.md              # This file
+```
 
 ## Features
 
-- **REST API** for NPC conversations
-- **WebSocket** support for real-time multiplayer
-- **Gemini AI** integration for dynamic NPC responses
-- **CORS** enabled for Flutter web app
+✅ **REST API** for NPC conversations  
+✅ **Proper separation of concerns** (routes, services, models)  
+✅ **Type hints** and Pydantic validation  
+✅ **Environment configuration** with pydantic-settings  
+✅ **Dependency injection** pattern  
+✅ **Structured logging**  
+✅ **Error handling**  
+✅ **CORS** enabled for web app  
+✅ **Auto-generated docs** at `/docs`  
 
 ## Setup
 
-1. Install dependencies:
+### 1. Install dependencies
+
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
-2. Create `.env` file in project root (if not exists):
+### 2. Configure environment
+
+Copy the example environment file:
 ```bash
-GEMINI_API_KEY=your_api_key_here
+cp .env.example ../.env
 ```
 
-3. Run the server:
+Edit `.env` in the project root and add your Gemini API key:
 ```bash
-python backend/main.py
+GEMINI_API_KEY=your_actual_api_key_here
 ```
 
-Server will start at: **http://localhost:8000**
+### 3. Run the server
+
+```bash
+python run.py
+```
+
+Server will start at: **http://localhost:8000**  
+API docs available at: **http://localhost:8000/docs**
+
+## API Endpoints
 
 ## API Endpoints
 
