@@ -1129,6 +1129,10 @@ Landing Page
 - Dropped items appear in room search
 - Used items may trigger team-wide events
 
+---
+
+## Screen 10: NPC Conversation Screen
+
 **Purpose**: Chat with an NPC character to extract information
 
 ### UI Elements:
@@ -1214,16 +1218,19 @@ Landing Page
 **Components:**
 - [ ] Back button (returns to game screen)
 - [ ] Objective section (always visible at top)
-  - [ ] "🎯 YOUR OBJECTIVE" header
-  - [ ] Clear description of what info to extract
-  - [ ] Examples:
-    - "Find out about Car 7's security systems"
-    - "Learn where the stolen painting is stored"
-    - "Discover the vault combination"
-    - "Get the access code for the loading dock"
+  - [ ] Header adapts to context:
+    - "🎯 YOUR OBJECTIVE" (when NPC has specific info)
+    - "🎯 YOUR GOAL" (when exploring/unsure)
+    - "🎯 WHAT YOU'RE SEEKING" (when asking around)
+  - [ ] Clear description adapts to situation:
+    - **Specific task**: "Get the loading dock code from Rosa"
+    - **Exploratory**: "Team: Steal artifact | See what Eddie knows"
+    - **NPC request**: "Give Brenda chips → Learn about security"
+    - **Team goal**: "Find the vault combination (ask around)"
   - [ ] Compact but readable (2-3 lines max)
   - [ ] Golden/yellow text to stand out
   - [ ] Stays visible while scrolling chat
+  - [ ] Provides context even if talking to wrong NPC
 - [ ] NPC character portrait (large, 280x280px, Borderlands style)
 - [ ] NPC name (prominent)
 - [ ] NPC personality traits (small text, under name)
@@ -1274,19 +1281,74 @@ Landing Page
 
 **Design Notes:**
 
+**When to Show Objectives (Three Scenarios):**
+
+**Scenario 1: NPC Task with Specific Objective**
+- Task says: "💬 Talk to Brenda - Learn about Car 7 security"
+- Show: "🎯 Find out about Car 7's security systems"
+- NPC definitely has this information
+- Clear, directed conversation
+
+**Scenario 2: Exploratory NPC Conversation (No Task)**
+- Player initiates conversation without specific task
+- Show: "🎯 TEAM GOAL: Steal the artifact from the train"
+- OR: "💬 See what you can learn from [NPC Name]"
+- NPC may or may not have useful info
+- Encourages exploration and discovery
+
+**Scenario 3: NPC Request/Trade**
+- Task says: "💬 Give Brenda the snack"
+- Show: "🎯 Give Brenda chips to build rapport"
+- OR: Show both: "🎯 Goal: Learn about security | Give her chips first"
+- Clear what you need to do
+
+**General Team Objectives (Always Helpful):**
+- Could also show high-level team objective in smaller text
+- Example: "🎯 Find security info | Team Goal: Board train safely"
+- Provides context even if NPC might not help
+
+**Recommendation:**
+- **Specific task** → Show specific objective
+- **No task** → Show team objective OR "See what you can learn"
+- Always provide context so players aren't wandering blindly
+
+**Visual Examples of Objective Box:**
+
+*When NPC definitely has info (from task):*
+```
+🎯 YOUR OBJECTIVE
+┌───────────────────────────┐
+│ Get the loading dock      │
+│ access code from Rosa     │
+└───────────────────────────┘
+```
+
+*When exploring/not sure:*
+```
+🎯 YOUR GOAL
+┌───────────────────────────┐
+│ Team: Steal the artifact  │
+│ Talk to Eddie, see what   │
+│ he knows                  │
+└───────────────────────────┘
+```
+
+*When NPC wants something first:*
+```
+🎯 YOUR OBJECTIVE
+┌───────────────────────────┐
+│ Give Brenda chips →       │
+│ Learn about security      │
+└───────────────────────────┘
+```
+
 **Why Show Objective at Top:**
 - ✅ **Constant Reminder**: Players always know what they're trying to learn
 - ✅ **Reduces Confusion**: No wondering "what am I doing here?"
 - ✅ **Guides Conversation**: Players can steer chat toward goal
-- ✅ **No Hidden Info Button**: Important info should be visible, not buried
-- ✅ **Strategic Context**: Helps players choose quick responses or craft free-form messages
+- ✅ **Strategic Context**: Helps choose quick responses or craft free-form messages
 - ✅ **Success Recognition**: Players know when they've achieved the objective
-
-**Objective Examples:**
-- "Find out about Car 7's security systems" (general)
-- "Learn the exact time of the artifact shipment" (specific)
-- "Get the 6-digit vault combination" (very specific)
-- "Discover which exit is least guarded" (exploratory)
+- ✅ **Works for Wrong NPC**: Even if this NPC can't help, player understands what they're looking for overall
 
 **Why Hybrid Approach:**
 - ✅ **Accessibility**: Quick responses lower barrier to entry
