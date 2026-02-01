@@ -297,12 +297,13 @@ def generate_npc_prototype_html(
         }}
         
         .chat-header-image {{
-            width: 60px;
-            height: 60px;
-            border-radius: 8px;
-            border: 2px solid #B565FF;
-            margin-right: 12px;
+            width: 150px;
+            height: 150px;
+            border-radius: 12px;
+            border: 3px solid #B565FF;
+            margin-right: 16px;
             object-fit: cover;
+            flex-shrink: 0;
         }}
         
         .chat-header-info {{
@@ -310,13 +311,14 @@ def generate_npc_prototype_html(
         }}
         
         .chat-header-name {{
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             color: #FFFFFF;
+            margin-bottom: 4px;
         }}
         
         .chat-header-role {{
-            font-size: 12px;
+            font-size: 14px;
             color: #B0B0B0;
         }}
         
