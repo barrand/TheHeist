@@ -300,6 +300,28 @@
     
     <div class="color-info" id="colorInfo"></div>
     
+    <!-- NPC Character Preview -->
+    <div style="max-width: 480px; margin: 20px auto;">
+        <div style="background: #1E1E1E; border: 1px solid #333; border-radius: 16px; padding: 20px; text-align: center;">
+            <h3 style="margin-bottom: 16px; font-size: 18px;">🎭 NPC Character Preview</h3>
+            <p style="color: #B0B0B0; font-size: 14px; margin-bottom: 16px;">
+                See how characters look with each theme's accent colors
+            </p>
+            <div style="position: relative; display: inline-block;">
+                <img id="npcImage" src="theme_images/alex_blue.png" 
+                     style="width: 280px; height: 280px; border-radius: 12px; border: 3px solid #333; transition: all 0.3s ease;" 
+                     alt="Alex Rivera - Security Guard">
+                <div style="position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); background: #1E1E1E; border: 2px solid #333; border-radius: 8px; padding: 8px 16px; white-space: nowrap;">
+                    <div style="font-weight: 600; font-size: 14px;">Alex Rivera</div>
+                    <div style="font-size: 12px; color: #B0B0B0;">Security Guard</div>
+                </div>
+            </div>
+            <p style="color: #888; font-size: 12px; margin-top: 24px;">
+                Notice the accent colors in jewelry, badges, and tech elements
+            </p>
+        </div>
+    </div>
+    
     <div class="preview-container">
         <div class="preview-screen" id="previewScreen">
             <div class="screen-title">Room Lobby</div>
@@ -519,6 +541,11 @@
             currentTheme = themeKey;
             const theme = themes[themeKey];
             const screen = document.getElementById('previewScreen');
+            
+            // Update NPC image
+            const npcImage = document.getElementById('npcImage');
+            npcImage.src = `theme_images/alex_${themeKey}.png`;
+            npcImage.style.borderColor = theme.primary;
             
             // Update active button
             document.querySelectorAll('.theme-button').forEach(btn => {
