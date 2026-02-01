@@ -515,13 +515,11 @@ Landing Page
 │                                 │
 │  ✅ COMPLETED (3)         ⌄    │← Expandable
 │                                 │
-│  ┌───────────────┐ ┌─────────┐│
-│  │ 🗺️ Map       │ │ 👥 Team │││← Quick actions
-│  └───────────────┘ └─────────┘││
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │ 🔍 SEARCH THIS ROOM       │ │← Exploration
-│  └───────────────────────────┘ │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌───┐│
+│  │ 🗺️  │ │ 👥  │ │ 🎒  │ │🔍 │││← Quick actions
+│  │ Map │ │Team │ │Bag │ │Rm │││
+│  └─────┘ └─────┘ └─────┘ └───┘││
+│                         (3) ↑   │← Item count badge
 └─────────────────────────────────┘
 ```
 
@@ -561,8 +559,10 @@ Landing Page
 - [ ] Completed section (collapsed, shows count)
 
 **Bottom Navigation:**
-- [ ] "Map" button → Location view
-- [ ] "Team" button → Team status view
+- [ ] "🗺️ Map" button → Location view
+- [ ] "👥 Team" button → Team status view
+- [ ] "🎒 Bag" button → Inventory screen (shows item count badge)
+- [ ] "🔍 Rm" button → Search current room (exploration mode)
 
 **Design Notes - Discovery System:**
 - **Objectives** are high-level goals shown upfront (e.g., "Get Into the Safe")
@@ -590,9 +590,12 @@ Landing Page
 - Tap "Ready" task → Start task immediately (minigame/NPC/search/discovery)
 - Tap "Travel" task → Open map view with that location highlighted
 - Tap "Completed" → Expand to show completed tasks
-- Tap "Map" → Show location map and available locations
-- Tap "Team" → Show all players and their current tasks
-- Tap "Search This Room" → Open search screen in exploration mode (no specific target)
+- Tap "🗺️ Map" → Show location map and available locations
+- Tap "👥 Team" → Show all players and their current tasks
+- Tap "🎒 Bag" → Open inventory screen (Screen 9b)
+  - Shows item count badge (number of items)
+  - Manage items, transfer, use, or drop
+- Tap "🔍 Rm" → Open search screen in exploration mode (no specific target)
   - Always available at any location
   - Discover items, trigger new tasks
   - Encourages player communication
@@ -909,7 +912,226 @@ Landing Page
 
 ---
 
-## Screen 10: NPC Conversation Screen
+## Screen 9b: Inventory Screen
+
+**Purpose**: Manage your collected items, transfer to others, or use items
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│  YOUR INVENTORY            ✕    │
+│  📍 Vault Room                  │← Current location
+│                                 │
+│  YOU HAVE (3):                  │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ 📱 Burner Phone           │ │← Item 1
+│  │ Untraceable phone         │ │
+│  │                           │ │
+│  │ [Transfer] [Use] [Drop]   │ │← Actions
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ 🍎 Apple                  │ │← Item 2
+│  │ Fresh red apple (food)    │ │
+│  │                           │ │
+│  │ [Transfer] [Use] [Drop]   │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ 🔑 Security Keycard       │ │← Item 3
+│  │ Level 2 access badge      │ │
+│  │                           │ │
+│  │ [Transfer] [Use] [Drop]   │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  (Empty slots)                  │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**When "Transfer" is tapped:**
+
+```
+┌─────────────────────────────────┐
+│  TRANSFER: 🍎 Apple        ✕    │
+│                                 │
+│  PLAYERS IN THIS ROOM:          │
+│  ┌───────────────────────────┐ │
+│  │ 👤 Alex (Hacker)          │ │← Teammate here
+│  └───────────────────────────┘ │
+│  ┌───────────────────────────┐ │
+│  │ 👤 Sam (Safe Cracker)     │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  NPCs IN THIS ROOM:             │
+│  ┌───────────────────────────┐ │
+│  │ 💬 Brenda Williams        │ │← NPC here
+│  │    (train passenger)      │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ⚠️ No one else in this room    │← If alone
+│                                 │
+│        Cancel                   │
+└─────────────────────────────────┘
+```
+
+**When "Use" is tapped:**
+
+```
+┌─────────────────────────────────┐
+│  USE: 🔑 Security Keycard  ✕    │
+│                                 │
+│  WHERE TO USE:                  │
+│  ┌───────────────────────────┐ │
+│  │ 🚪 Security Door          │ │← Usable here
+│  │ ✅ Can unlock this!       │ │
+│  └───────────────────────────┘ │
+│  ┌───────────────────────────┐ │
+│  │ 💻 Computer Terminal      │ │← Not usable
+│  │ ⚠️ Wrong item type        │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  Or try using it...             │
+│  ┌───────────────────────────┐ │
+│  │   TRY TO USE              │ │← Generic try
+│  └───────────────────────────┘ │
+│                                 │
+│        Cancel                   │
+└─────────────────────────────────┘
+```
+
+**When "Drop" is tapped:**
+
+```
+┌─────────────────────────────────┐
+│  DROP ITEM?                     │
+│                                 │
+│  🍎 Apple                       │
+│                                 │
+│  This will leave the item in    │
+│  this room. Anyone can pick     │
+│  it up later.                   │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   CONFIRM DROP            │ │
+│  └───────────────────────────┘ │
+│                                 │
+│        Cancel                   │
+└─────────────────────────────────┘
+```
+
+**Components:**
+
+**Main Inventory View:**
+- [ ] Close button (X)
+- [ ] Current location indicator
+- [ ] Item count ("YOU HAVE (3):")
+- [ ] Item cards (scrollable list)
+  - [ ] Item icon (emoji or image)
+  - [ ] Item name
+  - [ ] Item description/type
+  - [ ] Three action buttons per item:
+    - [ ] [Transfer] - Give to player/NPC in room
+    - [ ] [Use] - Try to use item here
+    - [ ] [Drop] - Leave in current room
+- [ ] Empty slots indicator
+- [ ] Weight/capacity limit (optional future feature)
+
+**Transfer Modal:**
+- [ ] Item being transferred (name + icon)
+- [ ] "Players in This Room" section
+  - [ ] List of teammates at same location
+  - [ ] Show role next to name
+  - [ ] Tap to transfer to them
+- [ ] "NPCs in This Room" section
+  - [ ] List of NPCs at same location
+  - [ ] Show NPC personality hint
+  - [ ] Tap to give item to NPC
+- [ ] Empty state message (if alone)
+- [ ] Cancel button
+
+**Use Item Modal:**
+- [ ] Item being used (name + icon)
+- [ ] "Where to Use" section (if obvious targets)
+  - [ ] Contextual objects in room
+  - [ ] Shows if compatible
+- [ ] Generic "Try to Use" button
+  - [ ] LLM evaluates if valid
+  - [ ] May trigger task completion
+  - [ ] May trigger dialogue/event
+- [ ] Cancel button
+
+**Drop Confirmation:**
+- [ ] Item name and icon
+- [ ] Explanation (item stays in room)
+- [ ] Confirm button
+- [ ] Cancel button
+
+**Actions:**
+
+**Main View:**
+- Tap item → Expand to show action buttons
+- Tap "Transfer" → Open transfer modal
+- Tap "Use" → Open use item modal
+- Tap "Drop" → Open drop confirmation
+- Tap X → Close inventory, return to game screen
+
+**Transfer:**
+- Tap player/NPC → Confirm transfer
+- Item removed from your inventory
+- Item added to recipient's inventory (or consumed by NPC)
+- Show success message
+- Close modal, return to inventory
+
+**Use:**
+- Tap object → Try to use item on it
+- Check compatibility
+- Success → Item used, may complete task, may trigger event
+- Failure → Show message "This item can't be used here"
+- Cancel → Return to inventory
+
+**Drop:**
+- Tap "Confirm Drop" → Item removed from inventory
+- Item placed in room's available items
+- Other players can find it when searching room
+- Show confirmation message
+
+**Design Notes:**
+
+**Inventory System Benefits:**
+- ✅ Physical item handoffs between players (🤝 tasks)
+- ✅ NPC requests (give items to unlock info)
+- ✅ Strategic decisions (who should carry what?)
+- ✅ Room-based trading (must be in same location)
+- ✅ Dropped items persist in rooms
+- ✅ Encourages in-person communication ("I have the phone, come get it!")
+
+**Smart Use System:**
+- Context-aware (shows compatible objects in room)
+- LLM-powered fallback ("Try to Use" for creative attempts)
+- Friendly failure messages (not just "No")
+- May trigger events (using lockpick on door)
+- May start conversations (giving food to hungry NPC)
+
+**Transfer Rules:**
+- ✅ Can transfer to players in same room
+- ✅ Can give to NPCs in same room (they consume it or react)
+- ❌ Cannot transfer across rooms (must meet up!)
+- Creates coordination challenges ("Meet me at the kitchen")
+
+**Item Types:**
+- **Quest items**: Burner phone, keycards, cables, tools
+- **Consumables**: Food, drinks (for NPC requests)
+- **Key items**: Codes written down, photos, documents
+- **Equipment**: Lockpicks, hacking devices, disguises
+
+**Real-Time Updates:**
+- Team sees when you transfer items
+- Recipient gets notification
+- Dropped items appear in room search
+- Used items may trigger team-wide events
 
 **Purpose**: Chat with an NPC character to extract information
 
@@ -1375,14 +1597,15 @@ Icon size:              24px
 10. ✅ Discovery Result Screen
 
 **Phase 2 (Should Have):**
-11. ✅ Team View
-12. ✅ NPC Conversation (hybrid: quick responses + free-form text)
-13. ✅ Search Screen (two modes: specific task search + general exploration)
+11. ✅ Map View
+12. ✅ Team View
+13. ✅ Inventory Screen (transfer, use, drop items)
+14. ✅ NPC Conversation (hybrid: quick responses + free-form text)
+15. ✅ Search Screen (two modes: specific task search + general exploration)
 
 **Phase 3 (Nice to Have):**
-14. ✅ Map View
-15. ✅ Minigame Screens (build 2-3)
-16. ✅ Victory Screen
+16. ✅ Minigame Screens (build 2-3 examples)
+17. ✅ Victory Screen
 
 ---
 
