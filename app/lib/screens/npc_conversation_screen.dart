@@ -230,61 +230,23 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
           icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // NPC thumbnail (larger for better visibility)
-            if (widget.npc.imageUrl != null)
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.accentPrimary,
-                    width: 3,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(9),
-                  child: Image.asset(
-                    widget.npc.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: AppColors.bgTertiary,
-                        child: Icon(
-                          Icons.person,
-                          color: AppColors.textSecondary,
-                          size: 32,
-                        ),
-                      );
-                    },
-                  ),
-                ),
+            Text(
+              widget.npc.name,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
               ),
-            SizedBox(width: AppDimensions.spaceMD),
-            
-            // NPC info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.npc.name,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    widget.npc.role,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+            ),
+            Text(
+              widget.npc.role,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
               ),
             ),
           ],
@@ -302,54 +264,49 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
               ),
             ),
             
-            // MASSIVE NPC portrait section (80-90% width)
+            // NPC portrait section (reasonable size)
             if (widget.npc.imageUrl != null)
               Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppDimensions.containerPadding,
-                  vertical: AppDimensions.spaceMD,
+                  vertical: AppDimensions.spaceSM,
                 ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final imageSize = constraints.maxWidth * 0.85; // 85% of screen width
-                    return Center(
-                      child: Container(
-                        width: imageSize,
-                        height: imageSize,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: AppColors.accentPrimary,
-                            width: 5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.accentPrimary.withValues(alpha: 0.4),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child: Image.asset(
-                            widget.npc.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: AppColors.bgTertiary,
-                                child: Icon(
-                                  Icons.person,
-                                  color: AppColors.textSecondary,
-                                  size: imageSize * 0.4,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                child: Center(
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.accentPrimary,
+                        width: 4,
                       ),
-                    );
-                  },
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.accentPrimary.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        widget.npc.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: AppColors.bgTertiary,
+                            child: Icon(
+                              Icons.person,
+                              color: AppColors.textSecondary,
+                              size: 80,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                 ),
               ),
             
@@ -363,16 +320,18 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                 widget.npc.personality,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppColors.textTertiary,
                   fontStyle: FontStyle.italic,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             
             Divider(color: AppColors.borderSubtle, height: 1),
             
-            SizedBox(height: AppDimensions.spaceMD),
+            SizedBox(height: AppDimensions.spaceXS),
             
             // Chat history
             Expanded(
