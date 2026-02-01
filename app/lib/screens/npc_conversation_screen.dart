@@ -146,12 +146,13 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     _scrollToBottom();
 
     try {
-      // Get NPC response from Gemini
-      final response = await _geminiService.getNPCResponse(
+      // Get NPC response from Gemini (using direct REST API)
+      final response = await _geminiService.getNPCResponseViaREST(
         npc: widget.npc,
         objectives: _objectives,
         playerMessage: text,
         conversationHistory: _messages,
+        apiKey: widget.apiKey,
         difficulty: widget.difficulty,
       );
       

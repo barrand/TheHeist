@@ -1,5 +1,7 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../models/npc.dart';
 
 /// Service for interacting with Google Gemini API
@@ -103,7 +105,105 @@ Output ONLY the 3 responses, one per line, no numbers or labels.
     }
   }
   
-  /// Get NPC response to player message
+  /// Get NPC response using direct REST API (bypassing package wrapper)
+  Future<NPCResponse> getNPCResponseViaREST({
+    required NPC npc,
+    required List<Objective> objectives,
+    required String playerMessage,
+    required List<ChatMessage> conversationHistory,
+    required String apiKey,
+    String difficulty = 'medium',
+  }) async {
+    print('💬 GeminiService: Getting NPC response via REST API for: "$playerMessage"');
+    
+    final systemPrompt = '''
+You are ${npc.name}, a ${npc.role}.
+Personality: ${npc.personality}
+Location: ${npc.location}
+
+The player is a member of a heist crew trying to gather information from you.
+
+Information you know (and can share if asked properly):
+${objectives.map((o) {
+      if (o.confidence == ConfidenceLevel.high) {
+        return '- ${o.description} (you definitely know this)';
+      } else if (o.confidence == ConfidenceLevel.medium) {
+        return '- ${o.description} (you might know this)';
+      } else {
+        return null;
+      }
+    }).where((s) => s != null).join('\n')}
+
+Difficulty: $difficulty
+${_getDifficultyInstructions(difficulty)}
+
+IMPORTANT: 
+- Stay in character at all times
+- Be natural and conversational
+- Share information gradually, not all at once
+- If they ask about something you don't know, you genuinely don't know
+- Keep responses under 3 sentences
+- Don't be too obvious about having "quest information"
+
+Player says: "$playerMessage"
+
+Respond naturally as ${npc.name}:
+''';
+
+    try {
+      // Make direct REST API call to Gemini (using v1beta which has gemini-1.5-flash)
+      final url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey';
+      
+      print('💬 GeminiService: Calling Gemini REST API (v1beta/gemini-1.5-flash)...');
+      
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{
+            'parts': [{'text': systemPrompt}]
+          }],
+          'generationConfig': {
+            'temperature': 0.7,
+            'maxOutputTokens': 200,
+          }
+        }),
+      );
+      
+      print('💬 GeminiService: Got response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final npcText = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? 'Sorry, I didn\'t catch that.';
+        
+        print('💬 GeminiService: Response text: "$npcText"');
+        
+        // Check if any objectives were revealed
+        final revealedObjectives = _detectRevealedObjectives(npcText, objectives);
+        print('💬 GeminiService: Revealed objectives: $revealedObjectives');
+        
+        return NPCResponse(
+          text: npcText,
+          revealedObjectives: revealedObjectives,
+        );
+      } else {
+        print('❌ GeminiService: REST API error: ${response.statusCode} - ${response.body}');
+        return NPCResponse(
+          text: 'Sorry, I didn\'t catch that. Could you repeat?',
+          revealedObjectives: [],
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ GeminiService: ERROR calling REST API: $e');
+      print('❌ GeminiService: Stack trace: $stackTrace');
+      return NPCResponse(
+        text: 'Sorry, I didn\'t catch that. Could you repeat?',
+        revealedObjectives: [],
+      );
+    }
+  }
+
+  /// Get NPC response to player message (OLD METHOD - DEPRECATED)
   Future<NPCResponse> getNPCResponse({
     required NPC npc,
     required List<Objective> objectives,
