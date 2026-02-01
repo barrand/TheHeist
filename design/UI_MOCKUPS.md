@@ -175,7 +175,7 @@ Landing Page
 
 **Actions:**
 - Tap scenario → Select it (show required roles)
-- Tap role dropdown → Select your role
+- Tap role selector → Opens role selection modal (Screen 5)
 - Player joins → Add to list (real-time)
 - Player leaves → Remove from list (real-time)
 - Tap "Start Heist" → Generate experience → Go to Game Screen
@@ -200,7 +200,7 @@ Landing Page
 │                                 │
 │  🎭 YOUR ROLE                   │
 │  ┌───────────────────────────┐ │
-│  │ Hacker              ✓     │ │← Dropdown
+│  │ Hacker              ✓     │ │← Tap to open modal
 │  └───────────────────────────┘ │
 │                                 │
 │  👥 PLAYERS                     │
@@ -221,22 +221,21 @@ Landing Page
 - [ ] Player count indicator
 - [ ] Scenario name (read-only, set by host)
 - [ ] Required roles list
-- [ ] Your role selector (dropdown)
-  - [ ] Show all available roles
-  - [ ] Gray out roles already taken
-  - [ ] Highlight recommended roles
+- [ ] Your role selector (button that opens modal)
+  - [ ] Tap to open full role selection modal
+  - [ ] Shows currently selected role or "Select Role"
 - [ ] Players list (same as host view)
 - [ ] Waiting indicator
 - [ ] "Leave Room" link
 
 **Actions:**
-- Tap role dropdown → Select role
+- Tap role selector → Opens role selection modal (Screen 5)
 - Player joins/leaves → Update list (real-time)
 - Host starts game → Go to Game Screen
 
 ---
 
-## Screen 5: Role Selection Dropdown
+## Screen 5: Role Selection Modal
 
 **Purpose**: Choose your role from available options
 
@@ -321,7 +320,7 @@ Landing Page
 
 **Actions:**
 - Tap role card → Expand to show selection button
-- Tap "Select This Role" → Select it → Close dropdown
+- Tap "Select This Role" → Select it → Close modal, return to Room Lobby
 - Tap "Tap for details" → Show Role Detail Modal (see below)
 - Scroll to see all roles
 
@@ -1096,7 +1095,7 @@ Icon size:              24px
 1. ✅ Landing Page
 2. ✅ Join Room Modal
 3. ✅ Room Lobby (Host & Player views)
-4. ✅ Role Selection Dropdown (with minigame info)
+4. ✅ Role Selection Modal (with minigame info)
 5. ✅ Role Detail Modal
 6. ✅ Game Screen (with objectives & discovery)
 7. ✅ Team Objective Detail Modal
