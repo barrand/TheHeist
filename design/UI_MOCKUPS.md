@@ -936,7 +936,7 @@ Landing Page
 │  │ 🍎 Apple                  │ │← Item 2
 │  │ Fresh red apple (food)    │ │
 │  │                           │ │
-│  │ [Transfer] [Use] [Drop]   │ │
+│  │ [Transfer] [Use] [Drop]   │ │← Drop = instant
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
@@ -1004,23 +1004,11 @@ Landing Page
 
 **When "Drop" is tapped:**
 
-```
-┌─────────────────────────────────┐
-│  DROP ITEM?                     │
-│                                 │
-│  🍎 Apple                       │
-│                                 │
-│  This will leave the item in    │
-│  this room. Anyone can pick     │
-│  it up later.                   │
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │   CONFIRM DROP            │ │
-│  └───────────────────────────┘ │
-│                                 │
-│        Cancel                   │
-└─────────────────────────────────┘
-```
+*Instant action (no confirmation needed):*
+- Item removed from inventory immediately
+- Small toast notification: "🍎 Apple dropped in Museum Kitchen"
+- Item now available in room for others to find
+- Can pick it back up by searching room again
 
 **Components:**
 
@@ -1063,11 +1051,11 @@ Landing Page
   - [ ] May trigger dialogue/event
 - [ ] Cancel button
 
-**Drop Confirmation:**
-- [ ] Item name and icon
-- [ ] Explanation (item stays in room)
-- [ ] Confirm button
-- [ ] Cancel button
+**Drop Action (Instant):**
+- [ ] No confirmation modal needed
+- [ ] Toast notification (small popup)
+- [ ] Shows item dropped and location
+- [ ] Auto-dismisses after 2 seconds
 
 **Actions:**
 
@@ -1093,10 +1081,11 @@ Landing Page
 - Cancel → Return to inventory
 
 **Drop:**
-- Tap "Confirm Drop" → Item removed from inventory
+- Tap "Drop" → Item instantly removed from inventory
 - Item placed in room's available items
+- Toast notification: "🍎 Apple dropped in [Room Name]"
 - Other players can find it when searching room
-- Show confirmation message
+- Can pick it back up by searching room again (no penalty)
 
 **Design Notes:**
 
@@ -1107,6 +1096,13 @@ Landing Page
 - ✅ Room-based trading (must be in same location)
 - ✅ Dropped items persist in rooms
 - ✅ Encourages in-person communication ("I have the phone, come get it!")
+
+**Instant Drop (No Confirmation):**
+- Drop is instant - no confirmation modal needed
+- Rationale: Players can easily pick it back up if mistake
+- Reduces friction and taps
+- Toast notification provides feedback
+- Encourages quick item management
 
 **Smart Use System:**
 - Context-aware (shows compatible objects in room)
