@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../models/npc.dart';
+import '../services/gemini_service.dart';
 import '../widgets/npc/objective_card.dart';
 import '../widgets/npc/chat_bubble.dart';
 import '../widgets/npc/quick_response_button.dart';
@@ -28,16 +29,20 @@ class NPCConversationScreen extends StatefulWidget {
 class _NPCConversationScreenState extends State<NPCConversationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final GeminiService _geminiService = GeminiService();
   
   List<ChatMessage> _messages = [];
+  List<Objective> _objectives = [];
   List<String> _quickResponses = [];
   bool _showQuickResponses = true;
   bool _isLoading = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeConversation();
+    _objectives = List.from(widget.objectives);
+    _initializeGemini();
   }
 
   @override
@@ -45,6 +50,24 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initializeGemini() async {
+    try {
+      await _geminiService.initialize();
+      setState(() {
+        _isInitialized = true;
+      });
+      _initializeConversation();
+    } catch (e) {
+      print('Error initializing Gemini: $e');
+      // Show error to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initialize AI: $e')),
+        );
+      }
+    }
   }
 
   void _initializeConversation() {
@@ -64,27 +87,44 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
 
   String _getGreeting() {
     final greetings = [
-      "Hey there. Can I help you with something?",
-      "Hello. What brings you here?",
+      "Hello. Can I help you with something?",
+      "Hi there. What brings you here?",
       "Good to see you. What's up?",
     ];
     return greetings[DateTime.now().millisecond % greetings.length];
   }
 
-  void _generateQuickResponses() {
-    // TODO: Replace with actual LLM generation
-    // For now, use placeholder responses
-    setState(() {
-      _quickResponses = [
-        "Hi, I'm new here. Just getting oriented.",
-        "I was hoping to ask you a few questions.",
-        "Nice to meet you. How long have you worked here?",
-      ];
-    });
+  Future<void> _generateQuickResponses() async {
+    if (!_isInitialized) {
+      // Use fallback responses if not initialized
+      setState(() {
+        _quickResponses = [
+          "Hi, I'm new here. Just getting oriented.",
+          "I was hoping to ask you a few questions.",
+          "Nice to meet you. How long have you worked here?",
+        ];
+      });
+      return;
+    }
+
+    try {
+      final responses = await _geminiService.generateQuickResponses(
+        npc: widget.npc,
+        objectives: _objectives,
+        conversationHistory: _messages,
+      );
+      
+      setState(() {
+        _quickResponses = responses;
+      });
+    } catch (e) {
+      print('Error generating quick responses: $e');
+      // Keep existing responses or use fallback
+    }
   }
 
-  void _sendMessage(String text) {
-    if (text.trim().isEmpty) return;
+  Future<void> _sendMessage(String text) async {
+    if (text.trim().isEmpty || !_isInitialized) return;
 
     setState(() {
       _isLoading = true;
@@ -101,22 +141,66 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     _messageController.clear();
     _scrollToBottom();
 
-    // TODO: Call LLM API to get NPC response
-    // For now, simulate with delay
-    Future.delayed(Duration(seconds: 1), () {
+    try {
+      // Get NPC response from Gemini
+      final response = await _geminiService.getNPCResponse(
+        npc: widget.npc,
+        objectives: _objectives,
+        playerMessage: text,
+        conversationHistory: _messages,
+        difficulty: 'medium',
+      );
+      
+      setState(() {
+        // Add NPC response
+        _messages.add(ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: response.text,
+          isPlayer: false,
+          timestamp: DateTime.now(),
+        ));
+        
+        // Update objectives if any were revealed
+        for (final objectiveId in response.revealedObjectives) {
+          final index = _objectives.indexWhere((o) => o.id == objectiveId);
+          if (index != -1) {
+            _objectives[index] = _objectives[index].copyWith(isCompleted: true);
+          }
+        }
+        
+        _isLoading = false;
+      });
+      
+      _scrollToBottom();
+      
+      // Generate new quick responses
+      await _generateQuickResponses();
+      
+      // Show success if objectives were revealed
+      if (response.revealedObjectives.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Information obtained!'),
+              backgroundColor: AppColors.success,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error getting NPC response: $e');
       setState(() {
         _messages.add(ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          text: "That's an interesting question. Let me think about that...",
+          text: "Sorry, I didn't catch that. Could you repeat?",
           isPlayer: false,
           timestamp: DateTime.now(),
         ));
         _isLoading = false;
       });
-      
       _scrollToBottom();
-      _generateQuickResponses();
-    });
+    }
   }
 
   void _scrollToBottom() {
@@ -144,20 +228,33 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         ),
         title: Row(
           children: [
-            // NPC thumbnail
+            // NPC thumbnail (larger for better visibility)
             if (widget.npc.imageUrl != null)
               Container(
-                width: 40,
-                height: 40,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: AppColors.accentPrimary,
-                    width: 2,
+                    width: 3,
                   ),
-                  image: DecorationImage(
-                    image: AssetImage(widget.npc.imageUrl!),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(9),
+                  child: Image.asset(
+                    widget.npc.imageUrl!,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: AppColors.bgTertiary,
+                        child: Icon(
+                          Icons.person,
+                          color: AppColors.textSecondary,
+                          size: 32,
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -171,7 +268,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                   Text(
                     widget.npc.name,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
@@ -179,7 +276,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                   Text(
                     widget.npc.role,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppColors.textSecondary,
                     ),
                   ),
@@ -196,10 +293,75 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
             Container(
               padding: EdgeInsets.all(AppDimensions.containerPadding),
               child: ObjectiveCard(
-                objectives: widget.objectives,
+                objectives: _objectives,
                 npcName: widget.npc.name,
               ),
             ),
+            
+            // Large NPC portrait section
+            if (widget.npc.imageUrl != null)
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppDimensions.containerPadding,
+                  vertical: AppDimensions.spaceSM,
+                ),
+                child: Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.accentPrimary,
+                      width: 4,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.accentPrimary.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      widget.npc.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: AppColors.bgTertiary,
+                          child: Icon(
+                            Icons.person,
+                            color: AppColors.textSecondary,
+                            size: 80,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            
+            // Personality text
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppDimensions.containerPadding,
+                vertical: AppDimensions.spaceXS,
+              ),
+              child: Text(
+                widget.npc.personality,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textTertiary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            
+            Divider(color: AppColors.borderSubtle, height: 1),
+            
+            SizedBox(height: AppDimensions.spaceMD),
             
             // Chat history
             Expanded(

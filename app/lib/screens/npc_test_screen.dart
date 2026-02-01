@@ -16,25 +16,25 @@ class NPCTestScreen extends StatelessWidget {
       id: '1',
       name: 'Sophia Castellano',
       role: 'Museum Night Guard',
-      personality: 'Professional, takes job seriously, 15 years experience',
+      personality: 'Professional, takes job seriously, 15 years experience. Slightly paranoid about security breaches.',
       location: 'Museum East Wing',
-      imageUrl: null, // TODO: Add asset when available
+      imageUrl: 'assets/images/npcs/sophia_castellano.png',
     ),
     NPC(
       id: '2',
       name: 'Marcus Romano',
       role: 'Bank Security Chief',
-      personality: 'Friendly but alert, protective of protocols',
+      personality: 'Former military, by-the-book, but respects people who show proper respect. Proud of his security systems.',
       location: 'Security Office',
-      imageUrl: null,
+      imageUrl: 'assets/images/npcs/marcus_romano.png',
     ),
     NPC(
       id: '3',
       name: 'Dr. Elena Vasquez',
       role: 'Museum Curator',
-      personality: 'Sophisticated, protective of art',
+      personality: 'Sophisticated art expert, passionate about preserving history. Protective of the collection but loves sharing knowledge.',
       location: 'Gallery 3',
-      imageUrl: null,
+      imageUrl: 'assets/images/npcs/elena_vasquez.png',
     ),
   ];
 
