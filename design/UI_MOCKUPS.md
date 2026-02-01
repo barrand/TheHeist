@@ -1141,10 +1141,13 @@ Landing Page
 ┌─────────────────────────────────┐
 │  < Back                         │
 │                                 │
-│  🎯 YOUR OBJECTIVE              │
+│  🎯 YOUR OBJECTIVE          ✅  │← High confidence
 │  ┌───────────────────────────┐ │
 │  │ Find out about Car 7's    │ │← What to learn
 │  │ security systems          │ │
+│  │                           │ │
+│  │ 🟢🟢🟢 Brenda likely     │ │← Confidence meter
+│  │         knows this!       │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
@@ -1196,8 +1199,10 @@ Landing Page
 ┌─────────────────────────────────┐
 │  < Back                         │
 │                                 │
-│  🎯 Find out about Car 7's      │← Objective stays
-│     security systems            │   visible
+│  🎯 YOUR OBJECTIVE          ✅  │
+│  Find out about Car 7's         │← Objective +
+│  security systems               │   confidence
+│  🟢🟢🟢 Brenda likely knows!   │   stays visible
 │                                 │
 │ ┌──── CHAT HISTORY ──────────┐ │
 │ │                             │ │
@@ -1219,15 +1224,22 @@ Landing Page
 - [ ] Back button (returns to game screen)
 - [ ] Objective section (always visible at top)
   - [ ] Header adapts to context:
-    - "🎯 YOUR OBJECTIVE" (when NPC has specific info)
-    - "🎯 YOUR GOAL" (when exploring/unsure)
-    - "🎯 WHAT YOU'RE SEEKING" (when asking around)
-  - [ ] Clear description adapts to situation:
-    - **Specific task**: "Get the loading dock code from Rosa"
-    - **Exploratory**: "Team: Steal artifact | See what Eddie knows"
-    - **NPC request**: "Give Brenda chips → Learn about security"
-    - **Team goal**: "Find the vault combination (ask around)"
-  - [ ] Compact but readable (2-3 lines max)
+    - "🎯 YOUR OBJECTIVE ✅" (high confidence - NPC has info)
+    - "🎯 YOUR GOAL 🤔" (medium confidence - might help)
+    - "🎯 WHAT YOU'RE SEEKING ❓" (low confidence - probably doesn't know)
+    - "🎯 YOUR OBJECTIVE ⚠️" (action needed - complete request first)
+  - [ ] Clear description of what to learn/accomplish
+  - [ ] Confidence indicator (visual meter)
+    - [ ] 🟢🟢🟢 = High (NPC likely knows)
+    - [ ] 🟡🟡⚪ = Medium (might know)
+    - [ ] 🔴⚪⚪ = Low (probably doesn't know)
+    - [ ] 🟠🟠🟠 = Action needed (give item first)
+  - [ ] Confidence message:
+    - "[NPC Name] likely knows this!"
+    - "[NPC Name] might know something"
+    - "[NPC Name] probably doesn't know"
+    - "Complete request first!"
+  - [ ] Compact but readable (3-4 lines with indicator)
   - [ ] Golden/yellow text to stand out
   - [ ] Stays visible while scrolling chat
   - [ ] Provides context even if talking to wrong NPC
@@ -1314,33 +1326,99 @@ Landing Page
 
 **Visual Examples of Objective Box:**
 
-*When NPC definitely has info (from task):*
+*HIGH CONFIDENCE - NPC definitely has info (from task):*
 ```
-🎯 YOUR OBJECTIVE
+🎯 YOUR OBJECTIVE          ✅
 ┌───────────────────────────┐
 │ Get the loading dock      │
 │ access code from Rosa     │
+│                           │
+│ 🟢🟢🟢 Rosa likely       │← Green = high confidence
+│         knows this!       │
 └───────────────────────────┘
 ```
 
-*When exploring/not sure:*
+*MEDIUM CONFIDENCE - Exploring, might help:*
 ```
-🎯 YOUR GOAL
+🎯 YOUR GOAL              🤔
 ┌───────────────────────────┐
 │ Team: Steal the artifact  │
 │ Talk to Eddie, see what   │
 │ he knows                  │
+│                           │
+│ 🟡🟡⚪ Eddie might       │← Yellow/gray = medium
+│         know something    │
 └───────────────────────────┘
 ```
 
-*When NPC wants something first:*
+*LOW CONFIDENCE - Probably wrong NPC:*
 ```
-🎯 YOUR OBJECTIVE
+🎯 WHAT YOU'RE SEEKING    ❓
+┌───────────────────────────┐
+│ Find the vault            │
+│ combination (ask around)  │
+│                           │
+│ 🔴⚪⚪ Tommy probably    │← Red/gray = low
+│         doesn't know      │
+└───────────────────────────┘
+```
+
+*NPC REQUEST - Need to complete trade first:*
+```
+🎯 YOUR OBJECTIVE          ⚠️
 ┌───────────────────────────┐
 │ Give Brenda chips →       │
 │ Learn about security      │
+│                           │
+│ 🟠🟠🟠 Complete request  │← Orange = action needed
+│         first!            │
 └───────────────────────────┘
 ```
+
+**Confidence Indicator System:**
+
+**🟢🟢🟢 HIGH (Green) - "Likely knows this!"**
+- Triggered by: Specific NPC task in your task list
+- Task description mentions this NPC by name
+- Example: "💬 Talk to Brenda - Learn about Car 7 security"
+- Header: "YOUR OBJECTIVE" + ✅
+- Message: "[NPC Name] likely knows this!"
+
+**🟡🟡⚪ MEDIUM (Yellow/Gray) - "Might know something"**
+- Triggered by: General team objective, no specific NPC task
+- Player chose to talk to this NPC on their own
+- NPC role/location seems relevant
+- Header: "YOUR GOAL" + 🤔
+- Message: "[NPC Name] might know something"
+
+**🔴⚪⚪ LOW (Red/Gray) - "Probably doesn't know"**
+- Triggered by: Talking to unrelated NPC
+- NPC role doesn't match objective type
+- Player exploring without direction
+- Header: "WHAT YOU'RE SEEKING" + ❓
+- Message: "[NPC Name] probably doesn't know"
+
+**🟠🟠🟠 ACTION NEEDED (Orange) - "Complete request first!"**
+- Triggered by: NPC requires item/favor before sharing
+- You have a prerequisite task
+- Example: "Give Brenda chips → She'll share info"
+- Header: "YOUR OBJECTIVE" + ⚠️
+- Message: "Complete request first!"
+
+**How Confidence is Determined:**
+- **Task metadata**: If task says "Talk to [Specific NPC]" → High
+- **NPC role**: Security guard for security questions → Medium
+- **Location context**: NPC at relevant location → Medium
+- **Random NPC**: Street vendor for vault questions → Low
+- **Prerequisite exists**: Need to give item first → Action Needed
+
+**Why Confidence Indicators:**
+- ✅ **Instant feedback**: Know if you're talking to right person
+- ✅ **Reduces frustration**: Don't waste time on wrong NPCs
+- ✅ **Encourages exploration**: Medium/low = try anyway, might surprise you
+- ✅ **Creates realism**: Not everyone has answers (low confidence NPCs exist)
+- ✅ **Strategic decisions**: High confidence = worth social engineering effort
+- ✅ **Discovery moments**: Low confidence NPC reveals something = surprise!
 
 **Why Show Objective at Top:**
 - ✅ **Constant Reminder**: Players always know what they're trying to learn
