@@ -2,7 +2,7 @@
 """
 Generate NPC character images using Google's Imagen 4.
 
-Art style: Prison Boss mobile game (bright, cartoony, fun, stylized, low-poly 3D)
+Art style: The Heist Game (bright, cartoony, fun, stylized, low-poly 3D)
 
 Usage:
     python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --clothing "reflective vest and uniform" --background "parking garage" --expression "bored"
@@ -23,20 +23,19 @@ from config import GEMINI_API_KEY
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ============================================
-# PRISON BOSS STYLE - ALWAYS CONSISTENT
+# HEIST GAME ART STYLE - ALWAYS CONSISTENT
 # ============================================
-PRISON_BOSS_STYLE = """3D render, cartoonish style,
+HEIST_GAME_ART_STYLE = """3D render, cartoonish style,
 cell-shaded, exaggerated features,
 bright saturated colors, simplified geometry, stylized facial features,
-clean flat shading, game character design,
-VR game aesthetic, toon shader, minimal detail,
+clean flat shading, game character design, toon shader, minimal detail,
 low-poly 3D model, mobile game art style"""
 
 
 def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=None, 
                        background=None, expression="friendly", details=None, 
                        attitude="approachable", output_file=None):
-    """Generate NPC character portrait using Imagen 4 in Prison Boss style.
+    """Generate NPC character portrait using Imagen 4 in Heist Game art style.
     
     Args:
         name: Character name
@@ -94,19 +93,19 @@ def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=Non
     if not background:
         background = "simple colorful indoor setting with ambient lighting"
     else:
-        # Enhance background with Prison Boss style details
+        # Enhance background with Heist Game art style details
         background = f"{background}, vibrant colorful environment, good lighting, detailed scene elements"
     
     # Build final prompt
-    prompt = f"""{PRISON_BOSS_STYLE},
+    prompt = f"""{HEIST_GAME_ART_STYLE},
 {expression} expression, {attitude} personality,
 character: {character_description},
 background: {background},
 portrait view, centered, waist-up composition,
-Prison Boss game aesthetic"""
+The Heist game aesthetic"""
     
     print("📝 Prompt:")
-    print(f"   {gender} {role} in Prison Boss style")
+    print(f"   {gender} {role} in Heist Game art style")
     print()
     
     try:
@@ -170,7 +169,7 @@ Prison Boss game aesthetic"""
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate NPC character portraits using Imagen 4 (Prison Boss style)',
+        description='Generate NPC character portraits using Imagen 4 (Heist Game art style)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
