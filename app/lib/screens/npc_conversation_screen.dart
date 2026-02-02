@@ -43,6 +43,8 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   bool _showQuickResponses = true; // Show quick responses
   bool _isLoading = false;
   bool _isInitialized = false;
+  bool _missionCompleted = false; // Track if objectives completed
+  bool _missionFailed = false; // Track if conversation failed
 
   @override
   void initState() {
@@ -152,6 +154,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty || !_isInitialized) return;
+    if (_missionCompleted || _missionFailed) return; // Don't allow messaging if mission ended
 
     setState(() {
       _isLoading = true;
@@ -209,14 +212,12 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       
       // Show success if objectives were revealed
       if (response.revealedObjectives.isNotEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Information obtained!'),
-              backgroundColor: AppColors.success,
-              duration: Duration(seconds: 2),
-            ),
-          );
+        // Check if all objectives are completed
+        final allCompleted = _objectives.every((obj) => obj.isCompleted);
+        if (allCompleted) {
+          setState(() {
+            _missionCompleted = true;
+          });
         }
       }
     } catch (e) {
@@ -409,6 +410,75 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                     ),
                   ),
                   
+                  // Success/Failure banner
+                  if (_missionCompleted || _missionFailed)
+                    SliverToBoxAdapter(
+                      child: Container(
+                        margin: EdgeInsets.all(AppDimensions.containerPadding),
+                        padding: EdgeInsets.all(AppDimensions.cardPadding * 1.5),
+                        decoration: BoxDecoration(
+                          color: _missionCompleted ? Color(0xFF1E4D2B) : Color(0xFF4D1E1E),
+                          borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+                          border: Border.all(
+                            color: _missionCompleted ? AppColors.success : AppColors.error,
+                            width: 3,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              _missionCompleted ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              color: _missionCompleted ? AppColors.success : AppColors.error,
+                              size: 64,
+                            ),
+                            SizedBox(height: AppDimensions.spaceMD),
+                            Text(
+                              _missionCompleted ? '🎉 MISSION SUCCESS!' : '❌ MISSION FAILED',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: _missionCompleted ? AppColors.success : AppColors.error,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: AppDimensions.spaceSM),
+                            Text(
+                              _missionCompleted 
+                                  ? 'You successfully obtained all the information you needed!'
+                                  : 'The NPC became suspicious and ended the conversation.',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: AppColors.textPrimary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: AppDimensions.spaceLG),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.accentPrimary,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Return to Mission Select',
+                                  style: TextStyle(
+                                    color: AppColors.bgPrimary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  
                   // Bottom padding for chat
                   SliverToBoxAdapter(
                     child: SizedBox(height: 80),
@@ -504,9 +574,12 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                       Expanded(
                         child: HeistTextField(
                           controller: _messageController,
-                          hintText: 'Type your response...',
+                          hintText: _missionCompleted || _missionFailed 
+                              ? 'Mission ended' 
+                              : 'Type your response...',
                           maxLines: 1,
                           onChanged: (_) => setState(() {}),
+                          enabled: !_missionCompleted && !_missionFailed,
                         ),
                       ),
                       SizedBox(width: 8),
@@ -515,7 +588,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                         width: 80,
                         height: 40,
                         child: ElevatedButton(
-                          onPressed: _messageController.text.trim().isEmpty || _isLoading
+                          onPressed: _messageController.text.trim().isEmpty || _isLoading || _missionCompleted || _missionFailed
                               ? null
                               : () => _sendMessage(_messageController.text),
                           style: ElevatedButton.styleFrom(

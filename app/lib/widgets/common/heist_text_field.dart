@@ -14,6 +14,7 @@ class HeistTextField extends StatelessWidget {
   final void Function(String)? onChanged;
   final IconData? prefixIcon;
   final Widget? suffixIcon;
+  final bool enabled;
 
   const HeistTextField({
     Key? key,
@@ -27,6 +28,7 @@ class HeistTextField extends StatelessWidget {
     this.onChanged,
     this.prefixIcon,
     this.suffixIcon,
+    this.enabled = true,
   }) : super(key: key);
 
   @override
@@ -38,6 +40,7 @@ class HeistTextField extends StatelessWidget {
       maxLines: maxLines,
       validator: validator,
       onChanged: onChanged,
+      enabled: enabled,
       style: TextStyle(
         fontSize: 14,
         color: AppColors.textPrimary,
