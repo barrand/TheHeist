@@ -35,15 +35,15 @@ class WebSocketManager:
         Args:
             room_code: Room code
             player_id: Player ID
-            websocket: WebSocket connection
+            websocket: WebSocket connection (already accepted)
         """
-        await websocket.accept()
+        # Don't accept here - it's already accepted in the websocket endpoint
         
         if room_code not in self.connections:
             self.connections[room_code] = {}
         
         self.connections[room_code][player_id] = websocket
-        logger.info(f"🔌 Player {player_id} connected to room {room_code} via WebSocket")
+        logger.info(f"🔌 Player {player_id} registered in room {room_code} connection pool")
     
     def disconnect(self, room_code: str, player_id: str) -> None:
         """

@@ -108,7 +108,9 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
                     your_player_id=player_id,
                     is_host=room.is_host(player_id)
                 )
+                logger.info(f"📤 Sending room_state to player {player_id}: {room_state.model_dump()}")
                 await websocket.send_json(room_state.model_dump())
+                logger.info(f"✅ room_state sent to player {player_id}")
                 
                 # Broadcast player joined to others
                 if existing_player:

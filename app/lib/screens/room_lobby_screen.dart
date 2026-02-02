@@ -50,12 +50,19 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   }
   
   void _setupWebSocketListeners() {
+    debugPrint('🔧 LOBBY: Setting up WebSocket listeners');
+    
     // Room state (initial)
     widget.wsService.roomState.listen((message) {
+      debugPrint('🏠 LOBBY: Received room_state message: $message');
       setState(() {
         _players = List<Map<String, dynamic>>.from(message['players'] ?? []);
         _myPlayerId = message['your_player_id'];
         _isHost = message['is_host'] ?? false;
+        
+        debugPrint('🏠 LOBBY: Parsed players: $_players');
+        debugPrint('🏠 LOBBY: My player ID: $_myPlayerId');
+        debugPrint('🏠 LOBBY: Am I host? $_isHost');
         
         // Find my role
         final myPlayer = _players.firstWhere(
@@ -63,13 +70,16 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
           orElse: () => {},
         );
         _myRole = myPlayer['role'];
+        debugPrint('🏠 LOBBY: My initial role: $_myRole');
       });
     });
     
     // Player joined
     widget.wsService.playerJoined.listen((message) {
+      debugPrint('👤 LOBBY: Player joined message: $message');
       setState(() {
         _players.add(message['player']);
+        debugPrint('👤 LOBBY: Added player, now have ${_players.length} players');
       });
       _showSnackBar('${message['player']['name']} joined');
     });
