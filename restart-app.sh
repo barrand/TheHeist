@@ -18,11 +18,13 @@ cd "$SCRIPT_DIR"
 
 # Kill any existing Flutter/backend processes
 echo -e "${YELLOW}1. Stopping existing processes...${NC}"
-pkill -f "flutter run" 2>/dev/null
-pkill -f "python.*run.py" 2>/dev/null
+pkill -9 -f "flutter run" 2>/dev/null
+pkill -9 -f "python.*run.py" 2>/dev/null
+pkill -9 -f "flutter_tools_chrome_device" 2>/dev/null
+pkill -9 -f "Google Chrome.*localhost:8098" 2>/dev/null
 lsof -ti:8098 | xargs kill -9 2>/dev/null
 lsof -ti:8000 | xargs kill -9 2>/dev/null
-sleep 2
+sleep 3
 echo -e "${GREEN}   ✓ Processes stopped${NC}"
 echo ""
 
