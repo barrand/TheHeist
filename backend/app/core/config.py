@@ -32,7 +32,9 @@ class Settings(BaseSettings):
     
     # Gemini API Configuration
     gemini_api_key: str
-    gemini_model: str = "models/gemini-2.5-flash"
+    gemini_model: str = "models/gemini-2.5-flash"  # Default model (for experience generation, etc.)
+    gemini_npc_model: str = "models/gemini-2.0-flash-lite"  # For NPC responses (no thinking tokens)
+    gemini_quick_response_model: str = "models/gemini-2.0-flash-lite"  # For quick response suggestions
     
     # Logging
     log_level: str = "INFO"

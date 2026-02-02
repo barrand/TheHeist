@@ -39,9 +39,10 @@ class NPCConversationService:
         """Initialize Gemini service with API key from settings"""
         settings = get_settings()
         self.api_key = settings.gemini_api_key
-        self.model_name = settings.gemini_model
+        self.npc_model = settings.gemini_npc_model
+        self.quick_response_model = settings.gemini_quick_response_model
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
-        logger.info(f"Initialized Gemini service with model: {self.model_name}")
+        logger.info(f"Initialized NPC Conversation Service - NPC model: {self.npc_model}, Quick response model: {self.quick_response_model}")
     
     def get_difficulty_instructions(self, difficulty: str) -> str:
         """Get NPC behavior instructions based on difficulty setting"""
@@ -140,11 +141,8 @@ Your response as {npc.name} (plain text, no quotes):"""
         try:
             prompt = self.build_npc_prompt(npc, objectives, player_message, difficulty)
             
-            # Use gemini-2.0-flash-lite to avoid thinking tokens that consume output budget
-            npc_model = "models/gemini-2.0-flash-lite"
-            
             # Use direct REST API call
-            url = f"{self.base_url}/{npc_model}:generateContent?key={self.api_key}"
+            url = f"{self.base_url}/{self.npc_model}:generateContent?key={self.api_key}"
             
             payload = {
                 "contents": [{
