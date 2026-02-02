@@ -157,6 +157,10 @@ Your response as {npc.name} (plain text, no quotes):"""
             response.raise_for_status()
             
             data = response.json()
+            
+            # Log full API response for debugging
+            logger.info(f"NPC API response: {json.dumps(data, indent=2)}")
+            
             npc_text = data["candidates"][0]["content"]["parts"][0]["text"]
             
             # Strip leading/trailing quotes if Gemini added them

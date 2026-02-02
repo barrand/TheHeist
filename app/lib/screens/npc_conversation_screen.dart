@@ -487,18 +487,19 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
               ),
             ),
             
-            // Input section (fixed at bottom)
-            Container(
-              padding: EdgeInsets.all(AppDimensions.containerPadding),
-              decoration: BoxDecoration(
-                color: AppColors.bgSecondary,
-                border: Border(
-                  top: BorderSide(
-                    color: AppColors.borderSubtle,
+            // Input section (fixed at bottom) - hidden when mission ends
+            if (!_missionCompleted && !_missionFailed)
+              Container(
+                padding: EdgeInsets.all(AppDimensions.containerPadding),
+                decoration: BoxDecoration(
+                  color: AppColors.bgSecondary,
+                  border: Border(
+                    top: BorderSide(
+                      color: AppColors.borderSubtle,
+                    ),
                   ),
                 ),
-              ),
-              child: Column(
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // DEBUG: Show state
@@ -574,12 +575,9 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                       Expanded(
                         child: HeistTextField(
                           controller: _messageController,
-                          hintText: _missionCompleted || _missionFailed 
-                              ? 'Mission ended' 
-                              : 'Type your response...',
+                          hintText: 'Type your response...',
                           maxLines: 1,
                           onChanged: (_) => setState(() {}),
-                          enabled: !_missionCompleted && !_missionFailed,
                         ),
                       ),
                       SizedBox(width: 8),
@@ -588,7 +586,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                         width: 80,
                         height: 40,
                         child: ElevatedButton(
-                          onPressed: _messageController.text.trim().isEmpty || _isLoading || _missionCompleted || _missionFailed
+                          onPressed: _messageController.text.trim().isEmpty || _isLoading
                               ? null
                               : () => _sendMessage(_messageController.text),
                           style: ElevatedButton.styleFrom(
