@@ -340,8 +340,13 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       runSpacing: AppDimensions.spaceSM,
       children: _availableRoles.map((role) {
         final isSelected = _myRole == role['id'];
-        final isTaken = _players.any((p) => p['role'] == role['id']);
+        final takenByPlayer = _players.firstWhere(
+          (p) => p['role'] == role['id'],
+          orElse: () => <String, dynamic>{},
+        );
+        final isTaken = takenByPlayer.isNotEmpty;
         final isAvailable = !isTaken || isSelected;
+        final takenByName = isTaken ? takenByPlayer['name'] : null;
         
         return InkWell(
           onTap: isAvailable ? () => isSelected ? _deselectRole() : _selectRole(role['id']!) : null,
@@ -359,20 +364,41 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                       : AppColors.bgSecondary,
               borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
               border: Border.all(
-                color: isSelected ? AppColors.accentLight : AppColors.borderSubtle,
+                color: isSelected 
+                    ? AppColors.accentLight 
+                    : isTaken 
+                        ? AppColors.danger.withAlpha(128) 
+                        : AppColors.borderSubtle,
               ),
             ),
-            child: Text(
-              '${role['icon']} ${role['name']}',
-              style: TextStyle(
-                color: isSelected
-                    ? AppColors.textPrimary
-                    : isTaken
-                        ? AppColors.textTertiary
-                        : AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${role['icon']} ${role['name']}',
+                  style: TextStyle(
+                    color: isSelected
+                        ? AppColors.textPrimary
+                        : isTaken
+                            ? AppColors.textTertiary
+                            : AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+                if (isTaken && !isSelected) ...[
+                  SizedBox(height: 2),
+                  Text(
+                    'taken by $takenByName',
+                    style: TextStyle(
+                      color: AppColors.danger,
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         );
