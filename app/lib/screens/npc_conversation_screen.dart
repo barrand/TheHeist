@@ -420,7 +420,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                           color: _missionCompleted ? Color(0xFF1E4D2B) : Color(0xFF4D1E1E),
                           borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
                           border: Border.all(
-                            color: _missionCompleted ? AppColors.success : AppColors.error,
+                            color: _missionCompleted ? AppColors.success : AppColors.danger,
                             width: 3,
                           ),
                         ),
@@ -428,7 +428,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                           children: [
                             Icon(
                               _missionCompleted ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                              color: _missionCompleted ? AppColors.success : AppColors.error,
+                              color: _missionCompleted ? AppColors.success : AppColors.danger,
                               size: 64,
                             ),
                             SizedBox(height: AppDimensions.spaceMD),
@@ -437,7 +437,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
-                                color: _missionCompleted ? AppColors.success : AppColors.error,
+                                color: _missionCompleted ? AppColors.success : AppColors.danger,
                               ),
                               textAlign: TextAlign.center,
                             ),
