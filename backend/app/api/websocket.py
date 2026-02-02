@@ -102,14 +102,15 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
                 room_state = RoomStateMessage(
                     type="room_state",
                     room_code=room_code,
-                    players=[p.model_dump() for p in room.players.values()],
+                    players=[p.model_dump(mode='json') for p in room.players.values()],
                     scenario=room.scenario,
                     status=room.status.value,
                     your_player_id=player_id,
                     is_host=room.is_host(player_id)
                 )
-                logger.info(f"📤 Sending room_state to player {player_id}: {room_state.model_dump()}")
-                await websocket.send_json(room_state.model_dump())
+                room_state_dict = room_state.model_dump(mode='json')
+                logger.info(f"📤 Sending room_state to player {player_id}")
+                await websocket.send_json(room_state_dict)
                 logger.info(f"✅ room_state sent to player {player_id}")
                 
                 # Broadcast player joined to others
@@ -119,11 +120,11 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
                 else:
                     player_joined = PlayerJoinedMessage(
                         type="player_joined",
-                        player=room.players[player_id].model_dump()
+                        player=room.players[player_id].model_dump(mode='json')
                     )
                     await ws_manager.broadcast_to_room(
                         room_code,
-                        player_joined.model_dump(),
+                        player_joined.model_dump(mode='json'),
                         exclude_player=player_id
                     )
                 
@@ -211,8 +212,8 @@ async def handle_select_role(room_code: str, player_id: str, data: Dict[str, Any
         role=role
     )
     
-    role_dict = role_selected.model_dump()
-    logger.info(f"📤 Broadcasting message: {role_dict}")
+    role_dict = role_selected.model_dump(mode='json')
+    logger.info(f"📤 Broadcasting role_selected message")
     await ws_manager.broadcast_to_room(room_code, role_dict)
 
 
@@ -251,9 +252,9 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
                 type="game_started",
                 scenario=scenario,
                 objective=game_state.objective,
-                your_tasks=[task.model_dump() for task in player_tasks]
+                your_tasks=[task.model_dump(mode='json') for task in player_tasks]
             )
-            await ws_manager.send_to_player(room_code, pid, game_started.model_dump())
+            await ws_manager.send_to_player(room_code, pid, game_started.model_dump(mode='json'))
         
         logger.info(f"🎮 Game started in room {room_code} - scenario: {scenario}")
     
@@ -285,7 +286,7 @@ async def handle_complete_task(room_code: str, player_id: str, data: Dict[str, A
         by_player_name=player.name,
         newly_available=[]  # Will be filled by GameStateManager
     )
-    await ws_manager.broadcast_to_room(room_code, task_completed.model_dump())
+    await ws_manager.broadcast_to_room(room_code, task_completed.model_dump(mode='json'))
 
 
 async def handle_npc_message(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
@@ -312,7 +313,7 @@ async def handle_move_location(room_code: str, player_id: str, data: Dict[str, A
             player_name=room.players[player_id].name,
             location=location
         )
-        await ws_manager.broadcast_to_room(room_code, player_moved.model_dump())
+        await ws_manager.broadcast_to_room(room_code, player_moved.model_dump(mode='json'))
 
 
 async def handle_handoff_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
