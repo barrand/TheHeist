@@ -13,7 +13,7 @@ from typing import Optional, Any, Dict, List, Literal
 class JoinRoomMessage(BaseModel):
     """Player wants to join a room"""
     type: Literal["join_room"] = "join_room"
-    room_code: str = Field(..., description="4-character room code")
+    room_code: str = Field(..., description="4-5 letter room code (e.g., 'APPLE', 'TIGER')")
     player_name: str = Field(..., description="Player's display name")
 
 

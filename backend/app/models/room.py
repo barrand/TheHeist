@@ -40,7 +40,13 @@ class GameRoom(BaseModel):
     """A multiplayer game room"""
     model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
     
-    room_code: str = Field(..., description="4-character room code (e.g., '4S2X')")
+    room_code: str = Field(
+        ..., 
+        description="4-5 letter room code (e.g., 'APPLE', 'TIGER', 'PIANO')",
+        min_length=4,
+        max_length=6,  # Allow 6 for fallback numeric suffix
+        pattern="^[A-Z]{4,5}[0-9]?$"  # 4-5 letters, optional digit
+    )
     host_id: str = Field(..., description="Player ID of room host (first to join)")
     players: Dict[str, Player] = Field(default_factory=dict, description="player_id -> Player")
     scenario: Optional[str] = Field(None, description="Selected scenario (e.g., 'museum_gala_vault')")

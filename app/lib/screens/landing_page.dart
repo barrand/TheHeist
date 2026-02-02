@@ -178,8 +178,9 @@ class _LandingPageState extends State<LandingPage> {
           children: [
             HeistTextField(
               controller: roomCodeController,
-              hintText: 'Room Code (e.g., 4S2X)',
+              hintText: 'Room Code (e.g., APPLE)',
               maxLines: 1,
+              textCapitalization: TextCapitalization.characters,
             ),
             SizedBox(height: AppDimensions.spaceMD),
             HeistTextField(
@@ -198,7 +199,8 @@ class _LandingPageState extends State<LandingPage> {
             onPressed: () {
               final roomCode = roomCodeController.text.trim().toUpperCase();
               final name = nameController.text.trim();
-              if (roomCode.isNotEmpty && name.isNotEmpty) {
+              // Accept 4-5 letter codes
+              if (roomCode.length >= 4 && roomCode.length <= 6 && name.isNotEmpty) {
                 Navigator.pop(context, {'roomCode': roomCode, 'name': name});
               }
             },

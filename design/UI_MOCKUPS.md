@@ -95,7 +95,7 @@ Landing Page
 │                                 │
 │  ┌─────────────────────────┐   │
 │  │                         │   │
-│  │   [  4  S  2  X  ]      │   │  ← Large input
+│  │   [  A  P  P  L  E  ]   │   │  ← Large input
 │  │                         │   │
 │  └─────────────────────────┘   │
 │                                 │
@@ -111,13 +111,13 @@ Landing Page
 **Components:**
 - [ ] Modal overlay (dims background)
 - [ ] Title "Enter Room Code"
-- [ ] 4-character code input (large, auto-caps)
-- [ ] "Join" button (disabled until 4 chars entered)
+- [ ] 4-5 letter code input (large, auto-caps)
+- [ ] "Join" button (disabled until 4-5 letters entered)
 - [ ] "Cancel" link
 - [ ] Error message area (if invalid code)
 
 **Actions:**
-- Enter 4 characters → Enable "Join" button
+- Enter 4-5 letters → Enable "Join" button
 - Tap "Join" → Validate code → Go to Room Lobby
 - Tap "Cancel" → Return to Landing Page
 
@@ -131,7 +131,7 @@ Landing Page
 
 ```
 ┌─────────────────────────────────┐
-│  Room Code: 4S2X           📋   │← Copy button
+│  Room Code: APPLE          📋   │← Copy button
 │  (3 of 12 players)              │
 │                                 │
 │  🎭 SCENARIO SELECTION          │
@@ -239,7 +239,7 @@ Landing Page
 
 ```
 ┌─────────────────────────────────┐
-│  Room Code: 4S2X           📋   │
+│  Room Code: TIGER          📋   │
 │  (3 of 12 players)              │
 │                                 │
 │  🎭 SCENARIO                    │

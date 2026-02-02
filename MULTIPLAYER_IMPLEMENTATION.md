@@ -37,7 +37,7 @@ Successfully implemented a **server-authoritative multiplayer architecture** for
 ### Services (`backend/app/services/`)
 
 #### `room_manager.py` ✅
-- Generate unique 4-character room codes (e.g., "4S2X")
+- Generate unique 4-5 letter room codes from dictionary words (e.g., "APPLE", "TIGER", "PIANO")
 - Create/join/leave rooms
 - Track 3-12 players per room
 - Role selection and validation

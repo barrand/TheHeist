@@ -32,16 +32,20 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   bool _isHost = false;
   String _selectedScenario = 'museum_gala_vault';
   
-  // Available roles
+  // Available roles - all 12 from roles.json
   final List<Map<String, String>> _availableRoles = [
     {'id': 'mastermind', 'name': 'Mastermind', 'icon': '🧠'},
     {'id': 'hacker', 'name': 'Hacker', 'icon': '💻'},
     {'id': 'safe_cracker', 'name': 'Safe Cracker', 'icon': '🔓'},
-    {'id': 'insider', 'name': 'Insider', 'icon': '🕵️'},
     {'id': 'driver', 'name': 'Driver', 'icon': '🚗'},
+    {'id': 'insider', 'name': 'Insider', 'icon': '🕵️'},
     {'id': 'grifter', 'name': 'Grifter', 'icon': '🎭'},
     {'id': 'muscle', 'name': 'Muscle', 'icon': '💪'},
     {'id': 'lookout', 'name': 'Lookout', 'icon': '👀'},
+    {'id': 'fence', 'name': 'Fence', 'icon': '🤝'},
+    {'id': 'cat_burglar', 'name': 'Cat Burglar', 'icon': '🐱'},
+    {'id': 'cleaner', 'name': 'Cleaner', 'icon': '🧹'},
+    {'id': 'pickpocket', 'name': 'Pickpocket', 'icon': '🤏'},
   ];
   
   @override
