@@ -135,7 +135,7 @@ class _GameScreenState extends State<GameScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsets.all(AppDimensions.screenPadding),
+            padding: EdgeInsets.all(AppDimensions.space2XL),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -150,7 +150,7 @@ class _GameScreenState extends State<GameScreen> {
                 SizedBox(height: AppDimensions.spaceLG),
                 
                 // Your tasks
-                const SectionHeader(title: 'Your Tasks'),
+                const SectionHeader(text: 'Your Tasks'),
                 SizedBox(height: AppDimensions.spaceMD),
                 
                 if (_myTasks.isEmpty)
@@ -413,7 +413,7 @@ class _GameScreenState extends State<GameScreen> {
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: EdgeInsets.all(AppDimensions.screenPadding),
+            padding: EdgeInsets.all(AppDimensions.space2XL),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

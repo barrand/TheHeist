@@ -193,7 +193,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsets.all(AppDimensions.screenPadding),
+            padding: EdgeInsets.all(AppDimensions.space2XL),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -203,14 +203,14 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                 SizedBox(height: AppDimensions.spaceLG),
                 
                 // Players list
-                const SectionHeader(title: 'Players'),
+                const SectionHeader(text: 'Players'),
                 SizedBox(height: AppDimensions.spaceSM),
                 _buildPlayersList(),
                 
                 SizedBox(height: AppDimensions.spaceLG),
                 
                 // Role selection
-                const SectionHeader(title: 'Select Your Role'),
+                const SectionHeader(text: 'Select Your Role'),
                 SizedBox(height: AppDimensions.spaceSM),
                 _buildRoleSelection(),
                 
