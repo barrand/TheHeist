@@ -2,7 +2,7 @@
 Data models for game rooms and players
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Dict, Optional, List
 from enum import Enum
 from datetime import datetime
@@ -25,6 +25,8 @@ class Item(BaseModel):
     
 class Player(BaseModel):
     """A player in a game room"""
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    
     id: str = Field(..., description="Unique player identifier (UUID)")
     name: str = Field(..., description="Player display name")
     role: Optional[str] = Field(None, description="Selected role (mastermind, hacker, etc.)")
@@ -36,6 +38,8 @@ class Player(BaseModel):
 
 class GameRoom(BaseModel):
     """A multiplayer game room"""
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    
     room_code: str = Field(..., description="4-character room code (e.g., '4S2X')")
     host_id: str = Field(..., description="Player ID of room host (first to join)")
     players: Dict[str, Player] = Field(default_factory=dict, description="player_id -> Player")
