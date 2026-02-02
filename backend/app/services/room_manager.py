@@ -5,14 +5,32 @@ Handles room creation, player joining, and room lifecycle management
 
 import logging
 import random
-import string
 import uuid
 from typing import Dict, Optional, List
 from datetime import datetime
+from pathlib import Path
 
 from app.models.room import GameRoom, Player, RoomStatus
 
 logger = logging.getLogger(__name__)
+
+
+def _load_room_words() -> List[str]:
+    """Load room code word list from file"""
+    word_file = Path(__file__).parent.parent / "data" / "room_words.txt"
+    try:
+        with open(word_file, 'r') as f:
+            words = [line.strip().upper() for line in f if line.strip()]
+        logger.info(f"✅ Loaded {len(words)} room code words")
+        return words
+    except FileNotFoundError:
+        logger.error(f"❌ Room words file not found: {word_file}")
+        # Fallback to a small default list
+        return ["APPLE", "TIGER", "OCEAN", "FLAME", "STONE", "PIANO", "GRAPE", "RIVER"]
+
+
+# Load word list once at module level
+ROOM_WORDS = _load_room_words()
 
 
 class RoomManager:
@@ -34,28 +52,23 @@ class RoomManager:
     
     def generate_room_code(self) -> str:
         """
-        Generate a unique 4-character room code
-        Format: XNXN where X=letter, N=number (e.g., "4S2X" or "A1B2")
+        Generate a unique room code from dictionary words
+        Format: 4-5 letter dictionary word (e.g., "APPLE", "TIGER", "OCEAN")
         
         Returns:
-            Unique room code
+            Unique room code (dictionary word)
         """
         max_attempts = 100
+        
         for _ in range(max_attempts):
-            # Generate code: digit-letter-digit-letter
-            code = ''.join([
-                random.choice(string.digits),
-                random.choice(string.ascii_uppercase),
-                random.choice(string.digits),
-                random.choice(string.ascii_uppercase),
-            ])
-            
+            code = random.choice(ROOM_WORDS)
             if code not in self.rooms:
                 return code
         
-        # Fallback to random alphanumeric if pattern exhausted
+        # Fallback: add a number suffix if all words exhausted
+        # (unlikely with 1000+ words unless you have tons of concurrent rooms)
         while True:
-            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            code = f"{random.choice(ROOM_WORDS)}{random.randint(1, 9)}"
             if code not in self.rooms:
                 return code
     

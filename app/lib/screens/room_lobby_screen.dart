@@ -6,6 +6,7 @@ import 'package:the_heist/services/websocket_service.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
 import 'package:the_heist/widgets/common/heist_secondary_button.dart';
 import 'package:the_heist/widgets/common/section_header.dart';
+import 'package:the_heist/widgets/modals/role_selection_modal.dart';
 
 /// Room lobby where players join, select roles, and wait for game to start
 class RoomLobbyScreen extends StatefulWidget {
@@ -149,19 +150,15 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
     debugPrint('🎭 LOBBY: My current role: $_myRole');
     debugPrint('🎭 LOBBY: Current players: $_players');
     
-    if (_myRole != null) {
-      // Already have a role - deselect first
-      _showSnackBar('Deselect your current role first');
-      return;
-    }
+    // Allow switching roles directly - no need to deselect first
     
-    // Check if role is already taken
-    final isTaken = _players.any((p) => p['role'] == roleId);
-    debugPrint('🎭 LOBBY: Is role $roleId taken? $isTaken');
+    // Check if role is already taken by someone else
+    final isTaken = _players.any((p) => p['role'] == roleId && p['id'] != _myPlayerId);
+    debugPrint('🎭 LOBBY: Is role $roleId taken by someone else? $isTaken');
     if (isTaken) {
       final takenBy = _players.firstWhere((p) => p['role'] == roleId);
       debugPrint('🎭 LOBBY: Role taken by: ${takenBy['name']} (${takenBy['id']})');
-      _showSnackBar('Role already taken', isError: true);
+      _showSnackBar('Role already taken by ${takenBy['name']}', isError: true);
       return;
     }
     
@@ -232,27 +229,40 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Room code display
+                // Room code card
                 _buildRoomCodeCard(),
                 
-                SizedBox(height: AppDimensions.spaceLG),
+                SizedBox(height: AppDimensions.space2XL),
+                
+                // Scenario section
+                _buildScenarioSection(),
+                
+                SizedBox(height: AppDimensions.space2XL),
+                
+                // Your role selector button
+                _buildRoleSelectorButton(),
+                
+                SizedBox(height: AppDimensions.space2XL),
                 
                 // Players list
                 const SectionHeader(text: 'Players'),
-                SizedBox(height: AppDimensions.spaceSM),
+                SizedBox(height: AppDimensions.spaceMD),
                 _buildPlayersList(),
                 
-                SizedBox(height: AppDimensions.spaceLG),
+                SizedBox(height: AppDimensions.space2XL),
                 
-                // Role selection
-                const SectionHeader(text: 'Select Your Role'),
-                SizedBox(height: AppDimensions.spaceSM),
-                _buildRoleSelection(),
+                // Ready state indicator
+                _buildReadyStateIndicator(),
                 
                 SizedBox(height: AppDimensions.spaceLG),
                 
                 // Start button (host only)
                 if (_isHost) _buildStartButton(),
+                
+                SizedBox(height: AppDimensions.spaceLG),
+                
+                // Leave room link
+                _buildLeaveRoomButton(),
               ],
             ),
           ),
@@ -262,6 +272,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   }
   
   Widget _buildRoomCodeCard() {
+    final playerCount = _players.length;
     return Container(
       padding: EdgeInsets.all(AppDimensions.containerPadding),
       decoration: BoxDecoration(
@@ -269,177 +280,401 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
         border: Border.all(color: AppColors.accentPrimary, width: 2),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Text(
-            'Room Code',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Room Code: ${widget.roomCode}',
+                  style: TextStyle(
+                    color: AppColors.accentPrimary,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '($playerCount of 12 players)',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: AppDimensions.spaceSM),
-          Text(
-            widget.roomCode,
-            style: TextStyle(
-              color: AppColors.accentPrimary,
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 8,
-            ),
-          ),
-          SizedBox(height: AppDimensions.spaceSM),
-          HeistSecondaryButton(
-            text: 'Copy Code',
+          IconButton(
+            icon: Icon(Icons.copy, color: AppColors.accentPrimary, size: 28),
             onPressed: _copyRoomCode,
-            icon: Icons.copy,
+            tooltip: 'Copy Room Code',
           ),
         ],
       ),
     );
   }
   
-  Widget _buildPlayersList() {
+  Widget _buildScenarioSection() {
     return Column(
-      children: _players.map((player) {
-        final isMe = player['id'] == _myPlayerId;
-        final roleName = _availableRoles.firstWhere(
-          (r) => r['id'] == player['role'],
-          orElse: () => {'name': '', 'icon': ''},
-        );
-        
-        return Container(
-          margin: EdgeInsets.only(bottom: AppDimensions.spaceSM),
-          padding: EdgeInsets.all(AppDimensions.containerPadding),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('🎭', style: TextStyle(fontSize: 20)),
+            SizedBox(width: 8),
+            Text(
+              _isHost ? 'SCENARIO SELECTION' : 'SCENARIO',
+              style: TextStyle(
+                color: AppColors.textTertiary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: AppDimensions.spaceMD),
+        Container(
+          padding: EdgeInsets.all(AppDimensions.spaceLG),
           decoration: BoxDecoration(
-            color: isMe ? AppColors.accentPrimary.withAlpha(51) : AppColors.bgSecondary,
+            color: AppColors.bgSecondary,
             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-            border: isMe ? Border.all(color: AppColors.accentPrimary) : null,
+            border: Border.all(color: AppColors.accentPrimary.withAlpha(128)),
           ),
-          child: Row(
-            children: [
-              Icon(
-                isMe ? Icons.person : Icons.person_outline,
-                color: AppColors.textPrimary,
-              ),
-              SizedBox(width: AppDimensions.spaceSM),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      player['name'] ?? 'Unknown',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (player['role'] != null && player['role'] != '')
-                      Text(
-                        '${roleName['icon']} ${roleName['name']}',
-                        style: TextStyle(
-                          color: AppColors.accentPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (isMe && _isHost)
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentPrimary,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'HOST',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
+          child: Text(
+            'Museum Gala Vault Heist',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+            ),
           ),
-        );
-      }).toList(),
+        ),
+        if (!_isHost) ...[
+          SizedBox(height: AppDimensions.spaceSM),
+          Text(
+            'Required: Mastermind, Hacker, Safe Cracker',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ],
     );
   }
   
-  Widget _buildRoleSelection() {
-    return Wrap(
-      spacing: AppDimensions.spaceSM,
-      runSpacing: AppDimensions.spaceSM,
-      children: _availableRoles.map((role) {
-        final isSelected = _myRole == role['id'];
-        final takenByPlayer = _players.firstWhere(
-          (p) => p['role'] == role['id'],
-          orElse: () => <String, dynamic>{},
-        );
-        final isTaken = takenByPlayer.isNotEmpty;
-        final isAvailable = !isTaken || isSelected;
-        final takenByName = isTaken ? takenByPlayer['name'] : null;
-        
-        return InkWell(
-          onTap: isAvailable ? () => isSelected ? _deselectRole() : _selectRole(role['id']!) : null,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppDimensions.spaceMD,
-              vertical: AppDimensions.spaceSM,
-            ),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.accentPrimary
-                  : isTaken
-                      ? AppColors.bgTertiary.withAlpha(128)
-                      : AppColors.bgSecondary,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-              border: Border.all(
-                color: isSelected 
-                    ? AppColors.accentLight 
-                    : isTaken 
-                        ? AppColors.danger.withAlpha(128) 
-                        : AppColors.borderSubtle,
+  Widget _buildRoleSelectorButton() {
+    final roleName = _myRole != null
+        ? _availableRoles.firstWhere(
+            (r) => r['id'] == _myRole,
+            orElse: () => {'name': 'Unknown', 'icon': ''},
+          )
+        : null;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('🎭', style: TextStyle(fontSize: 20)),
+            SizedBox(width: 8),
+            Text(
+              'YOUR ROLE',
+              style: TextStyle(
+                color: AppColors.textTertiary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${role['icon']} ${role['name']}',
-                  style: TextStyle(
-                    color: isSelected
-                        ? AppColors.textPrimary
-                        : isTaken
-                            ? AppColors.textTertiary
-                            : AppColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  ),
+          ],
+        ),
+        SizedBox(height: AppDimensions.spaceMD),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _openRoleSelectionModal,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+            child: Container(
+              padding: EdgeInsets.all(AppDimensions.spaceLG),
+              decoration: BoxDecoration(
+                color: _myRole == null 
+                    ? AppColors.bgSecondary 
+                    : AppColors.bgSecondary,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                border: Border.all(
+                  color: _myRole == null 
+                      ? AppColors.borderSubtle 
+                      : AppColors.accentPrimary,
+                  width: _myRole == null ? 1 : 2,
                 ),
-                if (isTaken && !isSelected) ...[
-                  SizedBox(height: 2),
-                  Text(
-                    'taken by $takenByName',
-                    style: TextStyle(
-                      color: AppColors.danger,
-                      fontSize: 10,
-                      fontStyle: FontStyle.italic,
+              ),
+              child: Row(
+                children: [
+                  if (_myRole != null) ...[
+                    Text(
+                      roleName!['icon']!,
+                      style: TextStyle(fontSize: 20),
+                    ),
+                    SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Text(
+                      _myRole == null ? 'Select Your Role' : roleName!['name']!,
+                      style: TextStyle(
+                        color: _myRole == null 
+                            ? AppColors.textTertiary 
+                            : AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: _myRole == null ? FontWeight.normal : FontWeight.w600,
+                      ),
                     ),
                   ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textSecondary,
+                  ),
                 ],
-              ],
+              ),
             ),
           ),
-        );
-      }).toList(),
+        ),
+        SizedBox(height: 4),
+        Text(
+          _myRole == null ? 'Tap to browse all roles' : 'Tap to change role',
+          style: TextStyle(
+            color: AppColors.textTertiary,
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
     );
   }
+  
+  void _openRoleSelectionModal() {
+    showDialog(
+      context: context,
+      builder: (context) => RoleSelectionModal(
+        availableRoles: _availableRoles,
+        currentRole: _myRole,
+        players: _players,
+        onSelectRole: _selectRole,
+      ),
+    );
+  }
+  
+  Widget _buildPlayersList() {
+    if (_players.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(AppDimensions.spaceLG),
+        decoration: BoxDecoration(
+          color: AppColors.bgSecondary,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+        ),
+        child: Text(
+          'Waiting for players...',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgSecondary,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+      ),
+      child: Column(
+        children: _players.map((player) {
+          final isMe = player['id'] == _myPlayerId;
+          final isHost = player['id'] == _players.first['id']; // First player is host
+          final hasRole = player['role'] != null && player['role'] != '';
+          final roleName = hasRole
+              ? _availableRoles.firstWhere(
+                  (r) => r['id'] == player['role'],
+                  orElse: () => {'name': 'No Role', 'icon': ''},
+                )
+              : null;
+          
+          return Container(
+            padding: EdgeInsets.all(AppDimensions.spaceLG),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: player != _players.last
+                    ? BorderSide(color: AppColors.borderSubtle, width: 1)
+                    : BorderSide.none,
+              ),
+            ),
+            child: Row(
+              children: [
+                // Icon: Crown for host, person for others
+                Text(
+                  isHost ? '👑' : '👤',
+                  style: TextStyle(fontSize: 20),
+                ),
+                SizedBox(width: AppDimensions.spaceSM),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        isMe ? 'You' : player['name'] ?? 'Unknown',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (hasRole) ...[
+                        Text(
+                          ' - ',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          roleName!['name']!,
+                          style: TextStyle(
+                            color: AppColors.accentPrimary,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Checkmark if role selected
+                if (hasRole)
+                  Icon(
+                    Icons.check_circle,
+                    color: AppColors.success,
+                    size: 20,
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+  
+  Widget _buildReadyStateIndicator() {
+    final allHaveRoles = _players.isNotEmpty && 
+        _players.every((p) => p['role'] != null && p['role'] != '');
+    final enoughPlayers = _players.length >= 3;
+    
+    if (_isHost) {
+      if (!enoughPlayers) {
+        return Container(
+          padding: EdgeInsets.all(AppDimensions.spaceMD),
+          decoration: BoxDecoration(
+            color: AppColors.danger.withAlpha(26),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+            border: Border.all(color: AppColors.danger.withAlpha(128)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.warning, color: AppColors.danger, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Need ${3 - _players.length} more player${_players.length == 2 ? '' : 's'} to start',
+                  style: TextStyle(
+                    color: AppColors.danger,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      } else if (!allHaveRoles) {
+        return Container(
+          padding: EdgeInsets.all(AppDimensions.spaceMD),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withAlpha(26),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+            border: Border.all(color: AppColors.warning.withAlpha(128)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info, color: AppColors.warning, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'All players must select roles before starting',
+                  style: TextStyle(
+                    color: AppColors.warning,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      // Non-host view
+      return Container(
+        padding: EdgeInsets.all(AppDimensions.spaceMD),
+        decoration: BoxDecoration(
+          color: AppColors.bgSecondary,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.accentPrimary,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Waiting for host to start...',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return SizedBox.shrink();
+  }
+  
+  Widget _buildLeaveRoomButton() {
+    return Center(
+      child: TextButton(
+        onPressed: () {
+          Navigator.of(context).pop();
+        },
+        child: Text(
+          'Leave Room',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      ),
+    );
+  }
+  
+  // Old inline role selection removed - now using modal
   
   Widget _buildStartButton() {
     final allReady = _players.isNotEmpty && _players.every((p) => p['role'] != null && p['role'] != '');
