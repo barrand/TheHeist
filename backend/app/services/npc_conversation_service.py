@@ -140,8 +140,11 @@ Your response as {npc.name} (plain text, no quotes):"""
         try:
             prompt = self.build_npc_prompt(npc, objectives, player_message, difficulty)
             
+            # Use gemini-2.0-flash-lite to avoid thinking tokens that consume output budget
+            npc_model = "models/gemini-2.0-flash-lite"
+            
             # Use direct REST API call
-            url = f"{self.base_url}/{self.model_name}:generateContent?key={self.api_key}"
+            url = f"{self.base_url}/{npc_model}:generateContent?key={self.api_key}"
             
             payload = {
                 "contents": [{
