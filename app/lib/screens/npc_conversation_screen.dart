@@ -40,7 +40,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   List<ChatMessage> _messages = [];
   List<Objective> _objectives = [];
   List<String> _quickResponses = [];
-  bool _showQuickResponses = true;
+  bool _showQuickResponses = true; // Show quick responses
   bool _isLoading = false;
   bool _isInitialized = false;
 
@@ -142,7 +142,8 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       setState(() {
         _quickResponses = responses;
       });
-      print('✅ Got ${responses.length} quick responses');
+      print('✅ Got ${responses.length} quick responses: $responses');
+      print('   _showQuickResponses = $_showQuickResponses');
     } catch (e) {
       print('❌ Error generating quick responses: $e');
       // Keep existing responses or use fallback
@@ -281,119 +282,142 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Objectives section (always visible)
-            Container(
-              padding: EdgeInsets.all(AppDimensions.containerPadding),
-              child: ObjectiveCard(
-                objectives: _objectives,
-                npcName: widget.npc.name,
-              ),
-            ),
-            
-            // NPC portrait section (reasonable size)
-            if (widget.npc.imageUrl != null)
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppDimensions.containerPadding,
-                  vertical: AppDimensions.spaceSM,
-                ),
-                child: Center(
-                  child: Container(
-                    width: 400,
-                    height: 400,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.accentPrimary,
-                        width: 4,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.accentPrimary.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        widget.npc.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: AppColors.bgTertiary,
-                            child: Icon(
-                              Icons.person,
-                              color: AppColors.textSecondary,
-                              size: 80,
-                            ),
-                          );
-                        },
+            // Scrollable top section with objectives and image
+            Expanded(
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  // Objectives section
+                  SliverToBoxAdapter(
+                    child: Container(
+                      padding: EdgeInsets.all(AppDimensions.containerPadding),
+                      child: ObjectiveCard(
+                        objectives: _objectives,
+                        npcName: widget.npc.name,
                       ),
                     ),
                   ),
-                ),
-              ),
-            
-            // Personality text
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppDimensions.containerPadding,
-                vertical: AppDimensions.spaceXS,
-              ),
-              child: Text(
-                widget.npc.personality,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textTertiary,
-                  fontStyle: FontStyle.italic,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            
-            Divider(color: AppColors.borderSubtle, height: 1),
-            
-            SizedBox(height: AppDimensions.spaceXS),
-            
-            // Chat history
-            Expanded(
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppDimensions.containerPadding,
-                ),
-                child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: _messages.length + (_isLoading ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == _messages.length && _isLoading) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(vertical: AppDimensions.spaceMD),
+                  
+                  // NPC portrait section (nice big image!)
+                  if (widget.npc.imageUrl != null)
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppDimensions.containerPadding,
+                          vertical: AppDimensions.spaceSM,
+                        ),
                         child: Center(
-                          child: Text(
-                            '...',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
+                          child: Container(
+                            width: 300,  // Nice big size!
+                            height: 300,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppColors.accentPrimary,
+                                width: 4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.accentPrimary.withValues(alpha: 0.3),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                widget.npc.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: AppColors.bgTertiary,
+                                    child: Icon(
+                                      Icons.person,
+                                      color: AppColors.textSecondary,
+                                      size: 80,
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      );
-                    }
-                    
-                    return ChatBubble(
-                      message: _messages[index],
-                      npcName: widget.npc.name,
-                    );
-                  },
-                ),
+                      ),
+                    ),
+                  
+                  // Personality text
+                  SliverToBoxAdapter(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppDimensions.containerPadding,
+                        vertical: AppDimensions.spaceXS,
+                      ),
+                      child: Text(
+                        widget.npc.personality,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textTertiary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SliverToBoxAdapter(
+                    child: Divider(color: AppColors.borderSubtle, height: 1),
+                  ),
+                  
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: AppDimensions.spaceXS),
+                  ),
+                  
+                  // Chat messages
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index == _messages.length && _isLoading) {
+                          return Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppDimensions.containerPadding,
+                              vertical: AppDimensions.spaceMD,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '...',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        
+                        return Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppDimensions.containerPadding,
+                          ),
+                          child: ChatBubble(
+                            message: _messages[index],
+                            npcName: widget.npc.name,
+                          ),
+                        );
+                      },
+                      childCount: _messages.length + (_isLoading ? 1 : 0),
+                    ),
+                  ),
+                  
+                  // Bottom padding for chat
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: 80),
+                  ),
+                ],
               ),
             ),
             
-            // Input section
+            // Input section (fixed at bottom)
             Container(
               padding: EdgeInsets.all(AppDimensions.containerPadding),
               decoration: BoxDecoration(
@@ -407,68 +431,117 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Quick responses or free-form input
-                  if (_showQuickResponses) ...[
-                    // Quick responses section
-                    if (_quickResponses.isNotEmpty) ...[
-                      Text(
-                        'QUICK RESPONSES',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textTertiary,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      SizedBox(height: AppDimensions.spaceSM),
-                      ..._quickResponses.map((response) {
-                        return QuickResponseButton(
-                          text: response,
-                          onTap: () => _sendMessage(response),
-                        );
-                      }).toList(),
-                    ],
-                    
-                    // Divider
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: AppDimensions.spaceSM),
-                      child: Row(
-                        children: [
-                          Expanded(child: Divider(color: AppColors.borderSubtle)),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: AppDimensions.spaceMD),
-                            child: Text(
-                              'OR TYPE YOUR OWN',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textTertiary,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                          Expanded(child: Divider(color: AppColors.borderSubtle)),
-                        ],
-                      ),
-                    ),
-                  ],
-                  
-                  // Text input
-                  HeistTextField(
-                    controller: _messageController,
-                    hintText: 'Type your response...',
-                    maxLines: 2,
-                    onChanged: (_) => setState(() {}),
+                  // DEBUG: Show state
+                  Text(
+                    'DEBUG: show=$_showQuickResponses, count=${_quickResponses.length}',
+                    style: TextStyle(color: Colors.yellow, fontSize: 10),
                   ),
                   
-                  SizedBox(height: AppDimensions.spaceMD),
+                  // Quick responses (horizontal scroll)
+                  if (_showQuickResponses && _quickResponses.isNotEmpty) ...[
+                    Text(
+                      'QUICK RESPONSES',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textTertiary,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    // Vertical list of quick responses for better text display
+                    ...List.generate(_quickResponses.length, (index) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 6),
+                        child: InkWell(
+                          onTap: () => _sendMessage(_quickResponses[index]),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.bgTertiary,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.accentPrimary),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  '💬',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _quickResponses[index],
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 3,  // Allow up to 3 lines
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.send,
+                                  size: 14,
+                                  color: AppColors.accentPrimary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    SizedBox(height: 8),
+                    Divider(color: AppColors.borderSubtle, height: 1),
+                    SizedBox(height: 8),
+                  ],
                   
-                  // Send button
-                  HeistPrimaryButton(
-                    text: 'Send Message',
-                    onPressed: _messageController.text.trim().isEmpty
-                        ? null
-                        : () => _sendMessage(_messageController.text),
-                    loading: _isLoading,
+                  // Text input with inline send button
+                  Row(
+                    children: [
+                      Expanded(
+                        child: HeistTextField(
+                          controller: _messageController,
+                          hintText: 'Type your response...',
+                          maxLines: 1,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      // Send button
+                      SizedBox(
+                        width: 80,
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: _messageController.text.trim().isEmpty || _isLoading
+                              ? null
+                              : () => _sendMessage(_messageController.text),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accentPrimary,
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: _isLoading 
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                )
+                              : Text(
+                                  'Send',
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

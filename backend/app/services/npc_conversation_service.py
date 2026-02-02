@@ -106,10 +106,12 @@ IMPORTANT:
 - If they ask about something you don't know, you genuinely don't know
 - Keep responses under 3 sentences
 - Don't be too obvious about having "quest information"
+- DO NOT wrap your response in quotation marks
+- Write ONLY the dialogue text, no formatting or quotes
 
 Player says: "{player_message}"
 
-Respond naturally as {npc.name}:"""
+Your response as {npc.name} (plain text, no quotes):"""
     
     async def get_npc_response(
         self,
@@ -147,7 +149,7 @@ Respond naturally as {npc.name}:"""
                 }],
                 "generationConfig": {
                     "temperature": 0.7,
-                    "maxOutputTokens": 200,
+                    "maxOutputTokens": 500,  # Increased for complete responses
                 }
             }
             
@@ -156,6 +158,14 @@ Respond naturally as {npc.name}:"""
             
             data = response.json()
             npc_text = data["candidates"][0]["content"]["parts"][0]["text"]
+            
+            # Strip leading/trailing quotes if Gemini added them
+            npc_text = npc_text.strip()
+            if npc_text.startswith('"') and len(npc_text) > 1:
+                # Find the matching closing quote
+                npc_text = npc_text[1:]  # Remove leading quote
+                if npc_text.endswith('"'):
+                    npc_text = npc_text[:-1]  # Remove trailing quote
             
             logger.info(f"NPC response: '{npc_text}'")
             return npc_text
@@ -182,6 +192,7 @@ Respond naturally as {npc.name}:"""
             List of 3 suggested responses
         """
         logger.info(f"Generating quick responses for {npc.name}")
+        logger.info(f"Conversation history length: {len(conversation_history)}")
         
         # Get last few messages for context
         recent_messages = conversation_history[-4:] if len(conversation_history) > 4 else conversation_history
@@ -190,41 +201,69 @@ Respond naturally as {npc.name}:"""
             for msg in recent_messages
         ])
         
+        logger.info(f"Conversation context: {conversation_context}")
+        
         incomplete_objectives = [obj for obj in objectives if not obj.is_completed]
         objectives_text = "\n".join([f"- {obj.description}" for obj in incomplete_objectives])
         
-        prompt = f"""Generate 3 SHORT response options for a player talking to an NPC in a heist game.
-
-NPC: {npc.name} - {npc.role}
-Personality: {npc.personality}
-
-Objectives the player is trying to learn:
-{objectives_text}
+        prompt = f"""Generate 3 player responses for this conversation.
 
 Recent conversation:
 {conversation_context}
 
-Generate 3 SHORT responses (max 10 words each):
-1. A safe, friendly option
-2. A direct question about one objective
-3. A creative/indirect approach
+Objectives: {objectives_text[:100] if objectives_text else "Learn about their work"}
 
-Output ONLY the 3 responses, one per line, no numbers or labels."""
+Output 3 responses (one per line, no numbers):
+1. Friendly comment
+2. Question about objectives
+3. Indirect probe"""
         
         try:
-            response = self.model.generate_content(prompt)
-            responses = response.text.strip().split('\n')
+            # Use gemini-2.0-flash-lite for quick responses (lightweight, no thinking tokens)
+            quick_response_model = "models/gemini-2.0-flash-lite"
+            url = f"{self.base_url}/{quick_response_model}:generateContent?key={self.api_key}"
+            
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }],
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "maxOutputTokens": 200,  # Lower is fine for 1.5-flash-8b (no thinking tokens)
+                }
+            }
+            
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"API response data keys: {data.keys()}")
+            logger.info(f"API response data: {data}")
+            
+            response_text = data["candidates"][0]["content"]["parts"][0]["text"]
+            
+            logger.info(f"Raw quick response from API: {response_text}")
+            
+            # Parse the responses
+            responses = response_text.strip().split('\n')
             responses = [r.strip() for r in responses if r.strip()][:3]
+            
+            # Remove any numbering (1., 2., 3., etc.)
+            responses = [r.lstrip('0123456789.-)] ').strip() for r in responses]
+            
+            logger.info(f"Parsed quick responses (count={len(responses)}): {responses}")
             
             # Ensure we have exactly 3 responses
             if len(responses) < 3:
+                logger.warning(f"Only got {len(responses)} responses, using fallback")
                 responses = self._get_fallback_responses()
             
-            logger.info(f"Quick responses: {responses}")
+            logger.info(f"Final quick responses: {responses}")
             return responses
             
         except Exception as e:
             logger.error(f"Error generating quick responses: {e}", exc_info=True)
+            logger.error(f"Returning fallback responses due to error")
             return self._get_fallback_responses()
     
     def _get_fallback_responses(self) -> list[str]:
