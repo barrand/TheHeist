@@ -224,9 +224,8 @@ Output 3 responses (one per line, no numbers):
 3. Indirect probe"""
         
         try:
-            # Use gemini-2.0-flash-lite for quick responses (lightweight, no thinking tokens)
-            quick_response_model = "models/gemini-2.0-flash-lite"
-            url = f"{self.base_url}/{quick_response_model}:generateContent?key={self.api_key}"
+            # Use configured model for quick responses
+            url = f"{self.base_url}/{self.quick_response_model}:generateContent?key={self.api_key}"
             
             payload = {
                 "contents": [{
