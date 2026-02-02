@@ -108,25 +108,32 @@ class WebSocketManager:
             logger.warning(f"Room {room_code} has no connections")
             return 0
         
+        all_players = list(self.connections[room_code].keys())
+        logger.info(f"📢 Broadcasting {message.get('type')} to room {room_code} with {len(all_players)} players: {all_players}")
+        if exclude_player:
+            logger.info(f"   Excluding player: {exclude_player}")
+        
         sent_count = 0
         failed_players = []
         
         for player_id, websocket in list(self.connections[room_code].items()):
             if exclude_player and player_id == exclude_player:
+                logger.info(f"   ⏭️  Skipping excluded player {player_id}")
                 continue
             
             try:
                 await websocket.send_json(message)
+                logger.info(f"   ✅ Sent to player {player_id}")
                 sent_count += 1
             except Exception as e:
-                logger.error(f"Error broadcasting to player {player_id}: {e}")
+                logger.error(f"   ❌ Error broadcasting to player {player_id}: {e}")
                 failed_players.append(player_id)
         
         # Clean up failed connections
         for player_id in failed_players:
             self.disconnect(room_code, player_id)
         
-        logger.debug(f"📢 Broadcast to room {room_code}: {message.get('type')} ({sent_count} players)")
+        logger.info(f"📢 Broadcast complete: {sent_count} players received the message")
         return sent_count
     
     def get_connected_players(self, room_code: str) -> Set[str]:

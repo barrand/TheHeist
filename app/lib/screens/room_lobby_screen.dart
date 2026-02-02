@@ -76,15 +76,31 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
     
     // Role selected
     widget.wsService.roleSelected.listen((message) {
+      debugPrint('🎭 LOBBY: Received role_selected message: $message');
       setState(() {
         final playerId = message['player_id'];
+        final playerName = message['player_name'];
         final role = message['role'];
+        
+        debugPrint('🎭 LOBBY: Player $playerName ($playerId) selected role: $role');
+        debugPrint('🎭 LOBBY: Current players before update: $_players');
         
         // Update player's role
         final playerIndex = _players.indexWhere((p) => p['id'] == playerId);
         if (playerIndex != -1) {
           _players[playerIndex]['role'] = role;
+          debugPrint('🎭 LOBBY: Updated player at index $playerIndex');
+          
+          // Update my role if it's me
+          if (playerId == _myPlayerId) {
+            _myRole = role;
+            debugPrint('🎭 LOBBY: Updated my role to: $role');
+          }
+        } else {
+          debugPrint('❌ LOBBY: Could not find player $playerId in players list!');
         }
+        
+        debugPrint('🎭 LOBBY: Current players after update: $_players');
       });
     });
     
@@ -119,6 +135,10 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   }
   
   void _selectRole(String roleId) {
+    debugPrint('🎭 LOBBY: Attempting to select role: $roleId');
+    debugPrint('🎭 LOBBY: My current role: $_myRole');
+    debugPrint('🎭 LOBBY: Current players: $_players');
+    
     if (_myRole != null) {
       // Already have a role - deselect first
       _showSnackBar('Deselect your current role first');
@@ -127,14 +147,19 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
     
     // Check if role is already taken
     final isTaken = _players.any((p) => p['role'] == roleId);
+    debugPrint('🎭 LOBBY: Is role $roleId taken? $isTaken');
     if (isTaken) {
+      final takenBy = _players.firstWhere((p) => p['role'] == roleId);
+      debugPrint('🎭 LOBBY: Role taken by: ${takenBy['name']} (${takenBy['id']})');
       _showSnackBar('Role already taken', isError: true);
       return;
     }
     
+    debugPrint('🎭 LOBBY: Sending selectRole to server...');
     widget.wsService.selectRole(roleId);
     setState(() {
       _myRole = roleId;
+      debugPrint('🎭 LOBBY: Optimistically set my role to: $roleId');
     });
   }
   

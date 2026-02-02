@@ -112,6 +112,7 @@ class WebSocketService {
   
   /// Select a role in lobby
   void selectRole(String role) {
+    debugPrint('🎭 WS: Sending select_role with role: $role');
     send({
       'type': 'select_role',
       'role': role,
@@ -167,7 +168,10 @@ class WebSocketService {
       final Map<String, dynamic> message = json.decode(rawMessage);
       final String type = message['type'] ?? 'unknown';
       
-      debugPrint('📥 Received: $type');
+      debugPrint('📥 WS: Received message type: $type');
+      if (type == 'role_selected') {
+        debugPrint('📥 WS: role_selected full message: $message');
+      }
       
       // Emit to general stream
       _messageController.add(message);
@@ -176,13 +180,17 @@ class WebSocketService {
       switch (type) {
         case 'room_state':
           _playerId = message['your_player_id'];
+          debugPrint('📥 WS: Room state received, my player ID: $_playerId');
           _roomStateController.add(message);
           break;
         case 'player_joined':
+          debugPrint('📥 WS: Player joined: ${message['player']}');
           _playerJoinedController.add(message);
           break;
         case 'role_selected':
+          debugPrint('📥 WS: Emitting to roleSelectedController stream');
           _roleSelectedController.add(message);
+          debugPrint('📥 WS: role_selected emitted to stream');
           break;
         case 'game_started':
           _gameStartedController.add(message);

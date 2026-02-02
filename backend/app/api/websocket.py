@@ -184,8 +184,11 @@ async def handle_select_role(room_code: str, player_id: str, data: Dict[str, Any
     
     role = data.get("role")
     
+    logger.info(f"🎭 Player {player_id} selecting role: {role} in room {room_code}")
+    
     success = room_manager.set_player_role(room_code, player_id, role)
     if not success:
+        logger.warning(f"❌ Role selection failed for {player_id} - role {role} (already taken or game started)")
         await ws_manager.send_to_player(room_code, player_id, {
             "type": "error",
             "message": "Could not select role (already taken or game started)"
@@ -196,13 +199,19 @@ async def handle_select_role(room_code: str, player_id: str, data: Dict[str, Any
     room = room_manager.get_room(room_code)
     player = room.players[player_id]
     
+    logger.info(f"✅ Role {role} assigned to {player.name} ({player_id})")
+    logger.info(f"📢 Broadcasting role_selected to all players in room {room_code}")
+    
     role_selected = RoleSelectedMessage(
         type="role_selected",
         player_id=player_id,
         player_name=player.name,
         role=role
     )
-    await ws_manager.broadcast_to_room(room_code, role_selected.model_dump())
+    
+    role_dict = role_selected.model_dump()
+    logger.info(f"📤 Broadcasting message: {role_dict}")
+    await ws_manager.broadcast_to_room(room_code, role_dict)
 
 
 async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
