@@ -27,6 +27,9 @@ class WebSocketService {
   final _taskUnlockedController = StreamController<Map<String, dynamic>>.broadcast();
   final _errorController = StreamController<Map<String, dynamic>>.broadcast();
   
+  // Store the latest room state for late subscribers
+  Map<String, dynamic>? _latestRoomState;
+  
   Stream<Map<String, dynamic>> get roomState => _roomStateController.stream;
   Stream<Map<String, dynamic>> get playerJoined => _playerJoinedController.stream;
   Stream<Map<String, dynamic>> get roleSelected => _roleSelectedController.stream;
@@ -34,6 +37,9 @@ class WebSocketService {
   Stream<Map<String, dynamic>> get taskCompleted => _taskCompletedController.stream;
   Stream<Map<String, dynamic>> get taskUnlocked => _taskUnlockedController.stream;
   Stream<Map<String, dynamic>> get errors => _errorController.stream;
+  
+  // Get the latest room state (useful for late subscribers)
+  Map<String, dynamic>? get latestRoomState => _latestRoomState;
   
   WebSocketService({this.baseUrl = 'ws://localhost:8000'});
   
@@ -180,7 +186,9 @@ class WebSocketService {
       switch (type) {
         case 'room_state':
           _playerId = message['your_player_id'];
+          _latestRoomState = message; // Store for late subscribers
           debugPrint('📥 WS: Room state received, my player ID: $_playerId');
+          debugPrint('📥 WS: is_host value: ${message['is_host']}');
           _roomStateController.add(message);
           break;
         case 'player_joined':

@@ -30,11 +30,14 @@ class Settings(BaseSettings):
         "http://localhost:3000",
     ]
     
-    # Gemini API Configuration
+    # Gemini API Configuration (centralized model settings)
     gemini_api_key: str
-    gemini_model: str = "models/gemini-2.5-flash"  # Default model (for experience generation, etc.)
-    gemini_npc_model: str = "models/gemini-2.0-flash-lite"  # For NPC responses (no thinking tokens)
-    gemini_quick_response_model: str = "models/gemini-2.0-flash-lite"  # For quick response suggestions
+    # Experience Generation: Long-form heist creation (handled by scripts)
+    gemini_experience_model: str = "gemini-2.5-flash"
+    # NPC Interactions: Real-time dialogue during gameplay
+    gemini_npc_model: str = "gemini-2.0-flash-lite"
+    # Quick Response Suggestions: Player chat helpers
+    gemini_quick_response_model: str = "gemini-2.0-flash-lite"
     
     # Logging
     log_level: str = "INFO"

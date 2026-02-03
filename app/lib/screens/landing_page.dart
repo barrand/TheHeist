@@ -48,7 +48,19 @@ class _LandingPageState extends State<LandingPage> {
       final wsService = WebSocketService();
       await wsService.connect(roomCode, name);
 
-      // Navigate to lobby
+      // CRITICAL: Wait for room_state message before navigating
+      // This ensures _isHost is properly set
+      debugPrint('⏳ Waiting for room_state message...');
+      await wsService.roomState.first.timeout(
+        Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('⚠️ Timeout waiting for room_state');
+          return {};
+        },
+      );
+      debugPrint('✅ Received room_state, navigating to lobby');
+
+      // Navigate to lobby (gender selected in role modal)
       if (context.mounted) {
         Navigator.push(
           context,
@@ -91,7 +103,19 @@ class _LandingPageState extends State<LandingPage> {
       final wsService = WebSocketService();
       await wsService.connect(roomCode, name);
 
-      // Navigate to lobby
+      // CRITICAL: Wait for room_state message before navigating
+      // This ensures _isHost is properly set
+      debugPrint('⏳ Waiting for room_state message...');
+      await wsService.roomState.first.timeout(
+        Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('⚠️ Timeout waiting for room_state');
+          return {};
+        },
+      );
+      debugPrint('✅ Received room_state, navigating to lobby');
+
+      // Navigate to lobby (gender selected in role modal)
       if (context.mounted) {
         Navigator.push(
           context,

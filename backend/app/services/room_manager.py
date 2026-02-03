@@ -237,10 +237,14 @@ class RoomManager:
             logger.warning(f"❌ Room {room_code} not in lobby status")
             return False
         
-        # Check player count (3-12)
+        # Load scenario to check minimum players (all scenarios now require 2 players minimum)
+        # In the future, this could be more dynamic by loading scenarios.json
+        # For now, all scenarios have been updated to require exactly 2 roles
         player_count = room.get_player_count()
-        if player_count < 3:
-            logger.warning(f"❌ Room {room_code} needs at least 3 players (has {player_count})")
+        min_players = 2  # All scenarios now require 2 players minimum
+        
+        if player_count < min_players:
+            logger.warning(f"❌ Room {room_code} needs at least {min_players} players (has {player_count})")
             return False
         
         # Check if all players selected roles

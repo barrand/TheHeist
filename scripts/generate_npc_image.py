@@ -1,29 +1,25 @@
 #!/usr/bin/env python3
 """
-Generate NPC character images using Google's Gemini 2.5 Flash Image (nano-banana).
+Generate NPC character images using Google's Imagen 4.0.
 
 Art style: Borderlands-style 2D illustration (cell-shaded comic book aesthetic)
 - Bold thick outlines, vibrant colors, graphic novel style
 - Hand-drawn look with simplified details and expressive characters
 - Integrates UI theme accent colors for visual consistency
+- Set in the year 2020 (contemporary, not futuristic)
 
-Benefits of nano-banana:
-- ⚡ Lightning fast (optimized for high-volume, low-latency)
-- 💰 Significantly cheaper than Imagen 4
+Benefits of Imagen 4.0:
+- 🎨 High-quality, detailed images
+- 🎯 Excellent prompt adherence
 - 🎭 Character consistency across multiple generations
-- ✨ Conversational editing capabilities
+- ✨ Professional-grade illustrations
 
-Color Schemes:
-- "gold" - Classic heist luxury (gold jewelry, bronze accents)
-- "blue" - Tech heist (cyan glowing, purple LEDs)
-- "purple" - Night heist (vibrant purple, magenta)
-- "red" - High stakes (red bandanas, orange highlights)
-- "green" - Money heist (emerald details, gold jewelry)
-- "orange" - Vintage heist (warm orange, mustard yellow)
+Color Scheme:
+- "purple" - Night heist theme (vibrant purple, magenta, cyan highlights)
 
 Usage:
-    python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --ethnicity "Latina" --clothing "reflective vest" --background "parking garage" --expression "bored" --accent-colors "gold"
-    python generate_npc_image.py --name "Alex Kim" --role "Hacker" --gender person --ethnicity "Asian" --clothing "tech hoodie" --background "server room" --expression "focused" --accent-colors "blue"
+    python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" --gender female --ethnicity "Latina" --clothing "reflective vest" --background "parking garage" --expression "bored" --accent-colors "purple"
+    python generate_npc_image.py --name "Alex Kim" --role "Hacker" --gender person --ethnicity "Asian" --clothing "tech hoodie" --background "server room" --expression "focused" --accent-colors "purple"
     
 Requirements:
     pip install google-genai pillow
@@ -36,9 +32,6 @@ from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY
 
-# Configure Imagen client
-client = genai.Client(api_key=GEMINI_API_KEY)
-
 # ============================================
 # HEIST GAME ART STYLE - BORDERLANDS
 # ============================================
@@ -46,13 +39,14 @@ HEIST_GAME_ART_STYLE = """2D illustration, comic book art style,
 bold thick outlines, cell-shaded, flat colors with subtle gradients,
 Borderlands game aesthetic, graphic novel style,
 vibrant saturated colors, stylized proportions, hand-drawn look,
-inked linework, simplified details, expressive characters"""
+inked linework, simplified details, expressive characters,
+set in year 2020, contemporary clothing and technology (not futuristic)"""
 
 
 def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=None, 
                        background=None, expression="friendly", details=None, 
                        attitude="approachable", accent_colors=None, output_file=None):
-    """Generate NPC character portrait using Gemini 2.5 Flash Image (nano-banana) in Borderlands style.
+    """Generate NPC character portrait using Imagen 4.0 in Borderlands style.
     
     Args:
         name: Character name
@@ -64,8 +58,8 @@ def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=Non
         expression: Facial expression (default: "friendly")
         details: Additional visual details (e.g., "holding clipboard", "wearing glasses")
         attitude: Overall vibe (e.g., "approachable", "tired", "cheerful")
-        accent_colors: List of color accents for UI theme consistency (e.g., ["gold jewelry", "bronze badge"])
-                      or color scheme name (e.g., "gold", "blue", "purple", "red", "green", "orange")
+        accent_colors: List of color accents for UI theme consistency (e.g., ["purple clothing accents", "magenta accessories"])
+                      or color scheme name: "purple" (vibrant purple, magenta, cyan highlights)
         output_file: Custom output path (optional)
     """
     
@@ -87,20 +81,12 @@ def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=Non
         print(f"   Accent Colors: {accent_colors}")
     print()
     
-    # Process accent colors - map scheme names to specific color instructions
+    # Process accent colors - use purple theme
     color_instructions = None
     if accent_colors:
         if isinstance(accent_colors, str):
-            # Scheme name provided - map to color palette
-            scheme_map = {
-                "gold": ["gold jewelry and accessories", "bronze belt buckle or badge", "warm metallic accents"],
-                "blue": ["cyan glowing elements", "electric blue tech accessories", "purple LED accents"],
-                "purple": ["vibrant purple clothing accents", "magenta accessories", "cyan highlights"],
-                "red": ["red bandana or scarf", "orange highlights", "warm tones in clothing"],
-                "green": ["emerald green money-themed details", "gold jewelry", "turquoise accents"],
-                "orange": ["warm orange clothing elements", "mustard yellow accessories", "retro warm color palette"]
-            }
-            color_instructions = scheme_map.get(accent_colors.lower(), None)
+            # Use purple theme color palette
+            color_instructions = ["vibrant purple clothing accents", "magenta accessories", "cyan highlights"]
         elif isinstance(accent_colors, list):
             # Custom color list provided
             color_instructions = accent_colors
@@ -151,14 +137,20 @@ portrait view, centered, waist-up composition"""
     print()
     
     try:
-        print("🚀 Calling Gemini 2.5 Flash Image (nano-banana)...")
-        print("   Lightning fast generation...")
+        print("🚀 Calling Imagen 4.0...")
+        print("   Generating high-quality character portrait...")
         print()
         
-        # Use Gemini 2.5 Flash Image (nano-banana) for fast, cheap image generation
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-image',
-            contents=prompt,
+        # Create client with API key
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        
+        # Use Imagen 4.0 for high-quality character generation
+        response = client.models.generate_images(
+            model='imagen-4.0-generate-001',
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+            )
         )
         
         # Determine output path
@@ -171,30 +163,28 @@ portrait view, centered, waist-up composition"""
         
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Extract image from response parts
+        # Extract and save image
         image_saved = False
-        for part in response.parts:
-            if part.inline_data is not None:
-                # Convert inline_data to PIL Image and save
-                image = part.as_image()
-                image.save(str(output_path))
-                
-                print(f"✅ Generated character portrait!")
-                print(f"💾 Saved to: {output_path}")
-                
-                # Try to get dimensions
-                try:
-                    print(f"📏 Size: {image.width}x{image.height}")
-                except:
-                    pass
-                
-                print()
-                print("ℹ️  Note: Image includes SynthID watermark (Google's authenticity mark)")
-                print("⚡ Generated using nano-banana (fast & cost-effective!)")
-                print()
-                
-                image_saved = True
-                return str(output_path)
+        for generated_image in response.generated_images:
+            # Save the image
+            generated_image.image.save(str(output_path))
+            
+            print(f"✅ Generated character portrait!")
+            print(f"💾 Saved to: {output_path}")
+            
+            # Try to get dimensions
+            try:
+                print(f"📏 Size: {generated_image.image.width}x{generated_image.image.height}")
+            except:
+                pass
+            
+            print()
+            print("ℹ️  Note: Image includes SynthID watermark (Google's authenticity mark)")
+            print("🎨 Generated using Imagen 4.0 (high quality!)")
+            print()
+            
+            image_saved = True
+            return str(output_path)
         
         if not image_saved:
             print("❌ Error: No image generated in response")
@@ -203,7 +193,7 @@ portrait view, centered, waist-up composition"""
     except Exception as e:
         print(f"❌ Error generating image: {e}")
         print(f"   This might be because:")
-        print(f"   - Gemini API is not enabled on your account (check Google AI Studio)")
+        print(f"   - Imagen API is not enabled on your account (check Google AI Studio)")
         print(f"   - Image generation is not available in your region")
         print(f"   - API quota exceeded")
         print(f"   - Missing dependency: 'google-genai' (run: pip install google-genai)")
@@ -212,31 +202,31 @@ portrait view, centered, waist-up composition"""
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate NPC character portraits using Gemini 2.5 Flash Image / nano-banana (Borderlands art style)',
+        description='Generate NPC character portraits using Imagen 4.0 (Borderlands art style)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Latina female parking attendant (Gold Heist scheme)
+  # Latina female parking attendant (Purple theme)
   python generate_npc_image.py --name "Rosa Martinez" --role "Parking Attendant" \\
     --gender female --ethnicity "Latina" \\
     --clothing "reflective vest and uniform" \\
     --background "parking garage with security monitors and cars" \\
     --expression "bored" --details "looking at phone" --attitude "observant but tired" \\
-    --accent-colors "gold"
+    --accent-colors "purple"
   
-  # Asian male food truck owner (Electric Blue scheme)
+  # Asian male food truck owner (Purple theme)
   python generate_npc_image.py --name "Tommy Chen" --role "Food Truck Owner" \\
     --gender male --ethnicity "Asian" \\
     --clothing "chef's apron and hat" --background "food truck with menu board" \\
     --expression "friendly" --details "holding coffee cup" --attitude "chatty" \\
-    --accent-colors "blue"
+    --accent-colors "purple"
   
-  # Black male security guard (Custom colors)
+  # Black male security guard (Purple theme with custom accents)
   python generate_npc_image.py --name "Marcus Johnson" --role "Security Guard" \\
     --gender male --ethnicity "Black" \\
     --clothing "security uniform and badge" --background "museum hallway with artwork" \\
     --expression "serious" --attitude "professional" \\
-    --accent-colors "gold badge, emerald green tie, bronze buttons"
+    --accent-colors "vibrant purple badge, magenta trim, cyan highlights"
         """
     )
     
@@ -293,7 +283,7 @@ Examples:
     
     parser.add_argument(
         '--accent-colors',
-        help='Color scheme for UI consistency: "gold", "blue", "purple", "red", "green", "orange", or custom colors (e.g., "gold jewelry, cyan glowing eyes")'
+        help='Color scheme for UI consistency: "purple" (default night heist theme), or custom colors (e.g., "vibrant purple accents, magenta accessories")'
     )
     
     parser.add_argument(

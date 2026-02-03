@@ -11,11 +11,8 @@ import argparse
 import json
 import sys
 from pathlib import Path
-import google.generativeai as genai
-from config import GEMINI_API_KEY, GEMINI_MODEL, DATA_DIR, DESIGN_DIR, EXAMPLES_DIR
-
-# Configure Gemini
-genai.configure(api_key=GEMINI_API_KEY)
+from google import genai
+from config import GEMINI_API_KEY, GEMINI_EXPERIENCE_MODEL, DATA_DIR, DESIGN_DIR, EXAMPLES_DIR
 
 
 def load_json(file_path):
@@ -430,7 +427,7 @@ def generate_experience(scenario_id, role_ids, output_file=None):
     print(f"🎮 Generating heist experience...")
     print(f"   Scenario: {scenario_id}")
     print(f"   Roles: {', '.join(role_ids)}")
-    print(f"   Model: {GEMINI_MODEL}")
+    print(f"   Model: {GEMINI_EXPERIENCE_MODEL}")
     print()
     
     # Load data files
@@ -470,20 +467,24 @@ def generate_experience(scenario_id, role_ids, output_file=None):
     print()
     
     # Call Gemini API
-    print(f"🚀 Calling Gemini API ({GEMINI_MODEL})...")
+    print(f"🚀 Calling Gemini API ({GEMINI_EXPERIENCE_MODEL})...")
     print("   This may take 30-60 seconds...")
     print()
     
     try:
-        model = genai.GenerativeModel(GEMINI_MODEL)
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                'temperature': 0.7,  # Some creativity, but not too much
-                'top_p': 0.9,
-                'top_k': 40,
-                'max_output_tokens': 32000,  # Long output needed for full dependency trees
-            }
+        # Initialize client with new SDK
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        
+        # Generate content using new SDK
+        response = client.models.generate_content(
+            model=GEMINI_EXPERIENCE_MODEL,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                temperature=0.7,
+                top_p=0.9,
+                top_k=40,
+                max_output_tokens=32000,
+            )
         )
         
         if not response.text:
