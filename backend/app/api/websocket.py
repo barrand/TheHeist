@@ -113,6 +113,29 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
                 await websocket.send_json(room_state_dict)
                 logger.info(f"✅ room_state sent to player {player_id}")
                 
+                # If game already in progress, send game_started message to late joiner
+                if room.status == RoomStatus.IN_PROGRESS and room.game_state:
+                    logger.info(f"🎮 Game already in progress, sending game_started to late joiner {player_id}")
+                    
+                    # Get player's role
+                    player_role = room.players[player_id].role
+                    if player_role:
+                        # Get tasks for this player's role
+                        your_tasks = [
+                            task for task in room.game_state.get('tasks', [])
+                            if task.get('role') == player_role
+                        ]
+                        
+                        game_started_msg = {
+                            "type": "game_started",
+                            "scenario": room.scenario,
+                            "objective": room.game_state.get('objective', ''),
+                            "your_tasks": your_tasks
+                        }
+                        
+                        await websocket.send_json(game_started_msg)
+                        logger.info(f"✅ Sent game_started to late joiner {player_id}")
+                
                 # Broadcast player joined to others
                 if existing_player:
                     # Rejoined - no broadcast needed

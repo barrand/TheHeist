@@ -21,8 +21,7 @@ echo -e "${YELLOW}1. Stopping existing processes...${NC}"
 pkill -9 -f "flutter run" 2>/dev/null
 pkill -9 -f "python.*run.py" 2>/dev/null
 pkill -9 -f "flutter_tools_chrome_device" 2>/dev/null
-pkill -9 -f "Google Chrome.*localhost:8098" 2>/dev/null
-lsof -ti:8098 | xargs kill -9 2>/dev/null
+lsof -ti:8087 | xargs kill -9 2>/dev/null
 lsof -ti:8000 | xargs kill -9 2>/dev/null
 sleep 3
 echo -e "${GREEN}   ✓ Processes stopped${NC}"
@@ -62,19 +61,22 @@ flutter pub get
 echo -e "${GREEN}   ✓ Packages updated${NC}"
 echo ""
 
-# Start Flutter web app
+# Start Flutter web app (single instance, multiple browser tabs)
 echo -e "${YELLOW}6. Starting Flutter web app...${NC}"
+echo -e "   Running on port 8087"
 echo -e "   This may take 30-60 seconds..."
-flutter run -d chrome --web-port 8098 > /tmp/theheist-flutter.log 2>&1 &
+echo ""
+
+# Start Flutter instance with web-server (doesn't auto-open browser)
+flutter run -d web-server --web-hostname=localhost --web-port=8087 > /tmp/theheist-flutter.log 2>&1 &
 FLUTTER_PID=$!
 echo -e "${GREEN}   ✓ Flutter starting (PID: $FLUTTER_PID)${NC}"
-echo -e "     Logs: tail -f /tmp/theheist-flutter.log"
 echo ""
 
 # Wait for Flutter to build and start
 echo -e "${YELLOW}7. Waiting for Flutter to build...${NC}"
 for i in {1..60}; do
-    if lsof -i:8098 > /dev/null 2>&1; then
+    if lsof -i:8087 > /dev/null 2>&1; then
         echo -e "${GREEN}   ✓ Flutter web app is running!${NC}"
         break
     fi
@@ -89,8 +91,13 @@ echo -e "${BLUE}======================================${NC}"
 echo -e "${GREEN}✓ The Heist is running!${NC}"
 echo -e "${BLUE}======================================${NC}"
 echo ""
-echo -e "  📱 Frontend:  ${GREEN}http://localhost:8098${NC}"
+echo -e "  📱 Frontend:  ${GREEN}http://localhost:8087${NC}"
 echo -e "  🔧 Backend:   ${GREEN}http://localhost:8000${NC}"
+echo ""
+echo -e "  ${YELLOW}Quick Test:${NC}"
+echo -e "    1. Browser 1: Click 🎭 Test as Mastermind"
+echo -e "    2. Browser 2: Click 🔐 Test as Safe Cracker → Enter room code"
+echo -e "    3. Host clicks Start Game"
 echo ""
 echo -e "  Logs:"
 echo -e "    Backend:  tail -f /tmp/theheist-backend.log"
@@ -101,8 +108,3 @@ echo -e "    pkill -f \"flutter run\""
 echo -e "    pkill -f \"python.*run.py\""
 echo ""
 echo -e "${BLUE}======================================${NC}"
-
-# Open browser
-sleep 2
-echo -e "${YELLOW}Opening browser...${NC}"
-open http://localhost:8098

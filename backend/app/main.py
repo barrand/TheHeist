@@ -48,7 +48,7 @@ async def startup_event():
     """Run on application startup"""
     logger.info(f"🚀 Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"📡 Server running on {settings.host}:{settings.port}")
-    logger.info(f"🤖 Using Gemini model: {settings.gemini_model}")
+    logger.info(f"🤖 Using Gemini NPC model: {settings.gemini_npc_model}")
 
 
 @app.on_event("shutdown")

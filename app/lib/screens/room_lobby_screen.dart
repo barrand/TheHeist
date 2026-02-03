@@ -12,6 +12,7 @@ import 'package:the_heist/widgets/common/heist_secondary_button.dart';
 import 'package:the_heist/widgets/common/section_header.dart';
 import 'package:the_heist/widgets/modals/role_selection_modal.dart';
 import 'package:the_heist/widgets/modals/scenario_selection_modal.dart';
+import 'package:the_heist/screens/game_screen.dart';
 
 /// Room lobby where players join, select roles, and wait for game to start
 class RoomLobbyScreen extends StatefulWidget {
@@ -134,17 +135,27 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       });
     });
     
-    // Game started
+    // Game started - navigate to game screen
     widget.wsService.gameStarted.listen((message) {
+      debugPrint('🎮 LOBBY: Game started! Navigating to game screen');
+      final scenario = message['scenario'];
+      final objective = message['objective'];
+      final yourTasks = message['your_tasks'] ?? [];
+      
+      debugPrint('🎮 LOBBY: Scenario: $scenario');
+      debugPrint('🎮 LOBBY: Objective: $objective');
+      debugPrint('🎮 LOBBY: Tasks count: ${yourTasks.length}');
+      
       // Navigate to game screen
-      Navigator.of(context).pushReplacementNamed(
-        '/game',
-        arguments: {
-          'wsService': widget.wsService,
-          'scenario': message['scenario'],
-          'objective': message['objective'],
-          'your_tasks': message['your_tasks'],
-        },
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => GameScreen(
+            wsService: widget.wsService,
+            scenario: scenario,
+            objective: objective,
+            yourTasks: yourTasks,
+          ),
+        ),
       );
     });
     
@@ -192,6 +203,24 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             debugPrint('🎯 AUTO: Selecting Safe Cracker for first joiner');
             Future.delayed(Duration(milliseconds: 500), () {
               _selectRole('safe_cracker');
+            });
+          }
+        }
+      }
+      
+      // AUTO-START for test rooms (when both players have MM and SC)
+      if (_players.length == 2) {
+        final roles = _players.map((p) => p['role']).toSet();
+        if (roles.contains('mastermind') && roles.contains('safe_cracker')) {
+          // Both test roles are assigned
+          final bothReady = _players.every((p) => p['role'] != null && p['role'] != '');
+          if (bothReady && _isHost) {
+            debugPrint('⚡ AUTO-START: Both test roles ready, starting game in 2 seconds');
+            Future.delayed(Duration(seconds: 2), () {
+              if (_isHost && mounted) {
+                debugPrint('⚡ AUTO-START: Triggering game start');
+                _startGame();
+              }
             });
           }
         }

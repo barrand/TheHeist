@@ -260,6 +260,133 @@ class _LandingPageState extends State<LandingPage> {
     print('How to Play tapped');
   }
 
+  Future<void> _onQuickTest(BuildContext context, String role) async {
+    final testName = role == 'mastermind' ? 'MM-Test' : 'SC-Test';
+
+    setState(() => _isLoading = true);
+
+    try {
+      String roomCode;
+      
+      if (role == 'mastermind') {
+        // Mastermind creates a new room
+        debugPrint('⚡ Creating room as Mastermind...');
+        final roomData = await _roomService.createRoom(testName);
+        roomCode = roomData['room_code'];
+        debugPrint('✅ Created room: $roomCode');
+        
+        // Show room code to user
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Room created: $roomCode\nSecond player joins this code!'),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 8),
+            ),
+          );
+        }
+      } else {
+        // Safe Cracker asks for room code to join
+        final result = await showDialog<String>(
+          context: context,
+          builder: (context) {
+            final controller = TextEditingController();
+            return AlertDialog(
+              backgroundColor: AppColors.bgSecondary,
+              title: Text(
+                'Test as Safe Cracker',
+                style: TextStyle(color: AppColors.textPrimary),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Enter the room code from Mastermind:',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  SizedBox(height: 16),
+                  HeistTextField(
+                    controller: controller,
+                    hintText: 'Room Code (e.g. APPLE)',
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, controller.text.trim().toUpperCase()),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentPrimary),
+                  child: Text('Join', style: TextStyle(color: AppColors.textPrimary)),
+                ),
+              ],
+            );
+          },
+        );
+        
+        if (result == null || result.isEmpty) {
+          setState(() => _isLoading = false);
+          return;
+        }
+        roomCode = result;
+        
+        // Check if room exists
+        final canJoin = await _roomService.canJoinRoom(roomCode);
+        if (!canJoin) {
+          throw Exception('Room not found or already started');
+        }
+      }
+
+      // Connect to WebSocket
+      final wsService = WebSocketService();
+      await wsService.connect(roomCode, testName);
+
+      // Wait for room_state
+      debugPrint('⏳ Waiting for room_state...');
+      await wsService.roomState.first.timeout(
+        Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('⚠️ Timeout waiting for room_state');
+          return {};
+        },
+      );
+
+      // Auto-select role
+      debugPrint('⚡ Auto-selecting role: $role');
+      wsService.selectRole(role);
+
+      // Wait for role selection to process
+      await Future.delayed(Duration(milliseconds: 800));
+
+      // Navigate to lobby
+      if (context.mounted) {
+        debugPrint('⚡ Navigating to lobby...');
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RoomLobbyScreen(
+              roomCode: roomCode,
+              playerName: testName,
+              wsService: wsService,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Quick test failed: $e');
+      if (context.mounted) {
+        _showError(context, 'Quick test failed: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -336,6 +463,70 @@ class _LandingPageState extends State<LandingPage> {
               ),
               
               SizedBox(height: AppDimensions.spaceLG),
+              
+              // DEV TESTING - Quick Test Buttons
+              Container(
+                padding: EdgeInsets.all(AppDimensions.spaceSM),
+                decoration: BoxDecoration(
+                  color: AppColors.bgSecondary,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+                  border: Border.all(color: AppColors.accentSecondary, width: 1),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '⚡ QUICK TEST (DEV)',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: AppDimensions.spaceSM),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _onQuickTest(context, 'mastermind'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.info,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: Text(
+                              '🎭 Test as\nMastermind',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: AppDimensions.spaceSM),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _onQuickTest(context, 'safe_cracker'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.info,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: Text(
+                              '🔐 Test as\nSafe Cracker',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: AppDimensions.spaceSM),
               
               // Test NPC Button (for development)
               HeistSecondaryButton(

@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_heist/core/theme/app_colors.dart';
 import 'package:the_heist/core/theme/app_dimensions.dart';
 import 'package:the_heist/services/websocket_service.dart';
-import 'package:the_heist/widgets/common/section_header.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
-import 'package:the_heist/widgets/common/task_card.dart';
 
 /// Game screen where players complete their tasks
 class GameScreen extends StatefulWidget {
@@ -27,10 +25,12 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   List<Map<String, dynamic>> _myTasks = [];
-  List<String> _completedTaskIds = [];
+  final List<String> _completedTaskIds = [];
   bool _gameEnded = false;
   String? _gameResult;
   String? _gameSummary;
+  String _currentLocation = 'Crew Hideout'; // All games start at Crew Hideout
+  bool _showCompletedTasks = false;
   
   @override
   void initState() {
@@ -125,130 +125,255 @@ class _GameScreenState extends State<GameScreen> {
       return _buildGameEndedScreen();
     }
     
+    // Group tasks by location
+    final tasksHere = _myTasks.where((t) => 
+      t['location'] == _currentLocation && t['status'] != 'completed'
+    ).toList();
+    
+    final tasksElsewhere = _myTasks.where((t) => 
+      t['location'] != _currentLocation && t['status'] != 'completed'
+    ).toList();
+    
+    final completedTasks = _myTasks.where((t) => t['status'] == 'completed').toList();
+    
+    final totalTasks = _myTasks.length;
+    final completedCount = completedTasks.length;
+    
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      appBar: AppBar(
-        title: const Text('The Heist'),
-        backgroundColor: AppColors.bgSecondary,
-        automaticallyImplyLeading: false,
-      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(AppDimensions.space2XL),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Objective card
-                _buildObjectiveCard(),
-                
-                SizedBox(height: AppDimensions.spaceLG),
-                
-                // Progress indicator
-                _buildProgressIndicator(),
-                
-                SizedBox(height: AppDimensions.spaceLG),
-                
-                // Your tasks
-                const SectionHeader(text: 'Your Tasks'),
-                SizedBox(height: AppDimensions.spaceMD),
-                
-                if (_myTasks.isEmpty)
-                  _buildEmptyState()
-                else
-                  ..._myTasks.map((task) => _buildTaskCard(task)),
-              ],
+        child: Column(
+          children: [
+            // Top bar - Location & Progress
+            _buildTopBar(completedCount, totalTasks),
+            
+            // Scrollable content
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.all(AppDimensions.containerPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Team Objective
+                      _buildTeamObjective(),
+                      
+                      SizedBox(height: AppDimensions.spaceLG),
+                      
+                      // Ready to do here
+                      if (tasksHere.isNotEmpty) ...[
+                        Text(
+                          '✅ READY TO DO HERE',
+                          style: TextStyle(
+                            color: AppColors.success,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        SizedBox(height: AppDimensions.spaceSM),
+                        ...tasksHere.map((task) => _buildTaskCard(task, isAtCurrentLocation: true)),
+                      ],
+                      
+                      // Requires travel
+                      if (tasksElsewhere.isNotEmpty) ...[
+                        if (tasksHere.isNotEmpty) SizedBox(height: AppDimensions.spaceMD),
+                        Text(
+                          '📍 REQUIRES TRAVEL',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        SizedBox(height: AppDimensions.spaceSM),
+                        ...tasksElsewhere.map((task) => _buildTaskCard(task, isAtCurrentLocation: false)),
+                      ],
+                      
+                      // Completed section
+                      if (completedTasks.isNotEmpty) ...[
+                        SizedBox(height: AppDimensions.spaceMD),
+                        Divider(color: AppColors.borderSubtle),
+                        SizedBox(height: AppDimensions.spaceMD),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _showCompletedTasks = !_showCompletedTasks;
+                            });
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '✅ COMPLETED (${completedTasks.length})',
+                                style: TextStyle(
+                                  color: AppColors.success,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              Icon(
+                                _showCompletedTasks ? Icons.expand_less : Icons.expand_more,
+                                color: AppColors.textSecondary,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_showCompletedTasks) ...[
+                          SizedBox(height: AppDimensions.spaceSM),
+                          ...completedTasks.map((task) => _buildTaskCard(task, isAtCurrentLocation: false)),
+                        ],
+                      ],
+                      
+                      SizedBox(height: 80), // Space for bottom nav
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
+            
+            // Bottom navigation
+            _buildBottomNav(),
+          ],
         ),
       ),
     );
   }
   
-  Widget _buildObjectiveCard() {
+  Widget _buildTopBar(int completedCount, int totalTasks) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppDimensions.containerPadding,
+        vertical: AppDimensions.spaceMD,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.bgSecondary,
+        border: Border(
+          bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.location_on, color: AppColors.accentPrimary, size: 20),
+          SizedBox(width: AppDimensions.spaceXS),
+          Expanded(
+            child: Text(
+              _currentLocation,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            '$completedCount/$totalTasks',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(width: AppDimensions.spaceXS),
+          Icon(Icons.timer, color: AppColors.textSecondary, size: 18),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTeamObjective() {
     return Container(
       padding: EdgeInsets.all(AppDimensions.containerPadding),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
-        border: Border.all(color: AppColors.accentPrimary, width: 2),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+        border: Border.all(color: AppColors.accentPrimary, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.flag,
-                color: AppColors.accentPrimary,
-                size: 24,
-              ),
-              SizedBox(width: AppDimensions.spaceSM),
-              Text(
-                'OBJECTIVE',
-                style: TextStyle(
-                  color: AppColors.accentPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-            ],
+          Text(
+            '🎯 TEAM OBJECTIVE',
+            style: TextStyle(
+              color: AppColors.accentPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
           ),
           SizedBox(height: AppDimensions.spaceSM),
           Text(
             widget.objective,
             style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 16,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildProgressIndicator() {
-    final totalTasks = _myTasks.length;
-    final completedTasks = _myTasks.where((t) => t['status'] == 'completed').length;
-    final progress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
-    
-    return Container(
-      padding: EdgeInsets.all(AppDimensions.containerPadding),
-      decoration: BoxDecoration(
-        color: AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      ),
-      child: Column(
-        children: [
+          SizedBox(height: AppDimensions.spaceXS),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Icon(Icons.people, color: AppColors.textSecondary, size: 14),
+              SizedBox(width: 4),
               Text(
-                'Your Progress',
+                'Team task',
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-              Text(
-                '$completedTasks / $totalTasks tasks',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
                 ),
               ),
             ],
           ),
-          SizedBox(height: AppDimensions.spaceSM),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: AppColors.bgTertiary,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentPrimary),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildBottomNav() {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppDimensions.containerPadding,
+        vertical: AppDimensions.spaceSM,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.bgSecondary,
+        border: Border(
+          top: BorderSide(color: AppColors.borderSubtle, width: 1),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavButton(Icons.map, 'Map', _showMapDialog),
+          _buildNavButton(Icons.people, 'Team', () {
+            _showSnackBar('Team view coming soon!');
+          }),
+          _buildNavButton(Icons.backpack, 'Bag', () {
+            _showSnackBar('Inventory coming soon!');
+          }),
+          _buildNavButton(Icons.search, 'Rm', () {
+            _showSnackBar('Search room coming soon!');
+          }),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildNavButton(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppColors.textSecondary, size: 24),
+          SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 10,
             ),
           ),
         ],
@@ -256,149 +381,293 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
   
-  Widget _buildTaskCard(Map<String, dynamic> task) {
+  void _showMapDialog() {
+    // Get all unique locations from tasks
+    final Set<String> allLocations = _myTasks
+        .map((task) => task['location'] as String?)
+        .where((loc) => loc != null && loc.isNotEmpty)
+        .cast<String>()
+        .toSet();
+    
+    // Always include Crew Hideout if not already present
+    allLocations.add('Crew Hideout');
+    
+    final sortedLocations = allLocations.toList()..sort();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.bgPrimary,
+        title: Row(
+          children: [
+            Icon(Icons.map, color: AppColors.accentPrimary, size: 24),
+            SizedBox(width: AppDimensions.spaceXS),
+            Text(
+              'Map - Travel to Location',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: sortedLocations.length,
+            itemBuilder: (context, index) {
+              final location = sortedLocations[index];
+              final isCurrentLocation = location == _currentLocation;
+              final isLocked = false; // TODO: Implement lock logic later
+              
+              return Container(
+                margin: EdgeInsets.only(bottom: AppDimensions.spaceSM),
+                decoration: BoxDecoration(
+                  color: isCurrentLocation 
+                      ? AppColors.accentPrimary.withAlpha(26)
+                      : AppColors.bgSecondary,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                  border: Border.all(
+                    color: isCurrentLocation 
+                        ? AppColors.accentPrimary 
+                        : AppColors.borderSubtle,
+                    width: isCurrentLocation ? 2 : 1,
+                  ),
+                ),
+                child: ListTile(
+                  leading: Icon(
+                    isCurrentLocation ? Icons.location_on : Icons.place,
+                    color: isCurrentLocation 
+                        ? AppColors.accentPrimary 
+                        : AppColors.textSecondary,
+                    size: 28,
+                  ),
+                  title: Text(
+                    location,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: isCurrentLocation ? FontWeight.bold : FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: isCurrentLocation
+                      ? Text(
+                          'Current location',
+                          style: TextStyle(
+                            color: AppColors.accentPrimary,
+                            fontSize: 12,
+                          ),
+                        )
+                      : null,
+                  trailing: isCurrentLocation
+                      ? null
+                      : isLocked
+                          ? Icon(Icons.lock, color: AppColors.textTertiary, size: 20)
+                          : ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                setState(() {
+                                  _currentLocation = location;
+                                });
+                                _showSnackBar('Traveled to $location', color: AppColors.success);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.accentPrimary,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                              ),
+                              child: Text(
+                                'Travel',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Close',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTaskCard(Map<String, dynamic> task, {required bool isAtCurrentLocation}) {
     final String taskId = task['id'] ?? '';
     final String description = task['description'] ?? 'Unknown task';
     final String location = task['location'] ?? 'Unknown';
     final String status = task['status'] ?? 'locked';
     final String type = task['type'] ?? 'minigame';
+    final String? minigameId = task['minigame_id'];
     
     final bool isAvailable = status == 'available';
     final bool isCompleted = status == 'completed';
-    final bool isLocked = status == 'locked';
     
-    return Container(
-      margin: EdgeInsets.only(bottom: AppDimensions.spaceMD),
-      padding: EdgeInsets.all(AppDimensions.containerPadding),
-      decoration: BoxDecoration(
-        color: isCompleted
-            ? AppColors.success.withAlpha(26)
-            : isLocked
-                ? AppColors.bgSecondary.withAlpha(128)
-                : AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        border: Border.all(
-          color: isAvailable
-              ? AppColors.accentPrimary
-              : isCompleted
-                  ? AppColors.success
-                  : AppColors.borderSubtle,
+    // Gray out if not at current location
+    final bool isGrayedOut = !isAtCurrentLocation && !isCompleted;
+    
+    return InkWell(
+      onTap: isGrayedOut ? _showMapDialog : null,
+      child: Container(
+        margin: EdgeInsets.only(bottom: AppDimensions.spaceSM),
+        padding: EdgeInsets.all(AppDimensions.containerPadding),
+        decoration: BoxDecoration(
+          color: isCompleted
+              ? AppColors.success.withAlpha(26)
+              : isGrayedOut
+                  ? AppColors.bgSecondary.withAlpha(128)
+                  : AppColors.bgSecondary,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+          border: Border.all(
+            color: isAvailable && isAtCurrentLocation
+                ? AppColors.accentPrimary
+                : isCompleted
+                    ? AppColors.success
+                    : AppColors.borderSubtle,
+            width: isAvailable && isAtCurrentLocation ? 2 : 1,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isCompleted
-                      ? AppColors.success
-                      : isLocked
-                          ? AppColors.textTertiary
-                          : AppColors.accentPrimary,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  taskId,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Task name/description
+            Text(
+              description,
+              style: TextStyle(
+                color: isGrayedOut ? AppColors.textSecondary : AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            
+            SizedBox(height: AppDimensions.spaceXS),
+            
+            // Type label & minigame ID
+            Row(
+              children: [
+                Text(
+                  _getTaskTypeLabel(type),
                   style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+                if (minigameId != null) ...[
+                  SizedBox(width: AppDimensions.spaceXS),
+                  Text(
+                    minigameId,
+                    style: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            
+            // Location indicator
+            SizedBox(height: AppDimensions.spaceXS),
+            Row(
+              children: [
+                Icon(Icons.location_on, color: AppColors.textSecondary, size: 12),
+                SizedBox(width: 4),
+                Text(
+                  location,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+            
+            // Action indicator
+            if (isAvailable && isAtCurrentLocation) ...[
+              SizedBox(height: AppDimensions.spaceXS),
+              Text(
+                '⚡ Tap to start',
+                style: TextStyle(
+                  color: AppColors.accentPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+            
+            if (isGrayedOut) ...[
+              SizedBox(height: AppDimensions.spaceXS),
+              Row(
+                children: [
+                  Icon(Icons.map, color: AppColors.textSecondary, size: 12),
+                  SizedBox(width: 4),
+                  Text(
+                    'Use Map to travel here',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            
+            if (isCompleted)
+              Padding(
+                padding: EdgeInsets.only(top: AppDimensions.spaceXS),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: AppColors.success, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'Completed',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            
+            // Action button for available tasks at current location
+            if (isAvailable && isAtCurrentLocation) ...[
+              SizedBox(height: AppDimensions.spaceMD),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _completeTask(taskId, type),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentPrimary,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(
+                    'Start Task',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-              SizedBox(width: AppDimensions.spaceSM),
-              Text(
-                _getTaskTypeLabel(type),
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-              const Spacer(),
-              if (isCompleted)
-                Icon(Icons.check_circle, color: AppColors.success, size: 20),
-              if (isLocked)
-                Icon(Icons.lock, color: AppColors.textTertiary, size: 20),
             ],
-          ),
-          
-          SizedBox(height: AppDimensions.spaceSM),
-          
-          // Description
-          Text(
-            description,
-            style: TextStyle(
-              color: isLocked ? AppColors.textTertiary : AppColors.textPrimary,
-              fontSize: 14,
-            ),
-          ),
-          
-          SizedBox(height: AppDimensions.spaceSM),
-          
-          // Location
-          Row(
-            children: [
-              Icon(
-                Icons.location_on,
-                color: AppColors.textSecondary,
-                size: 14,
-              ),
-              SizedBox(width: 4),
-              Text(
-                location,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          
-          // Action button
-          if (isAvailable) ...[
-            SizedBox(height: AppDimensions.spaceMD),
-            HeistPrimaryButton(
-              text: 'Complete Task',
-              onPressed: () => _completeTask(taskId, type),
-              icon: Icons.check,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(AppDimensions.containerPadding),
-        child: Column(
-          children: [
-            Icon(
-              Icons.inbox,
-              size: 64,
-              color: AppColors.textTertiary,
-            ),
-            SizedBox(height: AppDimensions.spaceMD),
-            Text(
-              'No tasks yet',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 16,
-              ),
-            ),
-            Text(
-              'Wait for your teammates to unlock tasks',
-              style: TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),

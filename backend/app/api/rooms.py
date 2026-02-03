@@ -41,7 +41,7 @@ async def create_room(request: CreateRoomRequest):
     """
     Create a new game room
     
-    The creator becomes the host and can start the game once players are ready
+    The creator becomes the host and can start the game once players are ready.
     """
     room_manager = get_room_manager()
     
