@@ -1,4 +1,4 @@
-# The Heist - UI Mockups & Screen Flow
+# The Crew - Chapter 1: Heist - UI Mockups & Screen Flow
 
 > 💡 **For detailed design specs (colors, typography, spacing, components), see:** [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md)
 
@@ -33,13 +33,28 @@ Landing Page
              ↓
          Game Screen
              ↓
-      ┌──────┴──────┐
-      ↓             ↓
-Victory Screen  Failure Screen
-      │             │
-      └─────┬───────┘
-            ↓
-      (Play Again or Back to Menu)
+      ┌──────┼──────────────┐
+      ↓      ↓              ↓
+   Minigame  NPC Conv    Discovery
+      │      │              │
+   ┌──┴──┐ ┌─┴──┐          │
+   ↓     ↓ ↓    ↓          │
+Success Fail Success Fail  │
+   │     │   │    │         │
+   └──┬──┘   └─┬──┘         │
+      │        │            │
+      └────┬───┴────────────┘
+           ↓
+     Continue Playing
+           ↓
+      ┌────┴────┐
+      ↓         ↓
+  Victory   Failure
+   Screen    Screen
+      │         │
+      └────┬────┘
+           ↓
+    (Play Again or Menu)
 ```
 
 ---
@@ -53,8 +68,9 @@ Victory Screen  Failure Screen
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│         THE HEIST 🎭            │
-│    Collaborative Heist Game     │
+│         THE CREW 🎭             │
+│    Chapter 1: Heist             │
+│   Collaborative Heist Game      │
 │                                 │
 │  ┌───────────────────────────┐ │
 │  │                           │ │
@@ -75,8 +91,9 @@ Victory Screen  Failure Screen
 ```
 
 **Components:**
-- [ ] App title/logo (centered)
-- [ ] Tagline text
+- [ ] App title "THE CREW" (large, centered)
+- [ ] Chapter subtitle "Chapter 1: Heist" (medium)
+- [ ] Tagline "Collaborative Heist Game" (small)
 - [ ] "Create Room" button (primary CTA)
 - [ ] "Join Room" button (secondary CTA)
 - [ ] "How to Play" link (bottom)
@@ -506,7 +523,7 @@ Victory Screen  Failure Screen
 │  │ 📍 Vault Room              │ │
 │  └───────────────────────────┘ │
 │                                 │
-│  YOUR TASKS (Safe Cracker)      │
+│  YOUR TASKS (Safe Cracker)      │← Shows player's role
 │                                 │
 │  ✅ READY TO DO HERE            │
 │  ┌───────────────────────────┐ │
@@ -532,11 +549,11 @@ Victory Screen  Failure Screen
 │                                 │
 │  ✅ COMPLETED (3)         ⌄    │← Expandable
 │                                 │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌───┐│
-│  │ 🗺️  │ │ 👥  │ │ 🎒  │ │🔍 │││← Quick actions
-│  │ Map │ │Team │ │Bag │ │Rm │││
-│  └─────┘ └─────┘ └─────┘ └───┘││
-│                         (3) ↑   │← Item count badge
+│  ┌─────┐ ┌─────┐ ┌───────┐     │
+│  │ 🗺️  │ │ 🎒  │ │  🔍   │     │← Quick actions
+│  │ Map │ │ Bag │ │Search │     │
+│  └─────┘ └─────┘ └───────┘     │
+│           (3) ↑                 │← Item count badge
 └─────────────────────────────────┘
 ```
 
@@ -553,6 +570,10 @@ Victory Screen  Failure Screen
 - [ ] Shows location if relevant
 - [ ] Tappable to see more details
 - [ ] May spawn specific tasks upon interaction
+
+**Your Tasks Header:**
+- [ ] Shows "YOUR TASKS (role name)" using player's selected role
+- [ ] Role name formatted in Title Case (e.g., "Safe Cracker", "Mastermind")
 
 **Task List:**
 - [ ] Section: "Ready to Do Here" (bright, full color)
@@ -576,10 +597,9 @@ Victory Screen  Failure Screen
 - [ ] Completed section (collapsed, shows count)
 
 **Bottom Navigation:**
-- [ ] "🗺️ Map" button → Location view
-- [ ] "👥 Team" button → Team status view
+- [ ] "🗺️ Map" button → Location view (also shows teammates)
 - [ ] "🎒 Bag" button → Inventory screen (shows item count badge)
-- [ ] "🔍 Rm" button → Search current room (exploration mode)
+- [ ] "🔍 Search" button → Search current room (exploration mode)
 
 **Design Notes - Discovery System:**
 - **Objectives** are high-level goals shown upfront (e.g., "Get Into the Safe")
@@ -607,12 +627,11 @@ Victory Screen  Failure Screen
 - Tap "Ready" task → Start task immediately (minigame/NPC/search/discovery)
 - Tap "Travel" task → Open map view with that location highlighted
 - Tap "Completed" → Expand to show completed tasks
-- Tap "🗺️ Map" → Show location map and available locations
-- Tap "👥 Team" → Show all players and their current tasks
+- Tap "🗺️ Map" → Show location map, available locations, and see where teammates are
 - Tap "🎒 Bag" → Open inventory screen (Screen 9b)
   - Shows item count badge (number of items)
   - Manage items, transfer, use, or drop
-- Tap "🔍 Rm" → Open search screen in exploration mode (no specific target)
+- Tap "🔍 Search" → Open search screen in exploration mode (no specific target)
   - Always available at any location
   - Discover items, trigger new tasks
   - Encourages player communication
@@ -830,7 +849,7 @@ Victory Screen  Failure Screen
 
 ## Screen 8: Map View
 
-**Purpose**: Show all locations and movement options
+**Purpose**: Show all locations with players, NPCs, and movement options
 
 ### UI Elements:
 
@@ -840,43 +859,90 @@ Victory Screen  Failure Screen
 │                                 │
 │  CURRENT                        │
 │  ┌───────────────────────────┐ │
-│  │ 📍 Safe House       ⭐    │ │← You are here
+│  │ 📍 Crew Hideout      ⭐    │ │← You are here
+│  │                           │ │
+│  │ 👤 You (Hacker)           │ │← Players here
+│  │ 👤 Sam (Safe Cracker)     │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  ACCESSIBLE                     │
 │  ┌───────────────────────────┐ │
-│  │ 🏛️ Museum Front Steps     │ │← Can move here
-│  └───────────────────────────┘ │
-│  ┌───────────────────────────┐ │
-│  │ 🚗 Getaway Vehicle        │ │
+│  │ 🏛️ Grand Hall             │ │← Can travel here
+│  │                           │ │
+│  │ 💬 Security Guard         │ │← NPC present
+│  │ 🎯 2 tasks available      │ │← Tasks here
+│  │                           │ │
+│  │          [TRAVEL →]       │ │← Travel button
 │  └───────────────────────────┘ │
 │                                 │
-│  LOCKED                         │
 │  ┌───────────────────────────┐ │
-│  │ 🔒 Security Room          │ │← Can't access yet
-│  │    Needs: Badge access    │ │
+│  │ 🏢 Museum Basement        │ │
+│  │                           │ │
+│  │ 👤 Alex (Mastermind)      │ │← Teammate here
+│  │ 🎯 1 task available       │ │
+│  │                           │ │
+│  │          [TRAVEL →]       │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ 🔒 Vault Room             │ │← Locked
+│  │                           │ │
+│  │ 🔐 Needs: Vault key       │ │← Requirement
+│  │ 🎯 1 task waiting         │ │
 │  └───────────────────────────┘ │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 **Components:**
-- [ ] Close button (X)
-- [ ] Current location (highlighted)
-- [ ] Accessible locations (tappable)
-- [ ] Locked locations (grayed out)
-  - [ ] Show unlock requirement
-- [ ] Location icons
-- [ ] Location names
+- [ ] Close button (X in title)
+- [ ] Section headers (CURRENT, ACCESSIBLE, LOCKED)
+- [ ] Location cards showing:
+  - [ ] Location icon and name
+  - [ ] Players at this location (👤 icon + name + role)
+  - [ ] NPCs at this location (💬 icon + name)
+  - [ ] Tasks available count (🎯 icon + count)
+  - [ ] Travel button (for accessible locations)
+  - [ ] Lock requirement (for locked locations)
+- [ ] Current location highlighted (gold border, ⭐ star)
+- [ ] Accessible locations (white/tappable)
+- [ ] Locked locations (grayed, lock icon 🔒)
+
+**Real-Time Updates:**
+- When teammate moves → Their icon moves to new location
+- When NPC is talked to → NPC may change mood/status
+- When task completed → Task count updates
+- When location unlocked → Moves from LOCKED to ACCESSIBLE
+
+**Player Display Rules:**
+- Show up to 5 players per location
+- If more than 5: "👤 +3 more players"
+- Highlight yourself in bold/gold
+- Show role in parentheses
+
+**NPC Display Rules:**
+- Show NPC name only (no personality)
+- Add mood indicator if relevant: 💬 (neutral), 😊 (friendly), 😠 (suspicious)
+- Multiple NPCs listed if present
+
+**Task Count:**
+- Shows YOUR available tasks at that location
+- Completed tasks not counted
+- Locked tasks not counted
+- Real-time update when tasks unlock/complete
 
 **Actions:**
-- Tap accessible location → Move there (update current location)
-- Tap locked location → Show why it's locked
+- Tap accessible location → Move there (update current location, close dialog)
+- Tap locked location → Show unlock requirement toast
+- Tap player name → Quick view of their status (optional)
+- Tap NPC name → Quick view of NPC personality (optional)
 - Tap X → Close modal
 
 ---
 
 ## Screen 9: Team View
+
+**Status**: 🚧 Not yet implemented - Team info is shown in Map View for now
 
 **Purpose**: See what all players are doing
 
@@ -1770,6 +1836,269 @@ When player just wants to look around without a task
 
 ---
 
+## Screen 12a: Minigame Success Screen
+
+**Purpose**: Show success feedback after completing a minigame
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│         ✅ 🎉                   │
+│                                 │
+│     TASK COMPLETE!              │← Large, animated
+│                                 │
+│   Connected all wires           │← What they did
+│   correctly in 42 seconds       │
+│                                 │
+│  ╔═══════════════════════════╗ │
+│  ║                           ║ │
+│  ║  ⭐⭐⭐ PERFECT!         ║ │← Performance rating
+│  ║                           ║ │
+│  ║  ⚡ Speed Bonus: +50 pts  ║ │← Bonuses (optional)
+│  ║  🎯 No Mistakes: +25 pts  ║ │
+│  ║                           ║ │
+│  ╚═══════════════════════════╝ │
+│                                 │
+│  🔓 NEXT TASKS UNLOCKED:        │
+│  • Check vault interior         │← Tasks unlocked
+│  • Radio team to proceed        │   by success
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │     CONTINUE              │ │← Primary CTA
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Success icon/animation (checkmark, confetti)
+- [ ] "Task Complete!" header (large, green)
+- [ ] Description of what was accomplished
+- [ ] Performance rating (stars or grade)
+- [ ] Optional bonuses/stats (speed, accuracy, no mistakes)
+- [ ] Unlocked tasks preview (what's next)
+- [ ] Continue button (returns to game screen)
+
+**Animations:**
+1. Confetti/sparkle animation from top (0.5s)
+2. Success message fades in with scale effect (0.3s)
+3. Stats reveal sequentially (0.2s each)
+4. Unlocked tasks slide in from bottom (0.5s)
+
+---
+
+## Screen 12b: Minigame Failure Screen
+
+**Purpose**: Show failure feedback and retry option
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│         ❌ 💥                   │
+│                                 │
+│     TASK FAILED                 │← Large, red
+│                                 │
+│   Wire connection incorrect.    │← What went wrong
+│   Security system detected      │
+│   the attempt.                  │
+│                                 │
+│  ╔═══════════════════════════╗ │
+│  ║                           ║ │
+│  ║  ⚠️  CONSEQUENCES          ║ │
+│  ║                           ║ │
+│  ║  • Alarm triggered        ║ │← Game impact
+│  ║  • Time penalty: -2 min   ║ │
+│  ║  • Guards alerted         ║ │
+│  ║                           ║ │
+│  ╚═══════════════════════════╝ │
+│                                 │
+│  💡 TIP: Watch the wire colors  │
+│     carefully. Red connects to  │← Helpful hint
+│     the top-right port.         │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │     TRY AGAIN             │ │← Primary CTA
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │     SKIP (RISKY)          │ │← Secondary option
+│  └───────────────────────────┘ │
+│                                 │
+│        Back to Tasks            │← Tertiary
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Failure icon (X, broken icon, alert)
+- [ ] "Task Failed" header (large, red)
+- [ ] Description of what went wrong
+- [ ] Consequences box
+  - [ ] Impact on game state (alarms, time, difficulty)
+  - [ ] What changed for the team
+- [ ] Helpful tip (specific to the failure)
+- [ ] Try Again button (restart minigame)
+- [ ] Skip button (continue without completing, may have penalties)
+- [ ] Back to Tasks link (abandon this task)
+
+**Animations:**
+- Shake animation on failure (0.3s)
+- Red flash/pulse effect (0.5s)
+- Consequences fade in sequentially (0.2s each)
+
+**Failure Reasons (Examples):**
+- Time ran out
+- Too many mistakes
+- Wrong sequence
+- Detection/caught
+- Broke tool/item
+
+---
+
+## Screen 12c: NPC Conversation Success Screen
+
+**Purpose**: Show success after obtaining information from NPC
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│       ✅ 🎯 ✨                  │
+│                                 │
+│   INFORMATION OBTAINED!         │← Large, animated
+│                                 │
+│       [NPC Portrait]            │
+│      BRENDA WILLIAMS            │
+│                                 │
+│  ╔═══════════════════════════╗ │
+│  ║                           ║ │
+│  ║  📋 LEARNED:               ║ │
+│  ║                           ║ │
+│  ║  • Car 7 has laser grid   ║ │← Key info obtained
+│  ║  • Disabled at 3:15pm     ║ │
+│  ║  • Guard shift change     ║ │
+│  ║                           ║ │
+│  ║  💎 BONUS INFO:           ║ │
+│  ║  Conductor is lazy,       ║ │← Extra details
+│  ║  leaves post for coffee   ║ │
+│  ║                           ║ │
+│  ╚═══════════════════════════╝ │
+│                                 │
+│  🔓 UPDATED OBJECTIVES:         │
+│  ✅ Learn Car 7 security        │← Completed
+│  🟢 Plan 3:15pm entry           │← New/unlocked
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │     CONTINUE              │ │← Primary CTA
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Success icon/animation
+- [ ] "Information Obtained!" header (green)
+- [ ] NPC portrait reminder
+- [ ] Information box
+  - [ ] Primary information learned (objective-related)
+  - [ ] Bonus information (extra context, tips)
+- [ ] Updated objectives section
+  - [ ] Shows completed objectives (checkmark)
+  - [ ] Shows newly unlocked objectives
+- [ ] Continue button (returns to game screen)
+- [ ] Optional: Share with team button
+
+**Success Triggers:**
+- NPC revealed key information
+- Objective confidence reached 100%
+- Completed trade/request successfully
+- Built enough rapport/trust
+
+---
+
+## Screen 12d: NPC Conversation Failure Screen
+
+**Purpose**: Show failure when NPC shuts down or becomes suspicious
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│       ❌ 🚨 ⚠️                  │
+│                                 │
+│   CONVERSATION ENDED            │← Large, red/orange
+│                                 │
+│       [NPC Portrait]            │
+│      BRENDA WILLIAMS            │
+│      😠 Suspicious              │← Mood indicator
+│                                 │
+│  ╔═══════════════════════════╗ │
+│  ║                           ║ │
+│  ║  ⚠️  WHAT HAPPENED:        ║ │
+│  ║                           ║ │
+│  ║  "Wait... why are you     ║ │← NPC's reaction
+│  ║   asking so many          ║ │
+│  ║   questions about the     ║ │
+│  ║   security? That's weird!"║ │
+│  ║                           ║ │
+│  ║  🚫 CONSEQUENCES:          ║ │
+│  ║  • Brenda is now cautious ║ │← Impact
+│  ║  • Can't talk to her again║ │
+│  ║  • Team reputation -1     ║ │
+│  ║                           ║ │
+│  ╚═══════════════════════════╝ │
+│                                 │
+│  💡 TIP: Build rapport first    │
+│     before asking direct        │← Helpful hint
+│     questions about security.   │
+│                                 │
+│  🔄 ALTERNATIVE OPTIONS:        │
+│  • Ask another NPC (Tommy)      │← Next steps
+│  • Search for security logs     │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │     CONTINUE              │ │← Primary CTA
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Failure/warning icon
+- [ ] "Conversation Ended" header (red/orange)
+- [ ] NPC portrait with updated mood (angry, suspicious, closed)
+- [ ] What Happened box
+  - [ ] NPC's reaction quote
+  - [ ] Why they shut down
+- [ ] Consequences box
+  - [ ] Impact on game state
+  - [ ] Reputation/alarm changes
+  - [ ] Future limitations
+- [ ] Tip (how to avoid next time)
+- [ ] Alternative options (other NPCs, other approaches)
+- [ ] Continue button (returns to game screen)
+
+**Failure Triggers:**
+- Asked too direct/suspicious questions
+- Failed trade/request
+- Reputation too low
+- NPC personality clash
+- Time pressure/rushed
+- Asked about info they don't know (frustration)
+
+**Animations:**
+- NPC portrait changes expression (0.3s)
+- Red warning flash (0.5s)
+- Consequences fade in (0.2s each)
+
+---
+
 ## Screen 13: Victory Screen
 
 **Purpose**: Celebrate successful heist with performance metrics and celebration graphics
@@ -2061,8 +2390,10 @@ Icon size:              24px
 
 **Phase 3 (Nice to Have):**
 16. ✅ Minigame Screens (build 2-3 examples)
-17. ✅ Victory Screen (with star rating, time, celebration graphics)
-18. ✅ Failure Screen (with tips and retry options)
+17. ✅ Minigame Success/Failure States (feedback and retry)
+18. ✅ NPC Conversation Success/Failure States (info obtained / shut down)
+19. ✅ Victory Screen (with star rating, time, celebration graphics)
+20. ✅ Failure Screen (with tips and retry options)
 
 ---
 

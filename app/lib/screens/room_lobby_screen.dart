@@ -154,6 +154,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             scenario: scenario,
             objective: objective,
             yourTasks: yourTasks,
+            playerRole: _myRole,
           ),
         ),
       );
