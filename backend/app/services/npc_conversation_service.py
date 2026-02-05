@@ -142,7 +142,7 @@ Your response as {npc.name} (plain text, no quotes):"""
             prompt = self.build_npc_prompt(npc, objectives, player_message, difficulty)
             
             # Use direct REST API call
-            url = f"{self.base_url}/{self.npc_model}:generateContent?key={self.api_key}"
+            url = f"{self.base_url}/models/{self.npc_model}:generateContent?key={self.api_key}"
             
             payload = {
                 "contents": [{
@@ -225,7 +225,7 @@ Output 3 responses (one per line, no numbers):
         
         try:
             # Use configured model for quick responses
-            url = f"{self.base_url}/{self.quick_response_model}:generateContent?key={self.api_key}"
+            url = f"{self.base_url}/models/{self.quick_response_model}:generateContent?key={self.api_key}"
             
             payload = {
                 "contents": [{

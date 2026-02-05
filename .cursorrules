@@ -1,0 +1,17 @@
+# Cursor Rules
+
+## Files
+- Don't create report/summary markdown files unless asked
+- Explain changes in chat, not in new documentation files
+- Keep project root clean
+
+## Git
+- Commit frequently after meaningful changes
+- Write clear, action-oriented commit messages
+- Ask if unsure whether to commit
+
+## Code
+- Follow existing patterns
+- Keep it simple and focused
+- Suggest cleanup opportunities as you work
+- Use industry best practices (separate view, data, business logic)

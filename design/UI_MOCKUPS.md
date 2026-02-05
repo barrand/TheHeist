@@ -33,7 +33,13 @@ Landing Page
              ↓
          Game Screen
              ↓
-        Victory Screen
+      ┌──────┴──────┐
+      ↓             ↓
+Victory Screen  Failure Screen
+      │             │
+      └─────┬───────┘
+            ↓
+      (Play Again or Back to Menu)
 ```
 
 ---
@@ -1766,31 +1772,51 @@ When player just wants to look around without a task
 
 ## Screen 13: Victory Screen
 
-**Purpose**: Celebrate successful heist
+**Purpose**: Celebrate successful heist with performance metrics and celebration graphics
 
 ### UI Elements:
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│         🎉 SUCCESS! 🎉          │
+│    ✨ 💎 🎉 💎 ✨              │← Celebration graphics
 │                                 │
-│     Heist Completed!            │
+│    HEIST SUCCESSFUL!            │← Large, bold, animated
 │                                 │
-│  Time: 23:15                    │
-│  Tasks Completed: 45/45         │
+│       ⭐ ⭐ ⭐ ⭐ ⭐           │← 5 stars (gold/filled)
+│                                 │← Based on performance
+│    "Outstanding Work!"          │← Rating message
 │                                 │
-│  ⭐⭐⭐                          │← Star rating
+│  ╔═══════════════════════════╗ │
+│  ║                           ║ │
+│  ║  ⏱️  TIME TAKEN            ║ │
+│  ║     18 min 42 sec         ║ │← Large time display
+│  ║                           ║ │
+│  ║  🎯 STEALTH BONUS         ║ │
+│  ║     No alarms triggered   ║ │
+│  ║                           ║ │
+│  ║  💰 LOOT SECURED          ║ │
+│  ║     $2.4 Million          ║ │
+│  ║                           ║ │
+│  ╚═══════════════════════════╝ │
 │                                 │
-│  MVP: Sam (Safe Cracker)        │
-│  (12 tasks completed)           │
+│  👥 TEAM PERFORMANCE            │
+│                                 │
+│  🥇 Sam (Safe Cracker)          │
+│     15 tasks completed          │
+│                                 │
+│  🥈 Alex (Mastermind)           │
+│     13 tasks completed          │
+│                                 │
+│  🥉 Jordan (Lookout)            │
+│     11 tasks completed          │
 │                                 │
 │  ┌───────────────────────────┐ │
-│  │   PLAY AGAIN              │ │
+│  │   🔄 PLAY AGAIN           │ │← Primary CTA (gold)
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
-│  │   TRY NEW SCENARIO        │ │
+│  │   🎲 TRY NEW SCENARIO     │ │← Secondary
 │  └───────────────────────────┘ │
 │                                 │
 │        Back to Menu             │
@@ -1798,21 +1824,143 @@ When player just wants to look around without a task
 └─────────────────────────────────┘
 ```
 
+**Star Rating System (1-5 stars):**
+- ⭐⭐⭐⭐⭐ (5 stars): "Perfect Execution!" - Completed in <15 min, no alarms
+- ⭐⭐⭐⭐☆ (4 stars): "Outstanding Work!" - Completed in <20 min, 0-1 alarms
+- ⭐⭐⭐☆☆ (3 stars): "Job Well Done!" - Completed in <25 min, 0-2 alarms
+- ⭐⭐☆☆☆ (2 stars): "Barely Made It" - Completed in <30 min, 3+ alarms
+- ⭐☆☆☆☆ (1 star): "Mission Complete" - Completed (any time/conditions)
+
+**Performance Metrics:**
+- **Time Taken**: MM:SS format (large, prominent)
+- **Stealth Bonus**: Shows if no alarms triggered
+- **Loot Value**: Total score/value secured (scenario-specific)
+- **Tasks Completed**: X/Y tasks
+- **Team Rankings**: Medal icons (🥇🥈🥉) for top 3 players
+
+**Animation States:**
+1. **Initial** (0.0s): Screen fades in from black
+2. **Celebration** (0.5s): Confetti/sparkles animation from top
+3. **Stars Appear** (1.0s): Stars fill in one-by-one with "ding" sound
+4. **Stats Reveal** (1.5s): Stats box slides up from bottom
+5. **Team Rankings** (2.5s): Player cards fade in sequentially
+
 **Components:**
-- [ ] Success message with animation
-- [ ] Stats
-  - [ ] Time taken
-  - [ ] Tasks completed
-  - [ ] Star rating (3 stars = perfect)
-- [ ] MVP (most tasks completed)
-- [ ] "Play Again" button (same scenario/roles)
-- [ ] "Try New Scenario" button
+- [ ] Animated celebration graphics (confetti, sparkles, gems)
+- [ ] Large "HEIST SUCCESSFUL!" header with glow effect
+- [ ] Dynamic 1-5 star rating with fill animation
+- [ ] Performance rating message (changes based on stars)
+- [ ] Stats card with gradient border (gold for 5★, silver for 4★, bronze for 3★)
+  - [ ] Time taken (large, prominent)
+  - [ ] Stealth bonus indicator
+  - [ ] Loot/score value
+- [ ] Team performance section
+  - [ ] Medal icons (🥇🥈🥉) for rankings
+  - [ ] Player name + role
+  - [ ] Individual task count
+- [ ] "Play Again" button (primary CTA, gold)
+- [ ] "Try New Scenario" button (secondary)
 - [ ] "Back to Menu" link
+- [ ] Optional: Confetti particle effect (CSS/canvas)
+- [ ] Optional: Victory jingle sound effect
+
+**Visual Styling:**
+- Background: Radial gradient from dark center to lighter edges (spotlight effect)
+- Stars: Large (32px), gold fill (#D4AF37) with subtle pulsing animation
+- Stats card: Dark background (#1E1E1E) with colored border based on rating
+- Typography: Extra-large success message (36px bold), prominent time (28px)
+- Celebration icons: Animated with slight bounce/rotation
+- Team cards: Subtle hover/press effect
 
 **Actions:**
-- Tap "Play Again" → Generate new experience, go to game screen
-- Tap "Try New Scenario" → Return to room lobby
-- Tap "Back to Menu" → Return to landing page
+- Tap "Play Again" → Generate new experience, same scenario/roles, go to game screen
+- Tap "Try New Scenario" → Return to room lobby (keep same team)
+- Tap "Back to Menu" → Disconnect, return to landing page
+- Optional: Tap star rating → Show detailed breakdown modal
+
+---
+
+## Screen 14: Failure Screen
+
+**Purpose**: Show results when heist fails
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│      🚨 💥 🚨                   │← Failure graphics
+│                                 │
+│    HEIST FAILED                 │← Large, bold red text
+│                                 │
+│   "Caught by Security"          │← Failure reason
+│                                 │
+│  ╔═══════════════════════════╗ │
+│  ║                           ║ │
+│  ║  ⏱️  LASTED                ║ │
+│  ║     12 min 18 sec         ║ │
+│  ║                           ║ │
+│  ║  ⚠️  WHAT WENT WRONG      ║ │
+│  ║     • Tripped alarm       ║ │
+│  ║     • Guards alerted      ║ │
+│  ║     • Failed escape       ║ │
+│  ║                           ║ │
+│  ║  ✅ TASKS COMPLETED       ║ │
+│  ║     18 / 45 (40%)         ║ │
+│  ║                           ║ │
+│  ╚═══════════════════════════╝ │
+│                                 │
+│  💡 TIP FOR NEXT TIME           │
+│                                 │
+│  "Coordinate with your team     │
+│   before triggering alarms.     │
+│   Use the Team View to check    │
+│   everyone's status."           │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   🔄 TRY AGAIN            │ │← Primary CTA
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   📋 REVIEW TASKS         │ │← Show what was left
+│  └───────────────────────────┘ │
+│                                 │
+│        Back to Menu             │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Failure Reasons:**
+- **Caught by Security**: Alarm triggered, guards arrived
+- **Time Ran Out**: Exceeded time limit
+- **Team Conflict**: Player disconnected at critical moment
+- **Discovery Failed**: Couldn't find required information
+- **Escape Route Blocked**: Failed to secure exit
+
+**Components:**
+- [ ] Failure graphic (red theme, alarm icons)
+- [ ] "HEIST FAILED" header (red, bold)
+- [ ] Failure reason (specific to what went wrong)
+- [ ] Stats card (red border)
+  - [ ] Time lasted
+  - [ ] What went wrong (bullet points)
+  - [ ] Tasks completed percentage
+- [ ] Tip for next time (helpful hint based on failure reason)
+- [ ] "Try Again" button (primary, restart with same setup)
+- [ ] "Review Tasks" button (see what was left undone)
+- [ ] "Back to Menu" link
+
+**Visual Styling:**
+- Background: Dark with red tint/vignette
+- Header: Red text (#E53935) with subtle shake animation
+- Stats card: Dark background with red border
+- Icons: Warning/alert themed (🚨⚠️💥🔴)
+- Tip box: Info blue background (#2196F3) to stand out positively
+
+**Actions:**
+- Tap "Try Again" → Restart experience with same team/scenario
+- Tap "Review Tasks" → Show task list modal (what was completed vs. remaining)
+- Tap "Back to Menu" → Disconnect, return to landing page
 
 ---
 
@@ -1913,7 +2061,8 @@ Icon size:              24px
 
 **Phase 3 (Nice to Have):**
 16. ✅ Minigame Screens (build 2-3 examples)
-17. ✅ Victory Screen
+17. ✅ Victory Screen (with star rating, time, celebration graphics)
+18. ✅ Failure Screen (with tips and retry options)
 
 ---
 

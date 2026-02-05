@@ -396,114 +396,159 @@ class _GameScreenState extends State<GameScreen> {
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.bgPrimary,
-        title: Row(
-          children: [
-            Icon(Icons.map, color: AppColors.accentPrimary, size: 24),
-            SizedBox(width: AppDimensions.spaceXS),
-            Text(
-              'Map - Travel to Location',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: sortedLocations.length,
-            itemBuilder: (context, index) {
-              final location = sortedLocations[index];
-              final isCurrentLocation = location == _currentLocation;
-              final isLocked = false; // TODO: Implement lock logic later
-              
-              return Container(
-                margin: EdgeInsets.only(bottom: AppDimensions.spaceSM),
-                decoration: BoxDecoration(
-                  color: isCurrentLocation 
-                      ? AppColors.accentPrimary.withAlpha(26)
-                      : AppColors.bgSecondary,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-                  border: Border.all(
-                    color: isCurrentLocation 
-                        ? AppColors.accentPrimary 
-                        : AppColors.borderSubtle,
-                    width: isCurrentLocation ? 2 : 1,
-                  ),
-                ),
-                child: ListTile(
-                  leading: Icon(
-                    isCurrentLocation ? Icons.location_on : Icons.place,
-                    color: isCurrentLocation 
-                        ? AppColors.accentPrimary 
-                        : AppColors.textSecondary,
-                    size: 28,
-                  ),
-                  title: Text(
-                    location,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: isCurrentLocation ? FontWeight.bold : FontWeight.w500,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: AppColors.bgPrimary,
+          child: Container(
+            constraints: BoxConstraints(maxWidth: 500, maxHeight: 600),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: EdgeInsets.all(AppDimensions.containerPadding),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
                     ),
                   ),
-                  subtitle: isCurrentLocation
-                      ? Text(
-                          'Current location',
-                          style: TextStyle(
-                            color: AppColors.accentPrimary,
-                            fontSize: 12,
-                          ),
-                        )
-                      : null,
-                  trailing: isCurrentLocation
-                      ? null
-                      : isLocked
-                          ? Icon(Icons.lock, color: AppColors.textTertiary, size: 20)
-                          : ElevatedButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                setState(() {
-                                  _currentLocation = location;
-                                });
-                                _showSnackBar('Traveled to $location', color: AppColors.success);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.accentPrimary,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                              ),
-                              child: Text(
-                                'Travel',
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.map, color: AppColors.accentPrimary, size: 24),
+                      SizedBox(width: AppDimensions.spaceXS),
+                      Text(
+                        'Map - Travel to Location',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Close',
-              style: TextStyle(color: AppColors.textSecondary),
+                
+                // Location list
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.all(AppDimensions.containerPadding),
+                    itemCount: sortedLocations.length,
+                    itemBuilder: (context, index) {
+                      final location = sortedLocations[index];
+                      final isCurrentLocation = location == _currentLocation;
+                      final isLocked = false; // TODO: Implement lock logic later
+                      
+                      return Container(
+                        margin: EdgeInsets.only(bottom: AppDimensions.spaceSM),
+                        decoration: BoxDecoration(
+                          color: isCurrentLocation 
+                              ? AppColors.accentPrimary.withAlpha(26)
+                              : AppColors.bgSecondary,
+                          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                          border: Border.all(
+                            color: isCurrentLocation 
+                                ? AppColors.accentPrimary 
+                                : AppColors.borderSubtle,
+                            width: isCurrentLocation ? 2 : 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(AppDimensions.spaceSM),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isCurrentLocation ? Icons.location_on : Icons.place,
+                                color: isCurrentLocation 
+                                    ? AppColors.accentPrimary 
+                                    : AppColors.textSecondary,
+                                size: 28,
+                              ),
+                              SizedBox(width: AppDimensions.spaceSM),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      location,
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 15,
+                                        fontWeight: isCurrentLocation ? FontWeight.bold : FontWeight.w500,
+                                      ),
+                                    ),
+                                    if (isCurrentLocation)
+                                      Text(
+                                        'Current location',
+                                        style: TextStyle(
+                                          color: AppColors.accentPrimary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              if (!isCurrentLocation)
+                                isLocked
+                                    ? Icon(Icons.lock, color: AppColors.textTertiary, size: 20)
+                                    : ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          setState(() {
+                                            _currentLocation = location;
+                                          });
+                                          _showSnackBar('Traveled to $location', color: AppColors.success);
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.accentPrimary,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Travel',
+                                          style: TextStyle(
+                                            color: AppColors.textPrimary,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                
+                // Close button
+                Container(
+                  padding: EdgeInsets.all(AppDimensions.containerPadding),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: AppColors.borderSubtle, width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'Close',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
   
