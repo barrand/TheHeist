@@ -177,6 +177,8 @@ class _GameScreenState extends State<GameScreen> {
         return '🤝 Hand Off Item';
       case 'info_share':
         return '🗣️ Share Info';
+      case 'discovery':
+        return '🎯 Explore';
       default:
         return type;
     }
@@ -196,13 +198,31 @@ class _GameScreenState extends State<GameScreen> {
     }
     
     // Group tasks by location
-    final tasksHere = _myTasks.where((t) => 
-      t['location'] == _currentLocation && t['status'] != 'completed'
-    ).toList();
+    // Tasks at current location OR tasks that can be done anywhere (discovery, info_share)
+    final tasksHere = _myTasks.where((t) {
+      if (t['status'] == 'completed') return false;
+      
+      final location = t['location'] as String?;
+      final type = t['type'] as String?;
+      
+      // Discovery and info_share tasks can be done from anywhere
+      if (type == 'discovery' || type == 'info_share') return true;
+      
+      // Other tasks must be at specific location
+      return location == _currentLocation;
+    }).toList();
     
-    final tasksElsewhere = _myTasks.where((t) => 
-      t['location'] != _currentLocation && t['status'] != 'completed'
-    ).toList();
+    final tasksElsewhere = _myTasks.where((t) {
+      if (t['status'] == 'completed') return false;
+      
+      final location = t['location'] as String?;
+      final type = t['type'] as String?;
+      
+      // Discovery and info_share are never "elsewhere"
+      if (type == 'discovery' || type == 'info_share') return false;
+      
+      return location != _currentLocation;
+    }).toList();
     
     final completedTasks = _myTasks.where((t) => t['status'] == 'completed').toList();
     
