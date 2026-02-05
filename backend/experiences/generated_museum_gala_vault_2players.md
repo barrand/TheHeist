@@ -98,7 +98,7 @@ Every task in this heist is one of five types:
 
 2. **MM2. 🗣️ INFO** - Share Vault Intel with Safe Cracker
    - *Description:* Radio the Safe Cracker with the vault's location (basement, east wing) and the security details you learned.
-   - *Location:* Grand Hall
+   - *Location:* Any (radio communication)
    - *Dependencies:* `MM1` (learned vault location and security details)
 
 ### Safe Cracker
