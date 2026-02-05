@@ -81,19 +81,21 @@ Every task in this heist is one of five types:
 - **🔍 Search/Hunt**: Player searches a location for hidden items
 - **🤝 Item Handoff**: Physical item transfer between players (tracked in inventory)
 - **🗣️ Info Share**: Verbal information exchange between players (real-life conversation)
+- **🎯 Discovery**: Open-ended exploration task - player discovers how to proceed
 
 ## Roles & Dependencies
 
 ### Mastermind
 
 **Tasks:**
-1. **MM1. 🔍 SEARCH** - Learn Vault Intel
-   - *Description:* Gather intelligence about the vault location and security details. Talk to people at the gala, observe the area, and piece together information about where the vault is and when it's least guarded.
+1. **MM1. 🎯 DISCOVERY** - Learn Vault Intel
+   - *Description:* Gather intelligence about the vault location and security details. Explore the museum, mingle at the gala, and talk to people who might know. Look for security personnel, museum staff, or anyone who might reveal useful information.
    - *Objectives to Discover:*
      - Vault location (basement, east wing)
      - Security patrol schedule
      - Best time to access vault
-   - *Location:* Grand Hall
+   - *Location:* Any museum location (explore to find sources)
+   - *Hint:* Try the Grand Hall - that's where the gala is happening
    - *Dependencies:* None (starting task)
 
 2. **MM2. 🗣️ INFO** - Share Vault Intel with Safe Cracker
@@ -122,7 +124,8 @@ Supporting tasks: 0
 
 By type:
 - Minigames (🎮): 1 (25%)
-- Search tasks (🔍): 2 (50%)
+- Discovery tasks (🎯): 1 (25%)
+- Search tasks (🔍): 1 (25%)
 - Info shares (🗣️): 1 (25%)
 
 ## Dependency Tree Diagram
@@ -131,7 +134,7 @@ By type:
 flowchart TD
     START([START HEIST])
     
-    START --> MM1{{🔍 MM: Learn Vault Intel}}
+    START --> MM1{{🎯 MM: Learn Vault Intel}}
     START --> SC1{{🔍 SC: Navigate to Vault}}
     
     MM1 --> MM2[🗣️ MM: Share Vault Location]

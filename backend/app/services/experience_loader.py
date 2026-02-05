@@ -40,6 +40,7 @@ class ExperienceLoader:
         "🔍": TaskType.SEARCH,
         "🤝": TaskType.HANDOFF,
         "🗣️": TaskType.INFO_SHARE,
+        "🎯": TaskType.DISCOVERY,
     }
     
     # Role code mapping (for task IDs)
