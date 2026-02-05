@@ -28,11 +28,8 @@ Thumbs.db
 # Environment variables (secrets)
 .env
 
-# Generated output files
-output/
+# Generated output files (temporary, before moving to backend/experiences/)
+scripts/output/
 
 # Prototype files (contains API keys for testing)
 prototype/
-
-# Generated NPC images (can be large)
-output/npc_images/

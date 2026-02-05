@@ -261,7 +261,7 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
     selected_roles = room.get_selected_roles()
     
     try:
-        loader = ExperienceLoader(experiences_dir="examples")
+        loader = ExperienceLoader(experiences_dir="experiences")
         game_state = loader.load_experience(scenario, selected_roles)
         
         # Store game state (in room manager for now, will move to game state manager)

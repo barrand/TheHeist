@@ -499,11 +499,11 @@ def generate_experience(scenario_id, role_ids, output_file=None):
         if output_file:
             output_path = Path(output_file)
         else:
-            # Default: output/{scenario_id}_{roles}.md
+            # Default: scripts/output/{scenario_id}_{roles}.md
             roles_str = '_'.join(role_ids[:3])  # First 3 roles
             if len(role_ids) > 3:
                 roles_str += f'_plus{len(role_ids)-3}'
-            output_path = Path('output') / f"{scenario_id}_{roles_str}.md"
+            output_path = Path('scripts/output') / f"{scenario_id}_{roles_str}.md"
         
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(result)
@@ -527,7 +527,7 @@ def main():
 Examples:
   python generate_experience.py --scenario museum_gala_vault --roles mastermind hacker safe_cracker
   python generate_experience.py --scenario train_robbery_car --roles mastermind muscle cat_burglar driver
-  python generate_experience.py --scenario museum_gala_vault --roles mastermind fence hacker insider --output my_heist.md
+  python generate_experience.py --scenario museum_gala_vault --roles mastermind fence hacker insider --output backend/experiences/my_heist.md
         """
     )
     
@@ -546,7 +546,7 @@ Examples:
     
     parser.add_argument(
         '--output',
-        help='Output file path (default: output/{scenario}_{roles}.md)'
+        help='Output file path (default: scripts/output/{scenario}_{roles}.md)'
     )
     
     args = parser.parse_args()
