@@ -11,14 +11,14 @@ This guide defines the rules and principles for creating heist scenario dependen
 Every task in a dependency tree must be one of these five types:
 
 ### 🎮 Minigame
-**Player-controlled action from `data/roles.json`**
+**Player-controlled action from `shared_data/roles.json`**
 
 - Must use an actual minigame ID defined for that role
 - Format: `{{🎮 minigame_id: Description}}`
 - Example: `{{🎮 dial_rotation: Crack Vault}}`
 
 **Validation:**
-- Check that the minigame ID exists in `data/roles.json` for that role
+- Check that the minigame ID exists in `shared_data/roles.json` for that role
 - Never invent new minigame names
 
 **Available minigames by role:**
@@ -157,7 +157,7 @@ Each task should have clear prerequisites:
 
 ### 6. Scenario-Specific Design
 - Theme drives task types (train = more physical, museum = more stealth/social)
-- Required roles from `data/scenarios.json` must have prominent tasks
+- Required roles from `shared_data/scenarios.json` must have prominent tasks
 - Setting informs NPC interactions (guards, staff, bystanders)
 
 ### 7. Location Requirements
@@ -254,7 +254,7 @@ Each location can have searchable items that players discover using 🔍 Search 
 ### Before Finalizing a Dependency Tree
 
 **1. Check all minigames exist:**
-- Cross-reference every minigame ID with `data/roles.json`
+- Cross-reference every minigame ID with `shared_data/roles.json`
 - Ensure minigame belongs to the correct role
 
 **2. Verify dependencies are logical:**
@@ -361,7 +361,7 @@ flowchart TD
 ## Example Workflow
 
 ### Step 1: Read Scenario
-- Load scenario from `data/scenarios.json`
+- Load scenario from `shared_data/scenarios.json`
 - Note objective, theme, required roles
 
 ### Step 2: Identify Phases

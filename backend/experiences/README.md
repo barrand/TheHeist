@@ -47,7 +47,7 @@ You can also manually create experience files following the format in existing f
 ## Loading Experiences
 
 The `ExperienceLoader` service automatically finds files based on:
-- Scenario ID (from `data/scenarios.json`)
+- Scenario ID (from `shared_data/scenarios.json`)
 - Number of players
 - File naming convention
 

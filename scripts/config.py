@@ -54,7 +54,7 @@ if not GEMINI_API_KEY or GEMINI_API_KEY == 'PASTE_YOUR_API_KEY_HERE':
     )
 
 # Project paths
-DATA_DIR = project_root / 'data'
+DATA_DIR = project_root / 'shared_data'
 DESIGN_DIR = project_root / 'design'
 EXAMPLES_DIR = project_root / 'examples'
 SCRIPTS_DIR = project_root / 'scripts'
