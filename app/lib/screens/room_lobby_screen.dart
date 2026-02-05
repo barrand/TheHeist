@@ -155,6 +155,8 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             objective: objective,
             yourTasks: yourTasks,
             playerRole: _myRole,
+            allPlayers: _players,
+            myPlayerId: _myPlayerId,
           ),
         ),
       );

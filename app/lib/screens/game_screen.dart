@@ -11,6 +11,8 @@ class GameScreen extends StatefulWidget {
   final String objective;
   final List<dynamic> yourTasks;
   final String? playerRole;
+  final List<Map<String, dynamic>>? allPlayers;
+  final String? myPlayerId;
   
   const GameScreen({
     super.key,
@@ -19,6 +21,8 @@ class GameScreen extends StatefulWidget {
     required this.objective,
     required this.yourTasks,
     this.playerRole,
+    this.allPlayers,
+    this.myPlayerId,
   });
   
   @override
@@ -43,6 +47,15 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _myTasks = widget.yourTasks.map((t) => Map<String, dynamic>.from(t)).toList();
+    
+    // Initialize with passed-in player data if available
+    if (widget.allPlayers != null) {
+      _allPlayers = widget.allPlayers!.map((p) => Map<String, dynamic>.from(p)).toList();
+    }
+    if (widget.myPlayerId != null) {
+      _myPlayerId = widget.myPlayerId;
+    }
+    
     _setupWebSocketListeners();
   }
   
@@ -111,6 +124,10 @@ class _GameScreenState extends State<GameScreen> {
         setState(() {
           if (message.containsKey('npcs')) {
             _npcs = List<Map<String, dynamic>>.from(message['npcs'] ?? []);
+            debugPrint('🎮 Received ${_npcs.length} NPCs from game_started message');
+            for (var npc in _npcs) {
+              debugPrint('   NPC: ${npc['name']} at ${npc['location']}');
+            }
           }
         });
       }
@@ -405,6 +422,15 @@ class _GameScreenState extends State<GameScreen> {
     final npcsHere = _npcs.where((npc) => 
       npc['location'] == _currentLocation
     ).toList();
+    
+    // Debug logging
+    debugPrint('🏠 WHO\'S HERE Debug:');
+    debugPrint('   Current location: $_currentLocation');
+    debugPrint('   My player ID: $_myPlayerId');
+    debugPrint('   Total players: ${_allPlayers.length}');
+    debugPrint('   Players here: ${playersHere.length}');
+    debugPrint('   Total NPCs: ${_npcs.length}');
+    debugPrint('   NPCs here: ${npcsHere.length}');
     
     // Don't show section if no one else is here
     if (playersHere.isEmpty && npcsHere.isEmpty) {
