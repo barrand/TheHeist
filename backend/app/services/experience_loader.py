@@ -172,29 +172,54 @@ class ExperienceLoader:
         return locations
     
     def _extract_npcs(self, content: str) -> List[NPCData]:
-        """Extract NPC data from task descriptions"""
+        """Extract NPC data from structured NPC section"""
         npcs = []
-        npc_dict = {}  # Deduplicate by name
         
-        # Find all NPC mentions in format: *NPC: Name (personality) - "quote"*
-        for match in re.finditer(r'\*NPC:\s*(.+?)\s*\((.+?)\)\s*-\s*"(.+?)"', content):
-            name = match.group(1).strip()
-            personality = match.group(2).strip()
+        # Find the NPCs section
+        npcs_match = re.search(r'## NPCs\s*\n(.*?)(?=\n##|\Z)', content, re.DOTALL)
+        if not npcs_match:
+            logger.warning("No NPCs section found in experience file")
+            return npcs
+        
+        npcs_section = npcs_match.group(1)
+        
+        # Parse each NPC (starts with ###)
+        npc_blocks = re.split(r'(?=### )', npcs_section)
+        
+        for block in npc_blocks:
+            if not block.strip():
+                continue
             
-            if name not in npc_dict and name.lower() != "none":
-                npc_id = name.lower().replace(" ", "_")
-                # Try to extract location from context
-                location = "Unknown"
-                
-                npc_dict[name] = NPCData(
-                    id=npc_id,
-                    name=name,
-                    role="",  # Will need to extract from context
-                    personality=personality,
-                    location=location
-                )
+            # Extract NPC name and role from header (format: ### Role - Name)
+            header_match = re.search(r'###\s+(.+?)\s+-\s+(.+)', block)
+            if not header_match:
+                continue
+            
+            role = header_match.group(1).strip()
+            name = header_match.group(2).strip()
+            
+            # Extract ID
+            id_match = re.search(r'-\s*\*\*ID\*\*:\s*`([^`]+)`', block)
+            npc_id = id_match.group(1) if id_match else name.lower().replace(" ", "_")
+            
+            # Extract location
+            location_match = re.search(r'-\s*\*\*Location\*\*:\s*(.+)', block)
+            location = location_match.group(1).strip() if location_match else "Unknown"
+            
+            # Extract personality
+            personality_match = re.search(r'-\s*\*\*Personality\*\*:\s*(.+)', block)
+            personality = personality_match.group(1).strip() if personality_match else "Friendly and helpful"
+            
+            npc = NPCData(
+                id=npc_id,
+                name=name,
+                role=role,
+                personality=personality,
+                location=location
+            )
+            npcs.append(npc)
+            logger.debug(f"Parsed NPC: {name} ({role}) at {location}")
         
-        npcs = list(npc_dict.values())
         return npcs
     
     def _extract_role_tasks(self, content: str, role: str) -> Dict[str, Task]:
@@ -254,12 +279,17 @@ class ExperienceLoader:
                     task.minigame_id = minigame_match.group(1)
             
             elif task_type == TaskType.NPC_LLM:
-                # Extract NPC info
-                npc_match = re.search(r'\*NPC:\s*(.+?)\s*\((.+?)\)', task_details)
-                if npc_match:
-                    task.npc_name = npc_match.group(1).strip()
-                    task.npc_personality = npc_match.group(2).strip()
-                    task.npc_id = task.npc_name.lower().replace(" ", "_")
+                # Extract NPC ID (new format: *NPC:* `npc_id`)
+                npc_id_match = re.search(r'\*NPC:\*\s*`([^`]+)`', task_details)
+                if npc_id_match:
+                    task.npc_id = npc_id_match.group(1).strip()
+                else:
+                    # Fallback to old format: *NPC: Name (personality)*
+                    npc_match = re.search(r'\*NPC:\s*(.+?)\s*\((.+?)\)', task_details)
+                    if npc_match:
+                        task.npc_name = npc_match.group(1).strip()
+                        task.npc_personality = npc_match.group(2).strip()
+                        task.npc_id = task.npc_name.lower().replace(" ", "_")
             
             elif task_type == TaskType.SEARCH:
                 # Extract items to find

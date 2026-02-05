@@ -21,6 +21,57 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 
 **Total Locations**: 4
 
+## NPCs
+
+### Security Guard - Marcus Romano
+- **ID**: `security_guard`
+- **Role**: Museum Security Guard
+- **Location**: Grand Hall
+- **Age**: 45
+- **Gender**: male
+- **Ethnicity**: White
+- **Clothing**: Navy security uniform with badge and radio
+- **Expression**: bored
+- **Attitude**: lonely, chatty
+- **Details**: Holding clipboard, wearing glasses
+- **Personality**: Bored and lonely on the night shift. Loves sports and misses the excitement of his old job. Gets chatty when someone shows interest in his stories. Genuinely believes nothing interesting ever happens at the museum.
+- **Information Known**:
+  - HIGH: The Eye of Orion jewels are in the new vault exhibit in the basement, east wing
+  - HIGH: He's been assigned to guard the vault exhibit all week
+  - MEDIUM: His patrol schedule - he leaves the vault area around 9 PM for his break
+  - MEDIUM: The vault was installed just two weeks ago
+  - LOW: The museum director is paranoid about security since the last incident
+- **Conversation Hints**: 
+  - Bring up sports to get him talking
+  - Show sympathy about his boring shift
+  - Ask casual questions about the museum exhibits
+  - Don't mention the vault directly at first
+
+### Museum Curator - Dr. Elena Vasquez
+- **ID**: `museum_curator`
+- **Role**: Senior Museum Curator
+- **Location**: Grand Hall
+- **Age**: 52
+- **Gender**: female
+- **Ethnicity**: Latina
+- **Clothing**: Elegant black evening dress with pearl necklace
+- **Expression**: friendly
+- **Attitude**: proud, knowledgeable, enthusiastic about art
+- **Details**: Holding wine glass, wearing museum ID badge
+- **Personality**: Passionate about the museum's collection. Loves talking about the exhibits and their history. Very proud of the new Eye of Orion acquisition. Professional but warm at social events. Trusts that security has everything under control.
+- **Information Known**:
+  - HIGH: The Eye of Orion was just acquired for $12 million
+  - HIGH: The jewels will be on public display starting Monday
+  - MEDIUM: The vault has a state-of-the-art combination lock system
+  - MEDIUM: Only three people know the combination (herself, the director, and head of security)
+  - LOW: The security system has backup power in case of outages
+  - LOW: The museum's insurance company required extra security measures
+- **Conversation Hints**:
+  - Show interest in the museum's collection
+  - Ask about recent acquisitions
+  - Compliment the gala event
+  - She won't give up security details easily unless she really trusts you
+
 ## Task Types
 
 Every task in this heist is one of five types:
@@ -38,7 +89,10 @@ Every task in this heist is one of five types:
 **Tasks:**
 1. **MM1. 💬 NPC** - Chat with Security Guard
    - *Description:* Engage the museum guard in friendly conversation. While distracting him, subtly learn about the vault location and security details.
-   - *NPC: Security Guard (bored, chatty, lonely) - "Another quiet night at the museum. Say, did you see the game last night? I've been stuck down here guarding that new vault exhibit in the basement all week..."*
+   - *NPC:* `security_guard` (Marcus Romano)
+   - *Objectives to Learn:*
+     - Vault location (basement, east wing)
+     - Guard's patrol schedule
    - *Location:* Grand Hall
    - *Dependencies:* None (starting task)
 
@@ -50,9 +104,8 @@ Every task in this heist is one of five types:
 ### Safe Cracker
 
 **Tasks:**
-1. **SC1. 💬 NPC** - Navigate to Basement Vault
+1. **SC1. 🔍 SEARCH** - Navigate to Basement Vault
    - *Description:* Using the intel from Mastermind, make your way to the basement vault in the east wing while the guard is distracted.
-   - *NPC: Yourself (focused, professional) - "Copy that. Guard's occupied. Heading to basement vault, east wing."*
    - *Location:* Museum Basement
    - *Dependencies:* `MM1` (guard distracted), `MM2` (received vault location)
 
