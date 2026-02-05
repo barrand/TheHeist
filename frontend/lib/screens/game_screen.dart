@@ -850,10 +850,9 @@ class _GameScreenState extends State<GameScreen> {
               ],
             ),
             
-            // Location indicator
-            SizedBox(height: AppDimensions.spaceXS),
             // Location indicator (only for location-specific tasks)
             if (taskType != 'discovery' && taskType != 'info_share') ...[
+              SizedBox(height: AppDimensions.spaceXS),
               Row(
                 children: [
                   Icon(Icons.location_on, color: AppColors.textSecondary, size: 12),
