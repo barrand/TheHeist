@@ -523,6 +523,15 @@ Success Fail Success Fail  │
 │  │ 📍 Vault Room              │ │
 │  └───────────────────────────┘ │
 │                                 │
+│  👥 WHO'S HERE                  │← Shows others at location
+│  ┌───────────────────────────┐ │
+│  │ 👤 Sam (Safe Cracker)     │ │← Other player here
+│  └───────────────────────────┘ │
+│  ┌───────────────────────────┐ │
+│  │ 💬 Security Guard         │ │← NPC here
+│  │ Security personnel        │ │
+│  └───────────────────────────┘ │
+│                                 │
 │  YOUR TASKS (Safe Cracker)      │← Shows player's role
 │                                 │
 │  ✅ READY TO DO HERE            │
@@ -570,6 +579,16 @@ Success Fail Success Fail  │
 - [ ] Shows location if relevant
 - [ ] Tappable to see more details
 - [ ] May spawn specific tasks upon interaction
+
+**Who's Here Section:**
+- [ ] Shows other players at current location
+  - [ ] Player name and role (e.g., "Sam (Safe Cracker)")
+  - [ ] 👤 icon for players
+- [ ] Shows NPCs at current location
+  - [ ] NPC name and role (e.g., "Security Guard - Security personnel")
+  - [ ] 💬 icon for NPCs
+- [ ] Only shows if there are players or NPCs present
+- [ ] Updates in real-time when players move
 
 **Your Tasks Header:**
 - [ ] Shows "YOUR TASKS (role name)" using player's selected role

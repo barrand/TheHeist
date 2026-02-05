@@ -34,6 +34,11 @@ class _GameScreenState extends State<GameScreen> {
   String _currentLocation = 'Crew Hideout'; // All games start at Crew Hideout
   bool _showCompletedTasks = false;
   
+  // Track all players and NPCs
+  List<Map<String, dynamic>> _allPlayers = [];
+  List<Map<String, dynamic>> _npcs = [];
+  String? _myPlayerId;
+  
   @override
   void initState() {
     super.initState();
@@ -69,13 +74,44 @@ class _GameScreenState extends State<GameScreen> {
       _showSnackBar('New task available!', color: AppColors.success);
     });
     
-    // Game ended
+    // Listen for all messages
     widget.wsService.messages.listen((message) {
+      // Game ended
       if (message['type'] == 'game_ended') {
         setState(() {
           _gameEnded = true;
           _gameResult = message['result'];
           _gameSummary = message['summary'];
+        });
+      }
+      
+      // Player moved location
+      if (message['type'] == 'player_moved') {
+        final playerId = message['player_id'];
+        final newLocation = message['location'];
+        
+        setState(() {
+          final playerIndex = _allPlayers.indexWhere((p) => p['id'] == playerId);
+          if (playerIndex != -1) {
+            _allPlayers[playerIndex]['location'] = newLocation;
+          }
+        });
+      }
+      
+      // Room state (includes all players and game state)
+      if (message['type'] == 'room_state') {
+        setState(() {
+          _myPlayerId = message['your_player_id'];
+          _allPlayers = List<Map<String, dynamic>>.from(message['players'] ?? []);
+        });
+      }
+      
+      // Game started (includes NPCs if available)
+      if (message['type'] == 'game_started') {
+        setState(() {
+          if (message.containsKey('npcs')) {
+            _npcs = List<Map<String, dynamic>>.from(message['npcs'] ?? []);
+          }
         });
       }
     });
@@ -166,6 +202,11 @@ class _GameScreenState extends State<GameScreen> {
                     children: [
                       // Team Objective
                       _buildTeamObjective(),
+                      
+                      SizedBox(height: AppDimensions.spaceLG),
+                      
+                      // Who's here section
+                      _buildWhosHere(),
                       
                       SizedBox(height: AppDimensions.spaceLG),
                       
@@ -351,6 +392,123 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
+    );
+  }
+  
+  Widget _buildWhosHere() {
+    // Get players at current location (excluding self)
+    final playersHere = _allPlayers.where((player) => 
+      player['location'] == _currentLocation && player['id'] != _myPlayerId
+    ).toList();
+    
+    // Get NPCs at current location
+    final npcsHere = _npcs.where((npc) => 
+      npc['location'] == _currentLocation
+    ).toList();
+    
+    // Don't show section if no one else is here
+    if (playersHere.isEmpty && npcsHere.isEmpty) {
+      return SizedBox.shrink();
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '👥 WHO\'S HERE',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
+        SizedBox(height: AppDimensions.spaceSM),
+        
+        // Players
+        ...playersHere.map((player) {
+          final name = player['name'] ?? 'Unknown';
+          final role = player['role'];
+          final roleDisplay = role != null ? _formatRoleName(role) : '';
+          
+          return Container(
+            margin: EdgeInsets.only(bottom: AppDimensions.spaceXS),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppDimensions.spaceSM,
+              vertical: AppDimensions.spaceXS,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.bgSecondary,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+              border: Border.all(color: AppColors.borderSubtle, width: 1),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.person, color: AppColors.accentSecondary, size: 18),
+                SizedBox(width: AppDimensions.spaceXS),
+                Expanded(
+                  child: Text(
+                    '$name${roleDisplay.isNotEmpty ? " ($roleDisplay)" : ""}',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        
+        // NPCs
+        ...npcsHere.map((npc) {
+          final name = npc['name'] ?? 'Unknown';
+          final role = npc['role'] ?? '';
+          
+          return Container(
+            margin: EdgeInsets.only(bottom: AppDimensions.spaceXS),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppDimensions.spaceSM,
+              vertical: AppDimensions.spaceXS,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.bgSecondary,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+              border: Border.all(color: AppColors.borderSubtle, width: 1),
+            ),
+            child: Row(
+              children: [
+                Text('💬', style: TextStyle(fontSize: 18)),
+                SizedBox(width: AppDimensions.spaceXS),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (role.isNotEmpty)
+                        Text(
+                          role,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
   
