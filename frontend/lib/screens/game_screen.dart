@@ -852,19 +852,22 @@ class _GameScreenState extends State<GameScreen> {
             
             // Location indicator
             SizedBox(height: AppDimensions.spaceXS),
-            Row(
-              children: [
-                Icon(Icons.location_on, color: AppColors.textSecondary, size: 12),
-                SizedBox(width: 4),
-                Text(
-                  location,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
+            // Location indicator (only for location-specific tasks)
+            if (taskType != 'discovery' && taskType != 'info_share') ...[
+              Row(
+                children: [
+                  Icon(Icons.location_on, color: AppColors.textSecondary, size: 12),
+                  SizedBox(width: 4),
+                  Text(
+                    location,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
             
             // Action indicator
             if (isAvailable && isAtCurrentLocation) ...[
