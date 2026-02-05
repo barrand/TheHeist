@@ -29,7 +29,7 @@ Thumbs.db
 .env
 
 # Generated output files (temporary, before moving to backend/experiences/)
-scripts/output/
+backend/scripts/output/
 
 # Prototype files (contains API keys for testing)
 prototype/
