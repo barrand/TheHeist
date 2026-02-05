@@ -25,19 +25,19 @@ Examples:
 
 ## How Files Get Here
 
-### 1. AI Generation (via `scripts/generate_experience.py`)
-Generated files are first saved to `scripts/output/` for review:
+### 1. AI Generation (via `backend/scripts/generate_experience.py`)
+Generated files are first saved to `backend/scripts/output/` for review:
 ```bash
-cd scripts
+cd backend/scripts
 python generate_experience.py --scenario museum_gala_vault --roles mastermind hacker
-# → saves to scripts/output/museum_gala_vault_mastermind_hacker.md
+# → saves to backend/scripts/output/museum_gala_vault_mastermind_hacker.md
 ```
 
 ### 2. Review and Move
 After reviewing/editing the generated experience:
 ```bash
 # Rename to match convention
-mv scripts/output/museum_gala_vault_mastermind_hacker.md \
+mv backend/scripts/output/museum_gala_vault_mastermind_hacker.md \
    backend/experiences/generated_museum_gala_vault_2players.md
 ```
 

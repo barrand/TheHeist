@@ -7,7 +7,7 @@ This document explains how AI models are configured and used across The Heist pr
 All model configurations are centralized in **two places**:
 
 1. **Backend Runtime Models** → `backend/app/core/config.py`
-2. **Scripts/Generation Models** → `scripts/config.py`
+2. **Scripts/Generation Models** → `backend/scripts/config.py`
 
 Both read from the same `.env` file in the project root.
 
@@ -17,7 +17,7 @@ Both read from the same `.env` file in the project root.
 
 **Purpose:** Generate full heist experiences with task dependency trees, NPCs, discovery systems
 
-**Location:** `scripts/config.py` → `GEMINI_EXPERIENCE_MODEL`
+**Location:** `backend/scripts/config.py` → `GEMINI_EXPERIENCE_MODEL`
 
 **Default:** `gemini-2.5-flash`
 
@@ -28,7 +28,7 @@ Both read from the same `.env` file in the project root.
 - Fast and cost-effective
 
 **Used by:**
-- `scripts/generate_experience.py`
+- `backend/scripts/generate_experience.py`
 
 **Override in .env:**
 ```bash

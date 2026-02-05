@@ -55,8 +55,9 @@ TheCrew/
 │   │   ├── api/          # REST + WebSocket endpoints
 │   │   ├── services/     # Game logic, NPC conversations
 │   │   └── models/       # Data models (rooms, players, tasks)
-├── scripts/              # Image generation, experience creation
-├── data/                 # Static data (roles, scenarios)
+│   ├── scripts/          # Content generation tools
+│   └── experiences/      # Playable experience files
+├── shared_data/          # Shared configuration (roles, scenarios)
 ├── design/               # UI mockups, design system
 └── image_playground/     # Standalone image generator tool
 ```

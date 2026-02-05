@@ -50,7 +50,7 @@ echo ""
 
 # Clean Flutter build
 echo -e "${YELLOW}4. Cleaning Flutter build...${NC}"
-cd "$SCRIPT_DIR/app"
+cd "$SCRIPT_DIR/frontend"
 flutter clean > /dev/null 2>&1
 echo -e "${GREEN}   ✓ Flutter cleaned${NC}"
 echo ""

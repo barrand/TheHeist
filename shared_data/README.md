@@ -12,8 +12,8 @@ Defines all playable character roles in the game:
 - Character art/icons
 
 **Used by:**
-- **Frontend** (`app/lib/services/roles_service.dart`) - Role selection UI
-- **Backend scripts** (`scripts/generate_experience.py`) - AI experience generation
+- **Frontend** (`frontend/lib/services/roles_service.dart`) - Role selection UI
+- **Backend scripts** (`backend/scripts/generate_experience.py`) - AI experience generation
 
 ### `scenarios.json`
 Defines all heist scenarios available in the game:
@@ -24,15 +24,15 @@ Defines all heist scenarios available in the game:
 - Thumbnail images
 
 **Used by:**
-- **Frontend** (`app/lib/services/scenarios_service.dart`) - Scenario selection UI
-- **Backend scripts** (`scripts/generate_experience.py`) - AI experience generation
+- **Frontend** (`frontend/lib/services/scenarios_service.dart`) - Scenario selection UI
+- **Backend scripts** (`backend/scripts/generate_experience.py`) - AI experience generation
 
 ## Integration
 
 ### Frontend
 The Flutter app accesses these files via a symlink:
 ```
-app/assets/data/ → ../../shared_data/
+frontend/assets/data/ → ../../shared_data/
 ```
 
 Files are bundled into the app at build time via `pubspec.yaml`:

@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 start_generator() {
-  python3 "${ROOT_DIR}/scripts/generate_dependency_chart.py" --serve
+  python3 "${ROOT_DIR}/backend/scripts/generate_dependency_chart.py" --serve
 }
 
 start_ui() {
