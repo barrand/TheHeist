@@ -14,6 +14,7 @@ class TaskType(str, Enum):
     SEARCH = "search"            # Search location for items
     HANDOFF = "handoff"          # Transfer item between players
     INFO_SHARE = "info_share"    # Verbal information exchange (real-life)
+    DISCOVERY = "discovery"      # Open-ended exploration task
 
 
 class TaskStatus(str, Enum):
