@@ -35,7 +35,7 @@ class _GameScreenState extends State<GameScreen> {
   bool _gameEnded = false;
   String? _gameResult;
   String? _gameSummary;
-  String _currentLocation = 'Crew Hideout'; // All games start at Crew Hideout
+  String _currentLocation = 'Safe House'; // All games start at Safe House
   bool _showCompletedTasks = false;
   
   // Track all players and NPCs
@@ -593,8 +593,8 @@ class _GameScreenState extends State<GameScreen> {
         .cast<String>()
         .toSet();
     
-    // Always include Crew Hideout if not already present
-    allLocations.add('Crew Hideout');
+    // Always include Safe House if not already present
+    allLocations.add('Safe House');
     
     final sortedLocations = allLocations.toList()..sort();
     
