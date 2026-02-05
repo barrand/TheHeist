@@ -25,6 +25,9 @@ class WebSocketService {
   final _gameStartedController = StreamController<Map<String, dynamic>>.broadcast();
   final _taskCompletedController = StreamController<Map<String, dynamic>>.broadcast();
   final _taskUnlockedController = StreamController<Map<String, dynamic>>.broadcast();
+  final _searchResultsController = StreamController<Map<String, dynamic>>.broadcast();
+  final _itemPickedUpController = StreamController<Map<String, dynamic>>.broadcast();
+  final _itemTransferredController = StreamController<Map<String, dynamic>>.broadcast();
   final _errorController = StreamController<Map<String, dynamic>>.broadcast();
   
   // Store the latest room state for late subscribers
@@ -36,6 +39,9 @@ class WebSocketService {
   Stream<Map<String, dynamic>> get gameStarted => _gameStartedController.stream;
   Stream<Map<String, dynamic>> get taskCompleted => _taskCompletedController.stream;
   Stream<Map<String, dynamic>> get taskUnlocked => _taskUnlockedController.stream;
+  Stream<Map<String, dynamic>> get searchResults => _searchResultsController.stream;
+  Stream<Map<String, dynamic>> get itemPickedUp => _itemPickedUpController.stream;
+  Stream<Map<String, dynamic>> get itemTransferred => _itemTransferredController.stream;
   Stream<Map<String, dynamic>> get errors => _errorController.stream;
   
   // Get the latest room state (useful for late subscribers)
@@ -168,6 +174,21 @@ class WebSocketService {
     });
   }
   
+  /// Search current room for items
+  void searchRoom() {
+    send({
+      'type': 'search_room',
+    });
+  }
+  
+  /// Pick up an item from search results
+  void pickupItem(String itemId) {
+    send({
+      'type': 'pickup_item',
+      'item_id': itemId,
+    });
+  }
+  
   /// Handle incoming messages
   void _handleMessage(dynamic rawMessage) {
     try {
@@ -209,6 +230,15 @@ class WebSocketService {
         case 'task_unlocked':
           _taskUnlockedController.add(message);
           break;
+        case 'search_results':
+          _searchResultsController.add(message);
+          break;
+        case 'item_picked_up':
+          _itemPickedUpController.add(message);
+          break;
+        case 'item_transferred':
+          _itemTransferredController.add(message);
+          break;
         case 'error':
           _errorController.add(message);
           debugPrint('❌ Error from server: ${message['message']}');
@@ -237,6 +267,9 @@ class WebSocketService {
     _gameStartedController.close();
     _taskCompletedController.close();
     _taskUnlockedController.close();
+    _searchResultsController.close();
+    _itemPickedUpController.close();
+    _itemTransferredController.close();
     _errorController.close();
   }
 }

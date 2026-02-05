@@ -21,6 +21,54 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 
 **Total Locations**: 4
 
+## Items by Location
+
+### Safe House
+- **ID**: `safe_cracking_tools`
+  - **Name**: Safe Cracking Tools
+  - **Description**: Professional lockpick set, dial manipulation tools, and stethoscope for listening to tumblers
+  - **Required For**: SC2 (Crack the Vault Lock)
+  - **Hidden**: false
+
+- **ID**: `earpiece_set`
+  - **Name**: Radio Earpiece Set
+  - **Description**: Two-way radio earpieces for team communication
+  - **Required For**: MM2 (Share Vault Intel) - makes communication easier
+  - **Hidden**: false
+
+- **ID**: `gala_invitation`
+  - **Name**: Forged Gala Invitation
+  - **Description**: Fake invitation to blend in at the museum gala
+  - **Required For**: None (flavor item, already "inside")
+  - **Hidden**: true
+
+### Grand Hall
+- **ID**: `guest_list`
+  - **Name**: Guest List
+  - **Description**: Tonight's VIP guest list with names and table assignments
+  - **Required For**: None (red herring)
+  - **Hidden**: false
+
+- **ID**: `event_program`
+  - **Name**: Event Program
+  - **Description**: Program listing tonight's gala schedule and speeches
+  - **Required For**: None (might mention timing, minor hint)
+  - **Hidden**: false
+
+### Museum Basement
+- **ID**: `maintenance_keycard`
+  - **Name**: Maintenance Keycard
+  - **Description**: Lost keycard from maintenance staff - might open service doors
+  - **Required For**: None (alternative path, not required)
+  - **Hidden**: true
+
+### Vault Room
+- **ID**: `eye_of_orion`
+  - **Name**: Eye of Orion Jewels
+  - **Description**: Stunning collection of rare sapphire and diamond jewels - the target!
+  - **Required For**: Win condition (must be picked up to complete heist)
+  - **Hidden**: false (visible after vault opens)
+
 ## NPCs
 
 ### Security Guard - Marcus Romano

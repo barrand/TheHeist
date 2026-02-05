@@ -14,7 +14,8 @@ from app.models.game_state import (
     TaskType,
     TaskStatus,
     Location,
-    NPCData
+    NPCData,
+    Item
 )
 
 logger = logging.getLogger(__name__)
@@ -112,6 +113,9 @@ class ExperienceLoader:
         # Extract NPCs
         npcs = self._extract_npcs(content)
         
+        # Extract items
+        items_by_location = self._extract_items(content)
+        
         # Extract tasks for each role
         tasks = {}
         for role in selected_roles:
@@ -127,11 +131,13 @@ class ExperienceLoader:
             locations=locations,
             tasks=tasks,
             npcs=npcs,
+            items_by_location=items_by_location,
             timeline_minutes=120,
             elapsed_minutes=0
         )
         
-        logger.info(f"Loaded experience: {len(tasks)} tasks, {len(npcs)} NPCs, {len(locations)} locations")
+        total_items = sum(len(items) for items in items_by_location.values())
+        logger.info(f"Loaded experience: {len(tasks)} tasks, {len(npcs)} NPCs, {len(locations)} locations, {total_items} items")
         return game_state
     
     def _extract_objective(self, content: str) -> str:
@@ -222,6 +228,80 @@ class ExperienceLoader:
             logger.debug(f"Parsed NPC: {name} ({role}) at {location}")
         
         return npcs
+    
+    def _extract_items(self, content: str) -> Dict[str, List[Item]]:
+        """Extract items by location from ## Items by Location section"""
+        items_by_location = {}
+        
+        # Find the Items by Location section
+        items_match = re.search(r'## Items by Location\s*\n(.*?)(?=\n##|\Z)', content, re.DOTALL)
+        if not items_match:
+            logger.warning("No Items by Location section found in experience file")
+            return items_by_location
+        
+        items_section = items_match.group(1)
+        
+        # Parse each location (starts with ###)
+        location_blocks = re.split(r'(?=### )', items_section)
+        
+        for block in location_blocks:
+            if not block.strip():
+                continue
+            
+            # Extract location name from header
+            location_match = re.search(r'###\s+(.+)', block)
+            if not location_match:
+                continue
+            
+            location_name = location_match.group(1).strip()
+            items = []
+            
+            # Parse each item (starts with - **ID**)
+            item_blocks = re.split(r'(?=- \*\*ID\*\*)', block)
+            
+            for item_block in item_blocks:
+                if not item_block.strip() or '**ID**' not in item_block:
+                    continue
+                
+                # Extract ID
+                id_match = re.search(r'-\s*\*\*ID\*\*:\s*`([^`]+)`', item_block)
+                if not id_match:
+                    continue
+                item_id = id_match.group(1)
+                
+                # Extract Name
+                name_match = re.search(r'-\s*\*\*Name\*\*:\s*(.+)', item_block)
+                name = name_match.group(1).strip() if name_match else item_id
+                
+                # Extract Description
+                desc_match = re.search(r'-\s*\*\*Description\*\*:\s*(.+)', item_block)
+                description = desc_match.group(1).strip() if desc_match else ""
+                
+                # Extract Required For
+                req_match = re.search(r'-\s*\*\*Required For\*\*:\s*(.+)', item_block)
+                required_for = req_match.group(1).strip() if req_match else None
+                if required_for and required_for.lower() == 'none':
+                    required_for = None
+                
+                # Extract Hidden
+                hidden_match = re.search(r'-\s*\*\*Hidden\*\*:\s*(true|false)', item_block, re.IGNORECASE)
+                hidden = hidden_match and hidden_match.group(1).lower() == 'true'
+                
+                item = Item(
+                    id=item_id,
+                    name=name,
+                    description=description,
+                    location=location_name,
+                    required_for=required_for,
+                    hidden=hidden
+                )
+                items.append(item)
+                logger.debug(f"Parsed item: {name} at {location_name}")
+            
+            if items:
+                items_by_location[location_name] = items
+        
+        return items_by_location
     
     def _extract_role_tasks(self, content: str, role: str) -> Dict[str, Task]:
         """Extract all tasks for a specific role"""

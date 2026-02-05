@@ -3,6 +3,7 @@ import 'package:the_heist/core/theme/app_colors.dart';
 import 'package:the_heist/core/theme/app_dimensions.dart';
 import 'package:the_heist/services/websocket_service.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
+import 'package:the_heist/models/item.dart';
 
 /// Game screen where players complete their tasks
 class GameScreen extends StatefulWidget {
@@ -43,6 +44,9 @@ class _GameScreenState extends State<GameScreen> {
   List<Map<String, dynamic>> _npcs = [];
   List<Map<String, dynamic>> _allLocations = [];
   String? _myPlayerId;
+  
+  // Inventory tracking
+  final List<Item> _myInventory = [];
   
   @override
   void initState() {
@@ -86,6 +90,59 @@ class _GameScreenState extends State<GameScreen> {
         _myTasks.add(Map<String, dynamic>.from(task));
       });
       _showSnackBar('New task available!', color: AppColors.success);
+    });
+    
+    // Search results received
+    widget.wsService.searchResults.listen((message) {
+      final items = (message['items'] as List)
+          .map((item) => Item.fromJson(item))
+          .toList();
+      _showSearchResults(items);
+    });
+    
+    // Item picked up (by anyone)
+    widget.wsService.itemPickedUp.listen((message) {
+      final playerId = message['player_id'];
+      final playerName = message['player_name'];
+      final item = Item.fromJson(message['item']);
+      
+      // If I picked it up, add to my inventory
+      if (playerId == _myPlayerId) {
+        setState(() {
+          _myInventory.add(item);
+        });
+        _showSnackBar('Picked up: ${item.name}', color: AppColors.success);
+      } else {
+        _showSnackBar('$playerName picked up: ${item.name}');
+      }
+    });
+    
+    // Item transferred (by anyone)
+    widget.wsService.itemTransferred.listen((message) {
+      final fromPlayerId = message['from_player_id'];
+      final fromPlayerName = message['from_player_name'];
+      final toPlayerId = message['to_player_id'];
+      final toPlayerName = message['to_player_name'];
+      final item = Item.fromJson(message['item']);
+      
+      // If I received it, add to my inventory
+      if (toPlayerId == _myPlayerId) {
+        setState(() {
+          _myInventory.add(item);
+        });
+        _showSnackBar('$fromPlayerName gave you: ${item.name}', color: AppColors.success);
+      }
+      // If I gave it away, remove from my inventory
+      else if (fromPlayerId == _myPlayerId) {
+        setState(() {
+          _myInventory.removeWhere((i) => i.id == item.id);
+        });
+        _showSnackBar('Gave ${item.name} to $toPlayerName');
+      }
+      // Otherwise just notify
+      else {
+        _showSnackBar('$fromPlayerName gave ${item.name} to $toPlayerName');
+      }
     });
     
     // Listen for all messages
@@ -377,6 +434,53 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ),
           ),
+          // Search room button
+          IconButton(
+            icon: Icon(Icons.search, color: AppColors.accentPrimary, size: 22),
+            onPressed: _searchRoom,
+            padding: EdgeInsets.all(4),
+            constraints: BoxConstraints(),
+            tooltip: 'Search room',
+          ),
+          SizedBox(width: 4),
+          // Bag button with count badge
+          Stack(
+            children: [
+              IconButton(
+                icon: Icon(Icons.shopping_bag_outlined, color: AppColors.accentPrimary, size: 22),
+                onPressed: _showInventory,
+                padding: EdgeInsets.all(4),
+                constraints: BoxConstraints(),
+                tooltip: 'Inventory',
+              ),
+              if (_myInventory.isNotEmpty)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentSecondary,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '${_myInventory.length}',
+                      style: TextStyle(
+                        color: AppColors.bgPrimary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(width: 8),
           Text(
             '$completedCount/$totalTasks',
             style: TextStyle(
@@ -994,6 +1098,314 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+  
+  // Search current room
+  void _searchRoom() {
+    widget.wsService.searchRoom();
+    _showSnackBar('Searching $_currentLocation...', color: AppColors.info);
+  }
+  
+  // Show search results modal
+  void _showSearchResults(List<Item> items) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.6,
+        decoration: BoxDecoration(
+          color: AppColors.bgSecondary,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusLG)),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(AppDimensions.containerPadding),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.search, color: AppColors.accentPrimary),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Search Results: $_currentLocation',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: AppColors.textSecondary),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            // Items list
+            Expanded(
+              child: items.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No items found',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 16,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: EdgeInsets.all(AppDimensions.containerPadding),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return Container(
+                          margin: EdgeInsets.only(bottom: AppDimensions.spaceMD),
+                          padding: EdgeInsets.all(AppDimensions.containerPadding),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgPrimary,
+                            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                            border: Border.all(color: AppColors.borderSubtle),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.inventory_2, color: AppColors.accentSecondary, size: 20),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      item.name,
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                item.description,
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (item.requiredFor != null) ...[
+                                SizedBox(height: 8),
+                                Text(
+                                  'Required for: ${item.requiredFor}',
+                                  style: TextStyle(
+                                    color: AppColors.accentPrimary,
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                              SizedBox(height: 12),
+                              HeistPrimaryButton(
+                                text: 'Pick Up',
+                                onPressed: () {
+                                  widget.wsService.pickupItem(item.id);
+                                  Navigator.pop(context);
+                                },
+                                icon: Icons.add_circle_outline,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Show inventory screen
+  void _showInventory() {
+    if (_myInventory.isEmpty) {
+      _showSnackBar('Your bag is empty', color: AppColors.info);
+      return;
+    }
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: AppColors.bgSecondary,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusLG)),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(AppDimensions.containerPadding),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.shopping_bag, color: AppColors.accentPrimary),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Your Inventory',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: AppColors.textSecondary),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            // Items list
+            Expanded(
+              child: ListView.builder(
+                padding: EdgeInsets.all(AppDimensions.containerPadding),
+                itemCount: _myInventory.length,
+                itemBuilder: (context, index) {
+                  final item = _myInventory[index];
+                  return Container(
+                    margin: EdgeInsets.only(bottom: AppDimensions.spaceMD),
+                    padding: EdgeInsets.all(AppDimensions.containerPadding),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgPrimary,
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                      border: Border.all(color: AppColors.accentSecondary),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.inventory_2, color: AppColors.accentSecondary, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item.name,
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          item.description,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (item.requiredFor != null) ...[
+                          SizedBox(height: 8),
+                          Text(
+                            'Required for: ${item.requiredFor}',
+                            style: TextStyle(
+                              color: AppColors.accentPrimary,
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                        if (item.transferable) ...[
+                          SizedBox(height: 12),
+                          HeistPrimaryButton(
+                            text: 'Transfer to...',
+                            onPressed: () => _showTransferDialog(item),
+                            icon: Icons.send,
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Show transfer dialog
+  void _showTransferDialog(Item item) {
+    // Get players in same location
+    final playersHere = _allPlayers.where((p) {
+      return p['id'] != _myPlayerId && p['location'] == _currentLocation;
+    }).toList();
+    
+    if (playersHere.isEmpty) {
+      _showSnackBar('No other players in this location', color: AppColors.warning);
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.bgSecondary,
+        title: Text(
+          'Transfer ${item.name}',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select a player in $_currentLocation:',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            SizedBox(height: 16),
+            ...playersHere.map((player) {
+              return Container(
+                margin: EdgeInsets.only(bottom: 8),
+                child: HeistPrimaryButton(
+                  text: player['name'],
+                  onPressed: () {
+                    widget.wsService.handoffItem(item.id, player['id']);
+                    Navigator.pop(context); // Close transfer dialog
+                    Navigator.pop(context); // Close inventory
+                    _showSnackBar('Transferring ${item.name} to ${player['name']}...');
+                  },
+                  icon: Icons.person,
+                ),
+              );
+            }).toList(),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+        ],
       ),
     );
   }

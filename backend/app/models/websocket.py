@@ -56,6 +56,17 @@ class HandoffItemMessage(BaseModel):
     to_player_id: str = Field(..., description="Recipient player ID")
 
 
+class SearchRoomMessage(BaseModel):
+    """Player searches their current room for items"""
+    type: Literal["search_room"] = "search_room"
+
+
+class PickupItemMessage(BaseModel):
+    """Player picks up an item from search results"""
+    type: Literal["pickup_item"] = "pickup_item"
+    item_id: str = Field(..., description="Item to pick up")
+
+
 # ============================================
 # Server → Client Messages
 # ============================================
@@ -146,3 +157,28 @@ class RoomStateMessage(BaseModel):
     status: str
     your_player_id: str
     is_host: bool
+
+
+class SearchResultsMessage(BaseModel):
+    """Results from searching a room"""
+    type: Literal["search_results"] = "search_results"
+    location: str = Field(..., description="Location searched")
+    items: List[Dict] = Field(..., description="Items found")
+
+
+class ItemPickedUpMessage(BaseModel):
+    """Broadcast when player picks up an item"""
+    type: Literal["item_picked_up"] = "item_picked_up"
+    player_id: str = Field(..., description="Player who picked it up")
+    player_name: str = Field(..., description="Player's name")
+    item: Dict = Field(..., description="Item data")
+
+
+class ItemTransferredMessage(BaseModel):
+    """Broadcast when item is transferred between players"""
+    type: Literal["item_transferred"] = "item_transferred"
+    from_player_id: str
+    from_player_name: str
+    to_player_id: str
+    to_player_name: str
+    item: Dict

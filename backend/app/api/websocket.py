@@ -10,6 +10,7 @@ from typing import Dict, Any
 from app.services.room_manager import get_room_manager
 from app.services.websocket_manager import get_ws_manager
 from app.services.experience_loader import ExperienceLoader
+from app.services.game_state_manager import get_game_state_manager
 from app.models.room import RoomStatus
 from app.models.websocket import (
     JoinRoomMessage,
@@ -19,11 +20,16 @@ from app.models.websocket import (
     NPCMessageRequest,
     MoveLocationMessage,
     HandoffItemMessage,
+    SearchRoomMessage,
+    PickupItemMessage,
     PlayerJoinedMessage,
     RoleSelectedMessage,
     GameStartedMessage,
     TaskCompletedMessage,
     PlayerMovedMessage,
+    SearchResultsMessage,
+    ItemPickedUpMessage,
+    ItemTransferredMessage,
     ErrorMessage,
     RoomStateMessage
 )
@@ -179,6 +185,12 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
             elif message_type == "handoff_item":
                 await handle_handoff_item(room_code, player_id, data)
             
+            elif message_type == "search_room":
+                await handle_search_room(room_code, player_id, data)
+            
+            elif message_type == "pickup_item":
+                await handle_pickup_item(room_code, player_id, data)
+            
             else:
                 logger.warning(f"Unknown message type: {message_type}")
                 await websocket.send_json({
@@ -264,8 +276,9 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
         loader = ExperienceLoader(experiences_dir="experiences")
         game_state = loader.load_experience(scenario, selected_roles)
         
-        # Store game state (in room manager for now, will move to game state manager)
-        # For now, we'll just broadcast the start
+        # Store game state in game state manager
+        game_state_manager = get_game_state_manager()
+        game_state_manager.set_game_state(room_code, game_state)
         
         # Send game started to each player with their specific tasks
         for pid, player in room.players.items():
@@ -343,5 +356,152 @@ async def handle_move_location(room_code: str, player_id: str, data: Dict[str, A
 
 async def handle_handoff_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
     """Handle item handoff between players"""
-    # TODO: Implement inventory management
-    pass
+    ws_manager = get_ws_manager()
+    room_manager = get_room_manager()
+    
+    item_id = data.get("item_id")
+    to_player_id = data.get("to_player_id")
+    
+    room = room_manager.get_room(room_code)
+    if not room or player_id not in room.players or to_player_id not in room.players:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Invalid transfer request"
+        })
+        return
+    
+    from_player = room.players[player_id]
+    to_player = room.players[to_player_id]
+    
+    # Check if both players are in same location
+    if from_player.location != to_player.location:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Players must be in same location to transfer items"
+        })
+        return
+    
+    # Find item in from_player's inventory
+    item = None
+    for i, inv_item in enumerate(from_player.inventory):
+        if inv_item.id == item_id:
+            item = from_player.inventory.pop(i)
+            break
+    
+    if not item:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Item not found in your inventory"
+        })
+        return
+    
+    # Add to to_player's inventory
+    to_player.inventory.append(item)
+    
+    # Broadcast transfer
+    transfer_msg = ItemTransferredMessage(
+        type="item_transferred",
+        from_player_id=player_id,
+        from_player_name=from_player.name,
+        to_player_id=to_player_id,
+        to_player_name=to_player.name,
+        item=item.model_dump(mode='json')
+    )
+    await ws_manager.broadcast_to_room(room_code, transfer_msg.model_dump(mode='json'))
+
+
+async def handle_search_room(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
+    """Handle player searching their current room for items"""
+    ws_manager = get_ws_manager()
+    room_manager = get_room_manager()
+    game_state_manager = get_game_state_manager()
+    
+    room = room_manager.get_room(room_code)
+    if not room or player_id not in room.players:
+        return
+    
+    player = room.players[player_id]
+    location = player.location
+    
+    # Get game state
+    game_state = game_state_manager.get_game_state(room_code)
+    if not game_state:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Game not started yet"
+        })
+        return
+    
+    # Get items at this location
+    items_here = game_state.items_by_location.get(location, [])
+    
+    # Send search results
+    search_results = SearchResultsMessage(
+        type="search_results",
+        location=location,
+        items=[item.model_dump(mode='json') for item in items_here]
+    )
+    await ws_manager.send_to_player(room_code, player_id, search_results.model_dump(mode='json'))
+    
+    logger.info(f"🔍 {player.name} searched {location} - found {len(items_here)} items")
+
+
+async def handle_pickup_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
+    """Handle player picking up an item"""
+    ws_manager = get_ws_manager()
+    room_manager = get_room_manager()
+    game_state_manager = get_game_state_manager()
+    
+    item_id = data.get("item_id")
+    
+    room = room_manager.get_room(room_code)
+    if not room or player_id not in room.players:
+        return
+    
+    player = room.players[player_id]
+    location = player.location
+    
+    # Get game state
+    game_state = game_state_manager.get_game_state(room_code)
+    if not game_state:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Game not started yet"
+        })
+        return
+    
+    # Find and remove item from location
+    items_here = game_state.items_by_location.get(location, [])
+    item = None
+    for i, loc_item in enumerate(items_here):
+        if loc_item.id == item_id:
+            item = items_here.pop(i)
+            break
+    
+    if not item:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Item not found at this location"
+        })
+        return
+    
+    # Add to player inventory
+    # Import Item from room.py for player inventory
+    from app.models.room import Item as PlayerItem
+    player_item = PlayerItem(
+        id=item.id,
+        name=item.name,
+        description=item.description
+    )
+    player.inventory.append(player_item)
+    
+    # Broadcast pickup
+    pickup_msg = ItemPickedUpMessage(
+        type="item_picked_up",
+        player_id=player_id,
+        player_name=player.name,
+        item=item.model_dump(mode='json')
+    )
+    await ws_manager.broadcast_to_room(room_code, pickup_msg.model_dump(mode='json'))
+    
+    logger.info(f"📦 {player.name} picked up {item.name} from {location}")

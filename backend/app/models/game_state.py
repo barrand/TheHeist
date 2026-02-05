@@ -75,6 +75,18 @@ class NPCData(BaseModel):
     location: str = Field(..., description="Where NPC is located")
 
 
+class Item(BaseModel):
+    """An item that can be found, carried, and used"""
+    id: str = Field(..., description="Unique item identifier")
+    name: str = Field(..., description="Display name")
+    description: str = Field(..., description="What the item is")
+    location: Optional[str] = Field(None, description="Where item is located (None if in player inventory)")
+    required_for: Optional[str] = Field(None, description="Task ID or objective this enables")
+    hidden: bool = Field(default=False, description="Requires thorough search to find")
+    quantity: int = Field(default=1, description="Number available")
+    transferable: bool = Field(default=True, description="Can be given to other players")
+
+
 class GameState(BaseModel):
     """The complete state of an active game"""
     objective: str = Field(..., description="Main goal of the heist")
@@ -82,6 +94,7 @@ class GameState(BaseModel):
     locations: List[Location] = Field(default_factory=list, description="All locations")
     tasks: Dict[str, Task] = Field(default_factory=dict, description="task_id -> Task")
     npcs: List[NPCData] = Field(default_factory=list, description="All NPCs in scenario")
+    items_by_location: Dict[str, List[Item]] = Field(default_factory=dict, description="location_name -> available items")
     timeline_minutes: int = Field(default=120, description="Total time available")
     elapsed_minutes: int = Field(default=0, description="Time elapsed")
     
