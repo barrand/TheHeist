@@ -38,9 +38,10 @@ class _GameScreenState extends State<GameScreen> {
   String _currentLocation = 'Safe House'; // All games start at Safe House
   bool _showCompletedTasks = false;
   
-  // Track all players and NPCs
+  // Track all players, NPCs, and locations
   List<Map<String, dynamic>> _allPlayers = [];
   List<Map<String, dynamic>> _npcs = [];
+  List<Map<String, dynamic>> _allLocations = [];
   String? _myPlayerId;
   
   @override
@@ -119,7 +120,7 @@ class _GameScreenState extends State<GameScreen> {
         });
       }
       
-      // Game started (includes NPCs if available)
+      // Game started (includes NPCs and locations)
       if (message['type'] == 'game_started') {
         setState(() {
           if (message.containsKey('npcs')) {
@@ -127,6 +128,13 @@ class _GameScreenState extends State<GameScreen> {
             debugPrint('🎮 Received ${_npcs.length} NPCs from game_started message');
             for (var npc in _npcs) {
               debugPrint('   NPC: ${npc['name']} at ${npc['location']}');
+            }
+          }
+          if (message.containsKey('locations')) {
+            _allLocations = List<Map<String, dynamic>>.from(message['locations'] ?? []);
+            debugPrint('🗺️ Received ${_allLocations.length} locations from game_started message');
+            for (var loc in _allLocations) {
+              debugPrint('   Location: ${loc['name']}');
             }
           }
         });
@@ -586,17 +594,25 @@ class _GameScreenState extends State<GameScreen> {
   }
   
   void _showMapDialog() {
-    // Get all unique locations from tasks
-    final Set<String> allLocations = _myTasks
-        .map((task) => task['location'] as String?)
-        .where((loc) => loc != null && loc.isNotEmpty)
-        .cast<String>()
-        .toSet();
+    // Use all locations from game state, or fall back to locations from tasks
+    List<String> locationNames;
+    if (_allLocations.isNotEmpty) {
+      // Use locations sent from backend
+      locationNames = _allLocations
+          .map((loc) => loc['name'] as String)
+          .toList();
+    } else {
+      // Fallback: extract from tasks
+      final Set<String> taskLocations = _myTasks
+          .map((task) => task['location'] as String?)
+          .where((loc) => loc != null && loc.isNotEmpty)
+          .cast<String>()
+          .toSet();
+      taskLocations.add('Safe House');
+      locationNames = taskLocations.toList();
+    }
     
-    // Always include Safe House if not already present
-    allLocations.add('Safe House');
-    
-    final sortedLocations = allLocations.toList()..sort();
+    final sortedLocations = locationNames..sort();
     
     showDialog(
       context: context,
