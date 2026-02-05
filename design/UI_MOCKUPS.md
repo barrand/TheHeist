@@ -927,6 +927,12 @@ Success Fail Success Fail  │
 - [ ] Accessible locations (white/tappable)
 - [ ] Locked locations (grayed, lock icon 🔒)
 
+**Location Visibility:**
+- All players can see ALL locations in the game
+- Not limited to locations where they have tasks
+- Enables exploration and coordination across the team
+- Can travel to any accessible (unlocked) location
+
 **Real-Time Updates:**
 - When teammate moves → Their icon moves to new location
 - When NPC is talked to → NPC may change mood/status
