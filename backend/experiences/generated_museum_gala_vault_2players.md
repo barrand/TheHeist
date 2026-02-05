@@ -87,19 +87,19 @@ Every task in this heist is one of five types:
 ### Mastermind
 
 **Tasks:**
-1. **MM1. 💬 NPC** - Chat with Security Guard
-   - *Description:* Engage the museum guard in friendly conversation. While distracting him, subtly learn about the vault location and security details.
-   - *NPC:* `security_guard` (Marcus Romano)
-   - *Objectives to Learn:*
+1. **MM1. 🔍 SEARCH** - Learn Vault Intel
+   - *Description:* Gather intelligence about the vault location and security details. Talk to people at the gala, observe the area, and piece together information about where the vault is and when it's least guarded.
+   - *Objectives to Discover:*
      - Vault location (basement, east wing)
-     - Guard's patrol schedule
+     - Security patrol schedule
+     - Best time to access vault
    - *Location:* Grand Hall
    - *Dependencies:* None (starting task)
 
 2. **MM2. 🗣️ INFO** - Share Vault Intel with Safe Cracker
-   - *Description:* Radio the Safe Cracker with the vault's location (basement, east wing) and the guard's patrol schedule you learned.
+   - *Description:* Radio the Safe Cracker with the vault's location (basement, east wing) and the security details you learned.
    - *Location:* Grand Hall
-   - *Dependencies:* `MM1` (learned vault location from guard)
+   - *Dependencies:* `MM1` (learned vault location and security details)
 
 ### Safe Cracker
 
@@ -122,7 +122,7 @@ Supporting tasks: 0
 
 By type:
 - Minigames (🎮): 1 (25%)
-- NPC/LLM interactions (💬): 2 (50%)
+- Search tasks (🔍): 2 (50%)
 - Info shares (🗣️): 1 (25%)
 
 ## Dependency Tree Diagram
@@ -131,8 +131,8 @@ By type:
 flowchart TD
     START([START HEIST])
     
-    START --> MM1{{💬 MM: Distract Guard}}
-    START --> SC1{{💬 SC: Access Vault}}
+    START --> MM1{{🔍 MM: Learn Vault Intel}}
+    START --> SC1{{🔍 SC: Navigate to Vault}}
     
     MM1 --> MM2[🗣️ MM: Share Vault Location]
     MM1 --> SC1
@@ -145,16 +145,16 @@ flowchart TD
 
 ## Key Collaboration Points
 
-- **Intelligence Gathering**: Mastermind chats with guard to learn vault location and security details
-- **Distraction**: Same conversation keeps guard occupied and away from his post
+- **Intelligence Gathering**: Mastermind explores the gala and talks to people to learn vault location and security details
+- **Exploration**: Player must discover which NPCs have useful information (Security Guard, Curator, etc.)
 - **Information Sharing**: Mastermind radios the vault intel to Safe Cracker
 - **Execution**: Safe Cracker uses the intel to navigate to vault and crack it
 
 ## Story Flow
 
-1. Mastermind strikes up conversation with lonely security guard
-2. Guard mentions he's been "guarding that new vault exhibit in the basement all week"
-3. Mastermind keeps him talking (distraction) while learning key details
-4. Mastermind radios Safe Cracker: "Basement, east wing, guard's away"
+1. Mastermind mingles at the gala, observing and gathering information
+2. Mastermind talks to various people (security guard, curator, guests) to piece together intel
+3. Through conversations, learns vault is in "basement, east wing" and guard's schedule
+4. Mastermind radios Safe Cracker: "Basement, east wing, guard's away at 9 PM"
 5. Safe Cracker navigates to vault using the intel
 6. Safe Cracker cracks the combination lock and retrieves the jewels
