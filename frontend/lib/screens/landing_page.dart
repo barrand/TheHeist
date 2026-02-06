@@ -309,6 +309,7 @@ class _LandingPageState extends State<LandingPage> {
                     controller: controller,
                     hintText: 'Room Code (e.g. APPLE)',
                     textCapitalization: TextCapitalization.characters,
+                    onSubmitted: (value) => Navigator.pop(context, value.trim().toUpperCase()),
                   ),
                 ],
               ),
