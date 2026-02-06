@@ -1034,23 +1034,26 @@ Success Fail Success Fail  │
 │  YOU HAVE (3):                  │
 │                                 │
 │  ┌───────────────────────────┐ │
-│  │ 📱 Burner Phone           │ │← Item 1
-│  │ Untraceable phone         │ │
-│  │                           │ │
+│  │ ┌────┐                    │ │← Item 1
+│  │ │📱  │ Burner Phone       │ │  80x80 item image
+│  │ │img │ Untraceable phone  │ │  (burner phone photo)
+│  │ └────┘                    │ │
 │  │ [Transfer] [Use] [Drop]   │ │← Actions
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
-│  │ 🍎 Apple                  │ │← Item 2
-│  │ Fresh red apple (food)    │ │
-│  │                           │ │
-│  │ [Transfer] [Use] [Drop]   │ │← Drop = instant
+│  │ ┌────┐                    │ │← Item 2
+│  │ │🍎  │ Apple              │ │  80x80 item image
+│  │ │img │ Fresh red apple    │ │  (red apple photo)
+│  │ └────┘                    │ │
+│  │ [Transfer] [Use] [Drop]   │ │
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
-│  │ 🔑 Security Keycard       │ │← Item 3
-│  │ Level 2 access badge      │ │
-│  │                           │ │
+│  │ ┌────┐                    │ │← Item 3
+│  │ │🔑  │ Security Keycard   │ │  80x80 item image
+│  │ │img │ Level 2 access     │ │  (keycard photo)
+│  │ └────┘                    │ │
 │  │ [Transfer] [Use] [Drop]   │ │
 │  └───────────────────────────┘ │
 │                                 │
@@ -1693,7 +1696,48 @@ Rosa didn't know about vault
 
 **Purpose**: Search a location for items or explore to discover new things
 
-### Mode 1: Specific Search Task (Knows Target)
+### Currently Implemented: Search Results List
+
+The current implementation shows a simpler list-based search results:
+
+```
+┌─────────────────────────────────┐
+│  🔍 Search Results: Safe House ✕│
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ ┌────┐                    │ │
+│  │ │🔧  │ Safe Cracking Tools│ │← 80x80 item image
+│  │ │img │ Professional lock  │ │
+│  │ └────┘ pick set...        │ │
+│  │ Required for: SC2         │ │
+│  │        [Pick Up]          │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ ┌────┐                    │ │
+│  │ │📻  │ Radio Earpiece Set │ │← 80x80 item image
+│  │ │img │ Two-way radio      │ │
+│  │ └────┘ earpieces          │ │
+│  │ Required for: MM2         │ │
+│  │        [Pick Up]          │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  (No items found if empty)      │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Location name in header
+- [ ] Close button (X)
+- [ ] Item cards (scrollable list)
+  - [ ] 80x80 item image thumbnail
+  - [ ] Item name
+  - [ ] Item description (truncated)
+  - [ ] "Required for" hint (if applicable)
+  - [ ] Pick Up button
+- [ ] Empty state message
+
+### Mode 1: Specific Search Task (Knows Target) [Future]
 
 When player has a task like "🔍 Search: Hunt for Burner Phone"
 
@@ -2429,4 +2473,72 @@ Icon size:              24px
 3. Start Flutter project
 4. Build screens in priority order
 5. Connect to WebSocket backend
+
+---
+
+## 📸 Image Asset Specifications
+
+### Location Images
+
+**Usage**: Shown at the top of the game screen when at a location
+
+**Specifications**:
+- **Dimensions**: 300x150px (2:1 aspect ratio)
+- **Style**: Borderlands cel-shaded art style (thick black outlines, stylized)
+- **Tone**: Dark, noir atmosphere
+- **Content**: Interior or exterior view of the location
+- **File Format**: PNG or WebP
+- **Naming**: `location_[location_id].png` (e.g., `location_safe_house.png`)
+
+**Examples**:
+- Safe House: Dark room with planning table, maps on wall
+- Museum Grand Hall: Elegant hall with chandeliers, guests
+- Vault Room: Heavy steel vault door, dim lighting
+- Museum Basement: Concrete corridor, pipes, service entrance
+
+### Item Images
+
+**Usage**: Shown in inventory and search results
+
+**Specifications**:
+- **Dimensions**: 80x80px (1:1 square)
+- **Style**: Photo-realistic or stylized product shot
+- **Background**: Transparent or subtle gradient
+- **Lighting**: Well-lit, clear details visible
+- **File Format**: PNG with transparency
+- **Naming**: `item_[item_id].png` (e.g., `item_burner_phone.png`)
+
+**Examples**:
+- Burner Phone: Black flip phone on dark background
+- Safe Cracking Tools: Lockpick set in leather case
+- Security Keycard: White/blue access card with stripe
+- Radio Earpiece: Small black earpiece with wire
+- Apple: Red apple (if food items are in the game)
+
+### NPC Portrait Images
+
+**Usage**: Shown in NPC conversation screen (already implemented)
+
+**Specifications**:
+- **Dimensions**: 280x280px (1:1 square)
+- **Style**: Borderlands cel-shaded art style
+- **Content**: Character portrait, shoulders up
+- **Expression**: Matches NPC personality (bored, stressed, etc.)
+- **File Format**: PNG
+- **Naming**: `npc_[npc_id].png` (e.g., `npc_security_guard_marcus.png`)
+
+### Image Generation Priority
+
+1. **High Priority**: Item images (needed for inventory/search functionality)
+2. **High Priority**: Location images (needed for immersion on game screen)
+3. **Medium Priority**: Additional NPC portraits (some already exist)
+
+### Technical Notes
+
+- All images should be optimized for web (compressed but high quality)
+- Consider generating 2x versions for retina displays
+- Store in `frontend/web/assets/images/` directory or serve from backend
+- Reference in Flutter using `AssetImage` or network URLs
+- Lazy load images to improve performance
+- Use placeholder images while loading
 
