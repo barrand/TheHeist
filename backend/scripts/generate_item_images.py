@@ -25,43 +25,41 @@ from config import GEMINI_API_KEY
 ITEM_SIZE = 80  # Square
 OUTPUT_DIR = Path(__file__).parent.parent / "generated_images"
 
-# Style prompt for all item images - Borderlands style to match characters/NPCs
-STYLE_PROMPT = """
-Borderlands cel-shaded art style with thick black outlines, comic book aesthetic.
-Stylized illustration, hand-drawn look, bold colors, graphic novel style.
-Item centered on dark background. Professional game art quality.
-"""
+# Heist game art style - same as NPCs use
+HEIST_GAME_ART_STYLE = """2D illustration, comic book art style,
+bold thick outlines, cell-shaded, flat colors with subtle gradients,
+Borderlands game aesthetic, graphic novel style,
+vibrant saturated colors, stylized proportions, hand-drawn look,
+inked linework, simplified details,
+set in year 2020, contemporary styling (not futuristic)"""
 
 
-def get_item_prompt(item_name: str, item_description: str) -> str:
-    """Generate Imagen prompt for an item."""
+def get_item_prompt(item_name: str, item_description: str, visual_description: str = "") -> str:
+    """Generate Imagen prompt for an item using detailed visual description.
     
-    # Use item description as base
-    base_desc = item_description if item_description else item_name
+    Args:
+        item_name: Name of the item
+        item_description: Basic description (fallback)
+        visual_description: Detailed visual description from experience file
     
-    # Add specific details for common item types
-    item_lower = item_name.lower()
+    Returns:
+        Complete prompt for Imagen
+    """
     
-    if "phone" in item_lower or "burner" in item_lower:
-        extra = "black flip phone or smartphone, realistic product shot"
-    elif "tool" in item_lower or "lockpick" in item_lower:
-        extra = "professional lockpick tools in leather case, metallic tools"
-    elif "keycard" in item_lower or "badge" in item_lower or "card" in item_lower:
-        extra = "security access card with magnetic stripe, corporate ID badge"
-    elif "earpiece" in item_lower or "radio" in item_lower:
-        extra = "small black wireless earpiece with cable, communications device"
-    elif "food" in item_lower or "apple" in item_lower or "snack" in item_lower:
-        extra = "fresh food item, appetizing"
-    elif "weapon" in item_lower or "gun" in item_lower:
-        extra = "tactical equipment, professional grade"
-    elif "cable" in item_lower or "wire" in item_lower:
-        extra = "coiled cable or wire, technical equipment"
-    elif "key" in item_lower:
-        extra = "metal key or keyring, detailed"
+    if visual_description:
+        # Use the rich visual description from the experience file
+        item_details = visual_description
     else:
-        extra = "detailed object, professional product shot"
+        # Fallback to basic description
+        item_details = item_description or f"{item_name}, detailed object"
     
-    return f"{base_desc}. {extra}. {STYLE_PROMPT}"
+    # Build prompt similar to NPC generation - with PURE BLACK background
+    prompt = f"""{HEIST_GAME_ART_STYLE},
+item: {item_details},
+centered product shot, pure black background (RGB 0,0,0), professional game asset,
+no shadows on background, item fully isolated"""
+    
+    return prompt
 
 
 async def generate_item_image(
