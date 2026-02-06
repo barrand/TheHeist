@@ -148,8 +148,8 @@ portrait view, centered, waist-up composition"""
         client = genai.Client(api_key=GEMINI_API_KEY)
         
         # Choose model based on use case
-        model = 'imagen-4.0-generate-001' if use_premium_model else 'imagen-3.0-generate-001'
-        model_name = "Imagen 4.0 (premium)" if use_premium_model else "Imagen 3.0 Fast (cost-effective)"
+        model = 'imagen-4.0-generate-001' if use_premium_model else 'imagen-4.0-fast-generate-001'
+        model_name = "Imagen 4.0 (premium)" if use_premium_model else "Imagen 4.0 Fast (cost-effective)"
         
         print(f"   Model: {model_name}")
         

@@ -14,13 +14,13 @@ We use a **two-tier approach** to optimize quality and cost:
 - Cost: ~$0.04 per image
 - Total one-time cost: ~$0.96 for all 24 images
 
-### Tier 2: Cost-Effective (Imagen 3.0 Fast)
+### Tier 2: Cost-Effective (Imagen 4.0 Fast)
 **Used for:** Per-experience unique content
 - Room/location images
 - Item images  
 - NPC character images
 - Generated fresh for each new experience
-- Good quality, much faster, cheaper
+- Good quality, fast, cost-effective
 - Cost: ~$0.02 per image
 - Typical experience cost: ~$0.32
 
