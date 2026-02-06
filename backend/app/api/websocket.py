@@ -286,6 +286,17 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
         game_state_manager = get_game_state_manager()
         game_state_manager.set_game_state(room_code, game_state)
         
+        # Trigger background image generation for this experience
+        from app.services.image_generator import trigger_image_generation_if_needed
+        experience_dict = {
+            'locations': [loc.name for loc in game_state.locations],
+            'items_by_location': {
+                loc: [item.model_dump() for item in items]
+                for loc, items in game_state.items_by_location.items()
+            }
+        }
+        trigger_image_generation_if_needed(scenario, experience_dict)
+        
         # Send game started to each player with their specific tasks
         for pid, player in room.players.items():
             player_tasks = game_state.get_available_tasks_for_role(player.role)

@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.api import npc, websocket, rooms
+from app.api import npc, websocket, rooms, images
 
 # Configure logging
 logging.basicConfig(
@@ -41,6 +41,7 @@ app.add_middleware(
 app.include_router(npc.router)
 app.include_router(rooms.router)
 app.include_router(websocket.router)
+app.include_router(images.router)
 
 
 @app.on_event("startup")

@@ -31,5 +31,8 @@ Thumbs.db
 # Generated output files (temporary, before moving to backend/experiences/)
 backend/scripts/output/
 
+# Generated images (can be regenerated)
+backend/generated_images/
+
 # Prototype files (contains API keys for testing)
 prototype/
