@@ -93,18 +93,23 @@ async def generate_all_images_for_experience(experience_id: str, experience_dict
             await asyncio.sleep(0.5)
         return True
     
-    # Check if images already exist
+    # Parse expected counts first
+    locations, items = parse_experience_for_generation(experience_dict)
+    expected_loc_count = len(locations)
+    expected_item_count = len(items)
+    
+    # Check if images already exist (ALL of them, not just some)
     exists, loc_count, item_count = check_images_exist(experience_id)
-    if exists:
+    if exists and loc_count == expected_loc_count and item_count == expected_item_count:
         logger.info(f"✅ Images already exist for {experience_id} ({loc_count} locations, {item_count} items)")
         return True
+    elif exists:
+        logger.info(f"⚠️ Partial images found ({loc_count}/{expected_loc_count} locations, {item_count}/{expected_item_count} items), regenerating missing...")
     
     logger.info(f"🎨 Generating images for {experience_id} at game start...")
     
     try:
-        # Parse experience for images needed
-        locations, items = parse_experience_for_generation(experience_dict)
-        
+        # locations and items already parsed above
         logger.info(f"🎨 Will generate: {len(locations)} locations, {len(items)} items")
         logger.info(f"🎨 Locations: {[loc['name'] for loc in locations]}")
         logger.info(f"🎨 Items: {[item['name'] for item in items]}")
