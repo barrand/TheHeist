@@ -94,7 +94,7 @@ async def generate_location_image(
                 number_of_images=1,
                 aspect_ratio="3:2",  # Close to 300x150
                 safety_filter_level="block_low_and_above",
-                person_generation="allow_adult",
+                # Note: person_generation not specified - Imagen 4.0 Fast doesn't support allow_adult
             )
         )
         

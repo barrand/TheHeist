@@ -106,6 +106,8 @@ async def generate_all_images_for_experience(experience_id: str, experience_dict
         locations, items = parse_experience_for_generation(experience_dict)
         
         logger.info(f"🎨 Will generate: {len(locations)} locations, {len(items)} items")
+        logger.info(f"🎨 Locations: {[loc['name'] for loc in locations]}")
+        logger.info(f"🎨 Items: {[item['name'] for item in items]}")
         
         # Import generation functions
         import sys
