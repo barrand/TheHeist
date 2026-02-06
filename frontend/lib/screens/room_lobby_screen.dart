@@ -46,6 +46,10 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   List<Scenario> _availableScenarios = [];
   bool _scenariosLoading = true;
   
+  // Loading state for image generation
+  bool _isGeneratingImages = false;
+  int _loadingMessageIndex = 0;
+  
   @override
   void initState() {
     super.initState();
@@ -135,9 +139,29 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       });
     });
     
+    // Listen for image generation start
+    widget.wsService.info.listen((message) {
+      final infoMessage = message['message'] as String?;
+      if (infoMessage != null && infoMessage.contains('Generating experience images')) {
+        setState(() {
+          _isGeneratingImages = true;
+        });
+        _showImageGenerationModal();
+      }
+    });
+    
     // Game started - navigate to game screen
     widget.wsService.gameStarted.listen((message) {
       debugPrint('🎮 LOBBY: Game started! Navigating to game screen');
+      
+      // Close loading modal if open
+      if (_isGeneratingImages) {
+        Navigator.of(context).pop(); // Close modal
+        setState(() {
+          _isGeneratingImages = false;
+        });
+      }
+      
       final scenario = message['scenario'];
       final objective = message['objective'];
       final yourTasks = message['your_tasks'] ?? [];
@@ -273,6 +297,80 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         _myRole = null;
       });
     }
+  }
+  
+  void _showImageGenerationModal() {
+    final heistMessages = [
+      '🚗 Prepping the getaway car...',
+      '🔍 Investigating the premises...',
+      '🤝 Reaching out to seedy contacts...',
+      '📋 Reviewing the blueprints...',
+      '🎭 Preparing disguises...',
+      '💰 Scoping the vault...',
+      '📡 Testing communication devices...',
+      '🗺️ Mapping escape routes...',
+      '⏰ Synchronizing watches...',
+      '🎨 Setting the scene...',
+    ];
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: AppColors.bgPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+            side: BorderSide(color: AppColors.accentPrimary, width: 2),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(AppDimensions.spaceXL),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title
+                Text(
+                  '🎬 Creating Your Experience',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.accentPrimary,
+                  ),
+                ),
+                SizedBox(height: AppDimensions.spaceLG),
+                
+                // Spinner
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentPrimary),
+                ),
+                SizedBox(height: AppDimensions.spaceLG),
+                
+                // Rotating message
+                StreamBuilder<int>(
+                  stream: Stream.periodic(Duration(seconds: 2), (i) => i % heistMessages.length),
+                  builder: (context, snapshot) {
+                    final index = snapshot.data ?? 0;
+                    return AnimatedSwitcher(
+                      duration: Duration(milliseconds: 300),
+                      child: Text(
+                        heistMessages[index],
+                        key: ValueKey(index),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
   
   void _startGame() {

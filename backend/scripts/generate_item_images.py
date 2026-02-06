@@ -25,11 +25,11 @@ from config import GEMINI_API_KEY
 ITEM_SIZE = 80  # Square
 OUTPUT_DIR = Path(__file__).parent.parent / "generated_images"
 
-# Style prompt for all item images
+# Style prompt for all item images - Borderlands style to match characters/NPCs
 STYLE_PROMPT = """
-Product photography style. Clean, well-lit, professional.
-Slight shadow for depth. Transparent or subtle dark gradient background.
-High detail, realistic rendering. Studio lighting.
+Borderlands cel-shaded art style with thick black outlines, comic book aesthetic.
+Stylized illustration, hand-drawn look, bold colors, graphic novel style.
+Item centered on dark background. Professional game art quality.
 """
 
 
