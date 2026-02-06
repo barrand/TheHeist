@@ -1458,7 +1458,7 @@ class _GameScreenState extends State<GameScreen> {
                 SizedBox(height: 12),
                 Row(
                   children: [
-                            Expanded(
+                    Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () => _showTransferDialog(item),
                                 icon: Icon(Icons.send, size: 16),
@@ -1495,15 +1495,15 @@ class _GameScreenState extends State<GameScreen> {
                                   padding: EdgeInsets.symmetric(vertical: 8),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ),
-                  );
-                },
-              ),
+                  ],
+                ),
+              ],
             ),
+          );
+        },
+      ),
+    ),
           ],
         ),
       ),
