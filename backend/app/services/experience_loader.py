@@ -166,18 +166,34 @@ class ExperienceLoader:
             category = section_match.group(1).strip()
             section_content = section_match.group(2)
             
-            # Extract individual locations (lines starting with -)
-            # Supports both formats: "- **Name**: Description" and "- **Name** - Description"
-            for loc_match in re.finditer(r'^\s*-\s+\*\*(.+?)\*\*\s*[-:](.+)$', section_content, re.MULTILINE):
+            # Extract individual locations with their visual descriptions
+            # Format: - **Name** - Description
+            #           - **Visual**: visual description
+            location_blocks = re.split(r'(?=^\s*-\s+\*\*[^*]+\*\*)', section_content, flags=re.MULTILINE)
+            
+            for block in location_blocks:
+                if not block.strip():
+                    continue
+                
+                # Extract name and description
+                loc_match = re.search(r'^\s*-\s+\*\*(.+?)\*\*\s*[-:](.+)$', block, re.MULTILINE)
+                if not loc_match:
+                    continue
+                    
                 name = loc_match.group(1).strip()
                 description = loc_match.group(2).strip()
+                
+                # Extract visual description if present
+                visual_match = re.search(r'-\s+\*\*Visual\*\*:\s*(.+?)(?=\n\s*$|$)', block, re.DOTALL)
+                visual = visual_match.group(1).strip() if visual_match else ""
                 
                 loc_id = name.lower().replace(" ", "_").replace("'", "")
                 locations.append(Location(
                     id=loc_id,
                     name=name,
                     description=description,
-                    category=category
+                    category=category,
+                    visual=visual
                 ))
         
         return locations
@@ -281,6 +297,10 @@ class ExperienceLoader:
                 desc_match = re.search(r'-\s*\*\*Description\*\*:\s*(.+)', item_block)
                 description = desc_match.group(1).strip() if desc_match else ""
                 
+                # Extract Visual description
+                visual_match = re.search(r'-\s*\*\*Visual\*\*:\s*(.+?)(?=\n\s*-\s*\*\*|\Z)', item_block, re.DOTALL)
+                visual = visual_match.group(1).strip() if visual_match else ""
+                
                 # Extract Required For
                 req_match = re.search(r'-\s*\*\*Required For\*\*:\s*(.+)', item_block)
                 required_for = req_match.group(1).strip() if req_match else None
@@ -295,6 +315,7 @@ class ExperienceLoader:
                     id=item_id,
                     name=name,
                     description=description,
+                    visual=visual,
                     location=location_name,
                     required_for=required_for,
                     hidden=hidden

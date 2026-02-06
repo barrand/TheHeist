@@ -26,48 +26,46 @@ LOCATION_WIDTH = 300
 LOCATION_HEIGHT = 150
 OUTPUT_DIR = Path(__file__).parent.parent / "generated_images"
 
-# Style prompt for all location images
-STYLE_PROMPT = """
-Borderlands cel-shaded art style with thick black outlines, stylized comic book aesthetic.
-Dark noir atmosphere with dramatic lighting. High contrast. Heist/crime theme.
-Professional game art quality.
-"""
+# Heist game art style - same as NPCs use
+HEIST_GAME_ART_STYLE = """2D illustration, comic book art style,
+bold thick outlines, cell-shaded, flat colors with subtle gradients,
+Borderlands game aesthetic, graphic novel style,
+vibrant saturated colors, stylized proportions, hand-drawn look,
+inked linework, simplified details,
+set in year 2020, contemporary styling (not futuristic)"""
 
 
-def get_location_prompt(location_name: str, location_type: str = "interior") -> str:
-    """Generate Imagen prompt for a location."""
+def get_location_prompt(location_name: str, visual_description: str = None) -> str:
+    """Generate Imagen prompt for a location using detailed visual description.
     
-    # Base descriptions for common location types
-    base_descriptions = {
-        "safe_house": "Secret hideout with planning table, maps on walls, dim lighting, crime board with photos and strings",
-        "crew_hideout": "Underground crew headquarters, weapons on wall, computer monitors, tactical gear",
-        "museum_grand_hall": "Elegant museum hall with high ceilings, chandeliers, marble floors, art on walls, formal atmosphere",
-        "museum_basement": "Concrete service corridor with exposed pipes, industrial lighting, restricted area signs",
-        "vault_room": "Heavy steel vault door, security systems, dim dramatic lighting, high security aesthetic",
-        "loading_dock": "Industrial loading area with metal doors, cargo boxes, concrete floors",
-        "security_room": "Room with multiple security monitors, control panels, swivel chairs, surveillance equipment",
-        "office": "Corporate office with desk, computer, filing cabinets, fluorescent lighting",
-        "kitchen": "Commercial kitchen with stainless steel appliances, prep stations, industrial aesthetic",
-        "corridor": "Long hallway with doors, industrial or corporate aesthetic depending on location",
-    }
+    Args:
+        location_name: Name of the location
+        visual_description: Detailed visual description from experience file
     
-    # Try to match location name to base description
-    location_key = location_name.lower().replace(" ", "_")
-    for key, desc in base_descriptions.items():
-        if key in location_key:
-            base_desc = desc
-            break
+    Returns:
+        Complete prompt for Imagen
+    """
+    
+    if visual_description:
+        # Use the rich visual description from the experience file
+        scene_description = visual_description
     else:
-        # Generic description
-        base_desc = f"{location_name}, dramatic lighting, detailed environment"
+        # Fallback to generic description
+        scene_description = f"{location_name}, dramatic lighting, detailed environment, heist atmosphere"
     
-    return f"{base_desc}. {STYLE_PROMPT}"
+    # Build prompt similar to NPC generation
+    prompt = f"""{HEIST_GAME_ART_STYLE},
+environment scene: {scene_description},
+wide establishing shot, cinematic composition, no people visible"""
+    
+    return prompt
 
 
 async def generate_location_image(
     location_name: str,
     location_id: str,
     experience_id: str,
+    visual_description: str,
     client: genai.Client
 ) -> str:
     """Generate a single location image."""
@@ -79,8 +77,8 @@ async def generate_location_image(
         print(f"✓ Location image already exists: {location_name}")
         return str(output_path)
     
-    # Generate prompt
-    prompt = get_location_prompt(location_name)
+    # Generate prompt with visual description
+    prompt = get_location_prompt(location_name, visual_description)
     
     print(f"🎨 Generating location image: {location_name}")
     print(f"   Prompt: {prompt[:100]}...")
@@ -139,11 +137,13 @@ async def generate_all_location_images(experience_id: str, locations: List[Dict]
     for location in locations:
         location_name = location.get('name', location.get('id', 'Unknown'))
         location_id = location.get('id', location_name.lower().replace(' ', '_'))
+        visual_description = location.get('visual', '')
         
         result = await generate_location_image(
             location_name=location_name,
             location_id=location_id,
             experience_id=experience_id,
+            visual_description=visual_description,
             client=client
         )
         results.append(result)

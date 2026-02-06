@@ -13,11 +13,17 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 
 ### Crew Hideout (Starting Location)
 - **Crew Hideout** - Secret base where the crew plans the heist. All players start here.
+  - **Visual**: Gritty underground hideout with exposed brick walls, dim industrial lighting with hanging bulbs, large planning table covered in blueprints and photos, corkboard wall with red strings connecting evidence, vintage leather couch, old metal lockers, scattered tactical gear and equipment, monitors showing security feeds, noir aesthetic with dramatic shadows, purple and cyan accent lighting
 
 ### Museum Interior
 - **Grand Hall** - Main gala space where guests mingle
+  - **Visual**: Elegant museum hall with high vaulted ceilings, marble floors with geometric patterns, ornate chandeliers casting warm light, classical art pieces on walls in gold frames, wealthy guests in formal attire mingling, champagne glasses, modern art sculptures, grand staircase in background, ambient purple uplighting on columns, sophisticated heist movie atmosphere
+
 - **Museum Basement** - Corridor leading to the restricted vault area
+  - **Visual**: Industrial concrete corridor with exposed pipes along ceiling, flickering fluorescent lights, restricted area warning signs on walls, security doors with keypads, metal grating on floors, emergency exit signs, cold blue-green lighting, ominous atmosphere, steel support beams, utility boxes and electrical panels, narrow passage leading deeper
+
 - **Vault Room** - Secure basement vault containing the Eye of Orion jewels
+  - **Visual**: High-security vault with massive circular steel door featuring chrome combination lock wheel, dramatic spotlight illuminating the vault entrance, reinforced concrete walls, security camera in corner with blinking red light, keypad access panel, polished metal surfaces, tense heist moment lighting with cyan and purple dramatic highlights, professional bank vault aesthetic
 
 **Total Locations**: 4
 
@@ -27,18 +33,21 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **ID**: `safe_cracking_tools`
   - **Name**: Safe Cracking Tools
   - **Description**: Professional lockpick set, dial manipulation tools, and stethoscope for listening to tumblers
+  - **Visual**: Open black leather case containing shiny metallic lockpicks, tension wrenches, dial manipulation tools, and professional stethoscope with chrome ear pieces, tools arranged neatly in foam cutouts, reflective metal surfaces, professional safe-cracking kit, heist movie prop aesthetic, purple velvet lining visible
   - **Required For**: SC2 (Crack the Vault Lock)
   - **Hidden**: false
 
 - **ID**: `earpiece_set`
   - **Name**: Radio Earpiece Set
   - **Description**: Two-way radio earpieces for team communication
+  - **Visual**: Pair of sleek black wireless earpieces with curved design, small cyan LED indicator lights, flexible black cables, compact communication devices, modern spy tech aesthetic, glossy black finish with purple accent trim, professional covert operations equipment
   - **Required For**: MM2 (Share Vault Intel) - makes communication easier
   - **Hidden**: false
 
 - **ID**: `gala_invitation`
   - **Name**: Forged Gala Invitation
   - **Description**: Fake invitation to blend in at the museum gala
+  - **Visual**: Elegant cream-colored invitation card with gold foil embossed museum logo, fancy calligraphy font reading "Museum Gala Evening", ornate border design, guest name line, sophisticated paper texture, high-quality forgery, slightly worn edges suggesting it's been handled, purple wax seal with museum insignia
   - **Required For**: None (flavor item, already "inside")
   - **Hidden**: false
 

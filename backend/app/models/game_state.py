@@ -31,6 +31,7 @@ class Location(BaseModel):
     name: str = Field(..., description="Display name")
     description: str = Field(..., description="Location description")
     category: str = Field(..., description="Location category (e.g., 'Museum Interior')")
+    visual: str = Field(default="", description="Visual description for image generation")
 
 
 class Task(BaseModel):
@@ -80,6 +81,7 @@ class Item(BaseModel):
     id: str = Field(..., description="Unique item identifier")
     name: str = Field(..., description="Display name")
     description: str = Field(..., description="What the item is")
+    visual: str = Field(default="", description="Visual description for image generation")
     location: Optional[str] = Field(None, description="Where item is located (None if in player inventory)")
     required_for: Optional[str] = Field(None, description="Task ID or objective this enables")
     hidden: bool = Field(default=False, description="Requires thorough search to find")

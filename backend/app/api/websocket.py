@@ -296,7 +296,7 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
         # Order: Rooms → Items → NPCs
         from app.services.image_generator import generate_all_images_for_experience
         experience_dict = {
-            'locations': [loc.name for loc in game_state.locations],
+            'locations': [loc.model_dump() for loc in game_state.locations],
             'items_by_location': {
                 loc: [item.model_dump() for item in items]
                 for loc, items in game_state.items_by_location.items()

@@ -27,16 +27,26 @@ def parse_experience_for_generation(experience_dict: Dict) -> tuple[List[Dict], 
     locations = []
     items = []
     
-    # Extract locations
+    # Extract locations with visual descriptions
     if 'locations' in experience_dict:
-        for loc_name in experience_dict['locations']:
-            location_id = loc_name.lower().replace(' ', '_').replace('-', '_')
-            locations.append({
-                'name': loc_name,
-                'id': location_id
-            })
+        for loc in experience_dict['locations']:
+            # Support both dict and string formats
+            if isinstance(loc, dict):
+                locations.append({
+                    'name': loc.get('name', ''),
+                    'id': loc.get('id', ''),
+                    'visual': loc.get('visual', '')
+                })
+            else:
+                # Legacy format: just location names
+                location_id = loc.lower().replace(' ', '_').replace('-', '_')
+                locations.append({
+                    'name': loc,
+                    'id': location_id,
+                    'visual': ''
+                })
     
-    # Extract items from items_by_location
+    # Extract items from items_by_location with visual descriptions
     if 'items_by_location' in experience_dict:
         seen_items = set()
         for location_items in experience_dict['items_by_location'].values():
@@ -47,7 +57,8 @@ def parse_experience_for_generation(experience_dict: Dict) -> tuple[List[Dict], 
                     items.append({
                         'id': item_id,
                         'name': item.get('name', ''),
-                        'description': item.get('description', '')
+                        'description': item.get('description', ''),
+                        'visual': item.get('visual', '')
                     })
     
     return locations, items

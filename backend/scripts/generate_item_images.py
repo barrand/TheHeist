@@ -68,6 +68,7 @@ async def generate_item_image(
     item_name: str,
     item_id: str,
     item_description: str,
+    visual_description: str,
     experience_id: str,
     client: genai.Client,
     max_retries: int = 3
@@ -81,8 +82,8 @@ async def generate_item_image(
         print(f"✓ Item image already exists: {item_name}")
         return str(output_path)
     
-    # Generate prompt
-    prompt = get_item_prompt(item_name, item_description)
+    # Generate prompt with visual description
+    prompt = get_item_prompt(item_name, visual_description, item_description)
     
     print(f"🎨 Generating item image: {item_name}")
     print(f"   Prompt: {prompt[:100]}...")
@@ -152,11 +153,13 @@ async def generate_all_item_images(experience_id: str, items: List[Dict]):
         item_name = item.get('name', 'Unknown Item')
         item_id = item.get('id', item_name.lower().replace(' ', '_'))
         item_description = item.get('description', '')
+        visual_description = item.get('visual', '')
         
         result = await generate_item_image(
             item_name=item_name,
             item_id=item_id,
             item_description=item_description,
+            visual_description=visual_description,
             experience_id=experience_id,
             client=client
         )
