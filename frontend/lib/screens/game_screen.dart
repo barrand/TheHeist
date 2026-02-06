@@ -418,87 +418,128 @@ class _GameScreenState extends State<GameScreen> {
   
   Widget _buildTopBar(int completedCount, int totalTasks) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppDimensions.containerPadding,
-        vertical: AppDimensions.spaceMD,
-      ),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
         border: Border(
           bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.location_on, color: AppColors.accentPrimary, size: 20),
-          SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              _currentLocation,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+          // Location image (16:9 aspect ratio)
+          Container(
+            width: double.infinity,
+            height: 150,
+            color: AppColors.bgPrimary,
+            child: Image.network(
+              'http://localhost:8000/images/${widget.scenario}/location_${_currentLocation.toLowerCase().replaceAll(' ', '_')}.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                // Fallback to gradient if image not available
+                return Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.bgPrimary,
+                        AppColors.bgSecondary,
+                      ],
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.location_on,
+                      size: 48,
+                      color: AppColors.accentPrimary.withOpacity(0.3),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-          // Search room button
-          IconButton(
-            icon: Icon(Icons.search, color: AppColors.accentPrimary, size: 22),
-            onPressed: _searchRoom,
-            padding: EdgeInsets.all(4),
-            constraints: BoxConstraints(),
-            tooltip: 'Search room',
-          ),
-          SizedBox(width: 4),
-          // Bag button with count badge
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(Icons.shopping_bag_outlined, color: AppColors.accentPrimary, size: 22),
-                onPressed: _showInventory,
-                padding: EdgeInsets.all(4),
-                constraints: BoxConstraints(),
-                tooltip: 'Inventory',
-              ),
-              if (_myInventory.isNotEmpty)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentSecondary,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '${_myInventory.length}',
-                      style: TextStyle(
-                        color: AppColors.bgPrimary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
+          
+          // Location name and controls row
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppDimensions.containerPadding,
+              vertical: AppDimensions.spaceMD,
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.location_on, color: AppColors.accentPrimary, size: 20),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _currentLocation,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-            ],
-          ),
-          SizedBox(width: 8),
-          Text(
-            '$completedCount/$totalTasks',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
+                // Search room button
+                IconButton(
+                  icon: Icon(Icons.search, color: AppColors.accentPrimary, size: 22),
+                  onPressed: _searchRoom,
+                  padding: EdgeInsets.all(4),
+                  constraints: BoxConstraints(),
+                  tooltip: 'Search room',
+                ),
+                SizedBox(width: 4),
+                // Bag button with count badge
+                Stack(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.shopping_bag_outlined, color: AppColors.accentPrimary, size: 22),
+                      onPressed: _showInventory,
+                      padding: EdgeInsets.all(4),
+                      constraints: BoxConstraints(),
+                      tooltip: 'Inventory',
+                    ),
+                    if (_myInventory.isNotEmpty)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentSecondary,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '${_myInventory.length}',
+                            style: TextStyle(
+                              color: AppColors.bgPrimary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                SizedBox(width: 8),
+                Text(
+                  '$completedCount/$totalTasks',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(width: 6),
+                Icon(Icons.timer, color: AppColors.textSecondary, size: 18),
+              ],
             ),
           ),
-          SizedBox(width: 6),
-          Icon(Icons.timer, color: AppColors.textSecondary, size: 18),
         ],
       ),
     );
