@@ -69,9 +69,10 @@ async def generate_item_image(
     item_id: str,
     item_description: str,
     experience_id: str,
-    client: genai.Client
+    client: genai.Client,
+    max_retries: int = 3
 ) -> str:
-    """Generate a single item image."""
+    """Generate a single item image with automatic retry for safety filter blocks."""
     
     output_path = OUTPUT_DIR / experience_id / f"item_{item_id}.png"
     
@@ -86,44 +87,54 @@ async def generate_item_image(
     print(f"🎨 Generating item image: {item_name}")
     print(f"   Prompt: {prompt[:100]}...")
     
-    try:
-        # Generate image using Imagen 4.0 Fast (cheapest publicly available model)
-        response = client.models.generate_images(
-            model='imagen-4.0-fast-generate-001',
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="1:1",  # Square
-                safety_filter_level="block_low_and_above",
-                person_generation="dont_allow",  # Items shouldn't have people
+    for attempt in range(max_retries):
+        if attempt > 0:
+            print(f"   🔄 Retry attempt {attempt + 1}/{max_retries}...")
+            await asyncio.sleep(1)  # Brief delay before retry
+    
+        try:
+            # Generate image using Imagen 4.0 Fast (cheapest publicly available model)
+            response = client.models.generate_images(
+                model='imagen-4.0-fast-generate-001',
+                prompt=prompt,
+                config=types.GenerateImagesConfig(
+                    number_of_images=1,
+                    aspect_ratio="1:1",  # Square
+                    safety_filter_level="block_low_and_above",
+                    person_generation="dont_allow",  # Items shouldn't have people
+                )
             )
-        )
-        
-        # Save image
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        print(f"   📁 Output path: {output_path.absolute()}")
-        
-        if response.generated_images:
-            image = response.generated_images[0]
-            print(f"   💾 Writing {len(image.image.image_bytes)} bytes...")
-            with open(output_path, 'wb') as f:
-                f.write(image.image.image_bytes)
             
-            if output_path.exists():
-                print(f"   ✅ Saved: {output_path} ({output_path.stat().st_size} bytes)")
-                return str(output_path)
+            # Save image
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            if response.generated_images:
+                image = response.generated_images[0]
+                print(f"   💾 Writing {len(image.image.image_bytes)} bytes...")
+                with open(output_path, 'wb') as f:
+                    f.write(image.image.image_bytes)
+                
+                if output_path.exists():
+                    print(f"   ✅ Saved: {output_path} ({output_path.stat().st_size} bytes)")
+                    return str(output_path)
+                else:
+                    print(f"   ❌ File not found after save: {output_path}")
             else:
-                print(f"   ❌ File not found after save: {output_path}")
-                return None
-        else:
-            print(f"   ❌ No image in response for {item_name}")
-            return None
-            
-    except Exception as e:
-        print(f"   ❌ Error generating {item_name}: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+                print(f"   ⚠️  No image in response (attempt {attempt + 1}/{max_retries}) - likely safety filter block")
+                if attempt < max_retries - 1:
+                    continue  # Retry
+                    
+        except Exception as e:
+            print(f"   ❌ Error on attempt {attempt + 1}/{max_retries}: {e}")
+            if attempt < max_retries - 1:
+                continue  # Retry
+            else:
+                import traceback
+                traceback.print_exc()
+    
+    # All retries failed
+    print(f"   ❌ Failed to generate {item_name} after {max_retries} attempts")
+    return None
 
 
 async def generate_all_item_images(experience_id: str, items: List[Dict]):
