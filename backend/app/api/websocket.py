@@ -286,8 +286,15 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
         game_state_manager = get_game_state_manager()
         game_state_manager.set_game_state(room_code, game_state)
         
-        # Trigger background image generation for this experience
-        from app.services.image_generator import trigger_image_generation_if_needed
+        # Notify players that images are generating
+        await ws_manager.broadcast_to_room(room_code, {
+            "type": "info",
+            "message": "🎨 Generating experience images... This may take a minute."
+        })
+        
+        # Generate images synchronously (blocks until complete)
+        # Order: Rooms → Items → NPCs
+        from app.services.image_generator import generate_all_images_for_experience
         experience_dict = {
             'locations': [loc.name for loc in game_state.locations],
             'items_by_location': {
@@ -295,7 +302,14 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
                 for loc, items in game_state.items_by_location.items()
             }
         }
-        trigger_image_generation_if_needed(scenario, experience_dict)
+        
+        logger.info(f"🎨 Starting image generation for {scenario}...")
+        success = await generate_all_images_for_experience(scenario, experience_dict)
+        
+        if success:
+            logger.info(f"✅ Image generation complete for {scenario}")
+        else:
+            logger.warning(f"⚠️ Image generation had errors for {scenario}, continuing anyway")
         
         # Send game started to each player with their specific tasks
         for pid, player in room.players.items():

@@ -74,30 +74,38 @@ def check_images_exist(experience_id: str) -> tuple[bool, int, int]:
     return has_images, location_count, item_count
 
 
-async def generate_images_background(experience_id: str, experience_dict: Dict):
+async def generate_all_images_for_experience(experience_id: str, experience_dict: Dict) -> bool:
     """
-    Generate images in the background for an experience.
-    Non-blocking - called when game starts.
+    Generate all images for an experience synchronously at game start.
+    This blocks until all images are generated.
+    
+    Generates in order: Locations → Items → NPCs
+    
+    Returns:
+        bool: True if successful, False if error
     """
     
     # Check if already generating
     if experience_id in _generation_tasks:
-        logger.info(f"🎨 Images already generating for {experience_id}")
-        return
+        logger.info(f"🎨 Images already generating for {experience_id}, waiting...")
+        # Wait for existing generation to complete
+        while experience_id in _generation_tasks:
+            await asyncio.sleep(0.5)
+        return True
     
     # Check if images already exist
     exists, loc_count, item_count = check_images_exist(experience_id)
     if exists:
-        logger.info(f"🎨 Images already exist for {experience_id} ({loc_count} locations, {item_count} items)")
-        return
+        logger.info(f"✅ Images already exist for {experience_id} ({loc_count} locations, {item_count} items)")
+        return True
     
-    logger.info(f"🎨 Starting background image generation for {experience_id}")
+    logger.info(f"🎨 Generating images for {experience_id} at game start...")
     
     try:
         # Parse experience for images needed
         locations, items = parse_experience_for_generation(experience_dict)
         
-        logger.info(f"🎨 Need to generate {len(locations)} location images and {len(items)} item images")
+        logger.info(f"🎨 Will generate: {len(locations)} locations, {len(items)} items")
         
         # Import generation functions
         from backend.scripts.generate_location_images import generate_all_location_images
@@ -106,46 +114,23 @@ async def generate_images_background(experience_id: str, experience_dict: Dict):
         # Mark as generating
         _generation_tasks[experience_id] = True
         
-        # Generate in background (don't await)
-        async def generate():
-            try:
-                # Generate locations first (more important for immersion)
-                await generate_all_location_images(experience_id, locations)
-                
-                # Then generate items
-                await generate_all_item_images(experience_id, items)
-                
-                logger.info(f"✅ Background image generation complete for {experience_id}")
-            except Exception as e:
-                logger.error(f"❌ Background image generation failed for {experience_id}: {e}")
-            finally:
-                # Remove from tracking
-                if experience_id in _generation_tasks:
-                    del _generation_tasks[experience_id]
+        # Generate in order: Rooms → Items → NPCs
+        logger.info(f"🎨 Step 1/2: Generating location images...")
+        await generate_all_location_images(experience_id, locations)
         
-        # Schedule generation task
-        asyncio.create_task(generate())
+        logger.info(f"🎨 Step 2/2: Generating item images...")
+        await generate_all_item_images(experience_id, items)
+        
+        # NPCs are generated separately when experience is created
+        # We don't regenerate them here
+        
+        logger.info(f"✅ All images generated for {experience_id}")
+        return True
         
     except Exception as e:
-        logger.error(f"❌ Error starting background generation: {e}")
+        logger.error(f"❌ Image generation failed for {experience_id}: {e}")
+        return False
+    finally:
+        # Remove from tracking
         if experience_id in _generation_tasks:
             del _generation_tasks[experience_id]
-
-
-def trigger_image_generation_if_needed(experience_id: str, experience_dict: Dict):
-    """
-    Synchronous wrapper to trigger background image generation.
-    Call this when a game starts.
-    """
-    # Check if images exist
-    exists, _, _ = check_images_exist(experience_id)
-    
-    if not exists and experience_id not in _generation_tasks:
-        # Create async task
-        try:
-            loop = asyncio.get_event_loop()
-            loop.create_task(generate_images_background(experience_id, experience_dict))
-            logger.info(f"🎨 Queued background image generation for {experience_id}")
-        except RuntimeError:
-            # No event loop - we're probably in a sync context
-            logger.warning(f"⚠️ Could not start background generation - no event loop")

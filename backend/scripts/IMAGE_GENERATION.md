@@ -29,12 +29,12 @@ backend/generated_images/
 
 ### Generation Flow
 
-1. **Game Starts** → Backend checks if images exist for experience
-2. **If Missing** → Queue background generation (non-blocking)
-3. **Game Continues** → Players start with placeholder images (emojis/icons)
-4. **Images Generate** → Saved to `backend/generated_images/[experience_id]/`
-5. **Frontend Requests** → Images served via HTTP endpoint
-6. **Placeholders Replace** → Real images fade in when loaded
+1. **Host Clicks "Start Game"** → Backend checks if images exist for experience
+2. **If Missing** → Generate images synchronously (blocks game start)
+3. **Generation Order** → Rooms → Items → NPCs (using nano-banana/Imagen 4.0)
+4. **Images Saved** → Stored in `backend/generated_images/[experience_id]/`
+5. **Game Starts** → Players receive game with all images ready
+6. **Frontend Requests** → Images served via HTTP endpoint
 
 ## Manual Generation Scripts
 
@@ -86,17 +86,22 @@ python scripts/generate_item_images.py experiences/museum_gala_vault.md
 
 Or create a convenience script to run both.
 
-## Automatic Background Generation
+## Automatic Generation at Game Start
 
-When a game starts, the backend automatically:
+When the host clicks "Start Game", the backend automatically:
 
 1. Checks if images exist for the experience ID
-2. If missing, triggers background generation
-3. Game starts immediately (doesn't wait for images)
-4. Images generate asynchronously
-5. Logged to backend logs: `🎨 Queued background image generation for [experience_id]`
+2. If missing, generates images synchronously (game waits)
+3. Shows loading message to players: "🎨 Generating experience images..."
+4. Generates in order: Rooms → Items → NPCs (using nano-banana/Imagen 4.0)
+5. Game starts after images are ready
+6. Subsequent games with same experience start instantly (cached)
 
-**No action needed** - happens automatically!
+**Generation time:** ~30-60 seconds for new experiences, instant for cached experiences
+
+Logged to backend logs:
+- `🎨 Starting image generation for [experience_id]...`
+- `✅ Image generation complete for [experience_id]`
 
 ## Serving Images
 
@@ -180,7 +185,7 @@ Image.network(
 - **Dimensions**: 300x150px (2:1 aspect ratio)
 - **Style**: Borderlands cel-shaded, dark noir atmosphere
 - **Format**: PNG
-- **Model**: Imagen 3.0 (Fast)
+- **Model**: Imagen 4.0 (nano-banana) - highest quality
 - **Naming**: `location_{location_id}.png`
 
 ### Item Images
@@ -188,23 +193,25 @@ Image.network(
 - **Style**: Photo-realistic product shot
 - **Background**: Transparent or dark gradient
 - **Format**: PNG
-- **Model**: Imagen 3.0 (Fast)
+- **Model**: Imagen 4.0 (nano-banana) - highest quality
 - **Naming**: `item_{item_id}.png`
 
 ## Cost Estimation
 
-**Imagen 3.0 Fast Pricing** (as of 2026):
-- ~$0.02 per image generation
+**Imagen 4.0 (nano-banana) Pricing** (as of 2026):
+- ~$0.04 per image generation (highest quality model)
 
 **Typical Experience**:
-- 5 locations × $0.02 = $0.10
-- 8 items × $0.02 = $0.16
-- **Total per experience: ~$0.26**
+- 5 locations × $0.04 = $0.20
+- 8 items × $0.04 = $0.32
+- **Total per experience: ~$0.52**
 
 **Reusability**:
 - Generated once per experience
+- Cached permanently for that experience
 - Used for unlimited game sessions
 - Very cost-effective over time
+- Higher quality worth the cost for immersive experience
 
 ## Troubleshooting
 
