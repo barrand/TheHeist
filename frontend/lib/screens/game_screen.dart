@@ -1220,15 +1220,43 @@ class _GameScreenState extends State<GameScreen> {
                             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
                             border: Border.all(color: AppColors.borderSubtle),
                           ),
-                          child: Column(
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.inventory_2, color: AppColors.accentSecondary, size: 20),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
+                              // Item image (80x80)
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: AppColors.bgSecondary,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.accentSecondary),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(7),
+                                  child: Image.network(
+                                    'http://localhost:8000/images/${widget.scenario}/item_${item.id}.png',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      // Fallback icon if image not available
+                                      return Center(
+                                        child: Icon(
+                                          Icons.inventory_2,
+                                          color: AppColors.accentSecondary,
+                                          size: 40,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              // Item details
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
                                       item.name,
                                       style: TextStyle(
                                         color: AppColors.textPrimary,
@@ -1236,42 +1264,55 @@ class _GameScreenState extends State<GameScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                item.description,
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14,
+                                    SizedBox(height: 4),
+                                    Text(
+                                      item.description,
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (item.requiredFor != null) ...[
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Required for: ${item.requiredFor}',
+                                        style: TextStyle(
+                                          color: AppColors.accentPrimary,
+                                          fontSize: 11,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
-                              ),
-                              if (item.requiredFor != null) ...[
-                                SizedBox(height: 8),
-                                Text(
-                                  'Required for: ${item.requiredFor}',
-                                  style: TextStyle(
-                                    color: AppColors.accentPrimary,
-                                    fontSize: 12,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                              SizedBox(height: 12),
-                              HeistPrimaryButton(
-                                text: 'Pick Up',
-                                onPressed: () {
-                                  widget.wsService.pickupItem(item.id);
-                                  Navigator.pop(context);
-                                },
-                                icon: Icons.add_circle_outline,
                               ),
                             ],
                           ),
-                        );
-                      },
+                        ),
+                        // Pick Up button below the row
+                        SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              widget.wsService.pickUpItem(item.id);
+                              _showSnackBar('Picked up: ${item.name}', color: AppColors.success);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accentPrimary,
+                              padding: EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            child: Text('Pick Up'),
+                          ),
+                        ),
+                      ],
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -1341,15 +1382,43 @@ class _GameScreenState extends State<GameScreen> {
                       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
                       border: Border.all(color: AppColors.accentSecondary),
                     ),
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(Icons.inventory_2, color: AppColors.accentSecondary, size: 20),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
+                        // Item image (80x80)
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.bgSecondary,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.accentSecondary),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(7),
+                            child: Image.network(
+                              'http://localhost:8000/images/${widget.scenario}/item_${item.id}.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                // Fallback icon if image not available
+                                return Center(
+                                  child: Icon(
+                                    Icons.inventory_2,
+                                    color: AppColors.accentSecondary,
+                                    size: 40,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        // Item details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
                                 item.name,
                                 style: TextStyle(
                                   color: AppColors.textPrimary,
@@ -1357,31 +1426,38 @@ class _GameScreenState extends State<GameScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          item.description,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
+                              SizedBox(height: 4),
+                              Text(
+                                item.description,
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (item.requiredFor != null) ...[
+                                SizedBox(height: 4),
+                                Text(
+                                  'Required for: ${item.requiredFor}',
+                                  style: TextStyle(
+                                    color: AppColors.accentPrimary,
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        if (item.requiredFor != null) ...[
-                          SizedBox(height: 8),
-                          Text(
-                            'Required for: ${item.requiredFor}',
-                            style: TextStyle(
-                              color: AppColors.accentPrimary,
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                        SizedBox(height: 12),
-                        Row(
-                          children: [
+                      ],
+                    ),
+                  ),
+                ),
+                // Action buttons below the item
+                SizedBox(height: 12),
+                Row(
+                  children: [
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () => _showTransferDialog(item),
