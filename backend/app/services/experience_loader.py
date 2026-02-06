@@ -154,17 +154,20 @@ class ExperienceLoader:
         # Find the Locations section
         locations_match = re.search(r'## Locations\s*\n(.*?)(?=\n##|\Z)', content, re.DOTALL)
         if not locations_match:
+            logger.warning("No ## Locations section found")
             return locations
         
         locations_text = locations_match.group(1)
+        logger.debug(f"Locations section length: {len(locations_text)} chars")
         
         # Parse each location subsection
-        for section_match in re.finditer(r'### (.+?)\n(.*?)(?=\n###|\Z)', locations_text, re.DOTALL):
+        for section_match in re.finditer(r'### (.+?)\n(.*?)(?=\n###|$)', locations_text, re.DOTALL):
             category = section_match.group(1).strip()
             section_content = section_match.group(2)
             
             # Extract individual locations (lines starting with -)
-            for loc_match in re.finditer(r'-\s+\*\*(.+?)\*\*:(.+)', section_content):
+            # Supports both formats: "- **Name**: Description" and "- **Name** - Description"
+            for loc_match in re.finditer(r'^\s*-\s+\*\*(.+?)\*\*\s*[-:](.+)$', section_content, re.MULTILINE):
                 name = loc_match.group(1).strip()
                 description = loc_match.group(2).strip()
                 

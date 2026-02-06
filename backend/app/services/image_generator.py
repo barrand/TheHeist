@@ -108,8 +108,13 @@ async def generate_all_images_for_experience(experience_id: str, experience_dict
         logger.info(f"🎨 Will generate: {len(locations)} locations, {len(items)} items")
         
         # Import generation functions
-        from backend.scripts.generate_location_images import generate_all_location_images
-        from backend.scripts.generate_item_images import generate_all_item_images
+        import sys
+        from pathlib import Path
+        scripts_dir = Path(__file__).parent.parent.parent / "scripts"
+        sys.path.insert(0, str(scripts_dir))
+        
+        from generate_location_images import generate_all_location_images
+        from generate_item_images import generate_all_item_images
         
         # Mark as generating
         _generation_tasks[experience_id] = True
