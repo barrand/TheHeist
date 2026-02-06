@@ -101,20 +101,28 @@ async def generate_item_image(
         
         # Save image
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"   📁 Output path: {output_path.absolute()}")
         
         if response.generated_images:
             image = response.generated_images[0]
+            print(f"   💾 Writing {len(image.image.image_bytes)} bytes...")
             with open(output_path, 'wb') as f:
                 f.write(image.image.image_bytes)
             
-            print(f"✓ Saved: {output_path}")
-            return str(output_path)
+            if output_path.exists():
+                print(f"   ✅ Saved: {output_path} ({output_path.stat().st_size} bytes)")
+                return str(output_path)
+            else:
+                print(f"   ❌ File not found after save: {output_path}")
+                return None
         else:
-            print(f"❌ No image generated for {item_name}")
+            print(f"   ❌ No image in response for {item_name}")
             return None
             
     except Exception as e:
-        print(f"❌ Error generating {item_name}: {e}")
+        print(f"   ❌ Error generating {item_name}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 

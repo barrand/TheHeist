@@ -92,7 +92,7 @@ async def generate_location_image(
             prompt=prompt,
             config=types.GenerateImagesConfig(
                 number_of_images=1,
-                aspect_ratio="3:2",  # Close to 300x150
+                aspect_ratio="16:9",  # Wide landscape format for locations
                 safety_filter_level="block_low_and_above",
                 # Note: person_generation not specified - Imagen 4.0 Fast doesn't support allow_adult
             )
@@ -100,20 +100,28 @@ async def generate_location_image(
         
         # Save image
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"   📁 Output path: {output_path.absolute()}")
         
         if response.generated_images:
             image = response.generated_images[0]
+            print(f"   💾 Writing {len(image.image.image_bytes)} bytes...")
             with open(output_path, 'wb') as f:
                 f.write(image.image.image_bytes)
             
-            print(f"✓ Saved: {output_path}")
-            return str(output_path)
+            if output_path.exists():
+                print(f"   ✅ Saved: {output_path} ({output_path.stat().st_size} bytes)")
+                return str(output_path)
+            else:
+                print(f"   ❌ File not found after save: {output_path}")
+                return None
         else:
-            print(f"❌ No image generated for {location_name}")
+            print(f"   ❌ No image in response for {location_name}")
             return None
             
     except Exception as e:
-        print(f"❌ Error generating {location_name}: {e}")
+        print(f"   ❌ Error generating {location_name}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
