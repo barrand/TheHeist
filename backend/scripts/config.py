@@ -13,9 +13,21 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-# Look for .env in the project root (parent of scripts/)
-project_root = Path(__file__).parent.parent
+# Look for .env in the project root (parent of backend/, which is parent of scripts/)
+# Path: scripts/config.py -> scripts/ -> backend/ -> PROJECT_ROOT/
+project_root = Path(__file__).parent.parent.parent
 env_path = project_root / '.env'
+
+# First, clear any existing GEMINI_API_KEY from environment to ensure .env wins
+if 'GEMINI_API_KEY' in os.environ:
+    old_key = os.environ['GEMINI_API_KEY']
+    del os.environ['GEMINI_API_KEY']
+    print(f"⚠️  Cleared cached API key from environment: {old_key[:15]}...")
+
+# Force load from .env file
+if not env_path.exists():
+    raise FileNotFoundError(f".env file not found at: {env_path.absolute()}")
+
 load_dotenv(dotenv_path=env_path, override=True)  # Override environment variables
 
 # ============================================================================
