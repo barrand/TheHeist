@@ -40,7 +40,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
   - **Name**: Forged Gala Invitation
   - **Description**: Fake invitation to blend in at the museum gala
   - **Required For**: None (flavor item, already "inside")
-  - **Hidden**: true
+  - **Hidden**: false
 
 ### Grand Hall
 - **ID**: `guest_list`
@@ -60,7 +60,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
   - **Name**: Maintenance Keycard
   - **Description**: Lost keycard from maintenance staff - might open service doors
   - **Required For**: None (alternative path, not required)
-  - **Hidden**: true
+  - **Hidden**: false
 
 ### Vault Room
 - **ID**: `eye_of_orion`

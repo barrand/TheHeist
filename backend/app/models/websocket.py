@@ -67,6 +67,18 @@ class PickupItemMessage(BaseModel):
     item_id: str = Field(..., description="Item to pick up")
 
 
+class UseItemMessage(BaseModel):
+    """Player attempts to use an item"""
+    type: Literal["use_item"] = "use_item"
+    item_id: str = Field(..., description="Item to use")
+
+
+class DropItemMessage(BaseModel):
+    """Player drops an item in current location"""
+    type: Literal["drop_item"] = "drop_item"
+    item_id: str = Field(..., description="Item to drop")
+
+
 # ============================================
 # Server → Client Messages
 # ============================================

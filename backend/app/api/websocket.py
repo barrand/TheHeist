@@ -191,6 +191,12 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
             elif message_type == "pickup_item":
                 await handle_pickup_item(room_code, player_id, data)
             
+            elif message_type == "use_item":
+                await handle_use_item(room_code, player_id, data)
+            
+            elif message_type == "drop_item":
+                await handle_drop_item(room_code, player_id, data)
+            
             else:
                 logger.warning(f"Unknown message type: {message_type}")
                 await websocket.send_json({
@@ -505,3 +511,110 @@ async def handle_pickup_item(room_code: str, player_id: str, data: Dict[str, Any
     await ws_manager.broadcast_to_room(room_code, pickup_msg.model_dump(mode='json'))
     
     logger.info(f"📦 {player.name} picked up {item.name} from {location}")
+
+
+async def handle_use_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
+    """Handle player attempting to use an item"""
+    ws_manager = get_ws_manager()
+    room_manager = get_room_manager()
+    
+    item_id = data.get("item_id")
+    
+    room = room_manager.get_room(room_code)
+    if not room or player_id not in room.players:
+        return
+    
+    player = room.players[player_id]
+    
+    # Find item in player inventory
+    item = None
+    for inv_item in player.inventory:
+        if inv_item.id == item_id:
+            item = inv_item
+            break
+    
+    if not item:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Item not in your inventory"
+        })
+        return
+    
+    # For now, items can't be used generically
+    # This would be expanded to check for specific use cases
+    # (e.g., keycard on door, food given to NPC, etc.)
+    await ws_manager.send_to_player(room_code, player_id, {
+        "type": "info",
+        "message": f"{item.name} can't be used here. Try using it during a task or giving it to someone who needs it."
+    })
+    
+    logger.info(f"🔧 {player.name} tried to use {item.name} at {player.location}")
+
+
+async def handle_drop_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
+    """Handle player dropping an item in their current location"""
+    ws_manager = get_ws_manager()
+    room_manager = get_room_manager()
+    game_state_manager = get_game_state_manager()
+    
+    item_id = data.get("item_id")
+    
+    room = room_manager.get_room(room_code)
+    if not room or player_id not in room.players:
+        return
+    
+    player = room.players[player_id]
+    location = player.location
+    
+    # Get game state
+    game_state = game_state_manager.get_game_state(room_code)
+    if not game_state:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Game not started yet"
+        })
+        return
+    
+    # Find and remove item from player inventory
+    item = None
+    for i, inv_item in enumerate(player.inventory):
+        if inv_item.id == item_id:
+            item = player.inventory.pop(i)
+            break
+    
+    if not item:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Item not in your inventory"
+        })
+        return
+    
+    # Add item back to location
+    from app.models.game_state import Item as GameItem
+    dropped_item = GameItem(
+        id=item.id,
+        name=item.name,
+        description=item.description,
+        required_for=None,
+        transferable=True
+    )
+    
+    if location not in game_state.items_by_location:
+        game_state.items_by_location[location] = []
+    game_state.items_by_location[location].append(dropped_item)
+    
+    # Notify player
+    await ws_manager.send_to_player(room_code, player_id, {
+        "type": "item_dropped",
+        "item_id": item.id,
+        "item_name": item.name,
+        "location": location
+    })
+    
+    # Broadcast to team
+    await ws_manager.broadcast_to_room(room_code, {
+        "type": "info",
+        "message": f"{player.name} dropped {item.name} in {location}"
+    })
+    
+    logger.info(f"🗑️ {player.name} dropped {item.name} at {location}")

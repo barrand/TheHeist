@@ -686,12 +686,8 @@ class _GameScreenState extends State<GameScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildNavButton(Icons.map, 'Map', _showMapDialog),
-          _buildNavButton(Icons.backpack, 'Bag', () {
-            _showSnackBar('Inventory coming soon!');
-          }),
-          _buildNavButton(Icons.search, 'Search', () {
-            _showSnackBar('Search room coming soon!');
-          }),
+          _buildNavButton(Icons.backpack, 'Bag', _showInventory),
+          _buildNavButton(Icons.search, 'Search', _searchRoom),
         ],
       ),
     );
@@ -1115,7 +1111,7 @@ class _GameScreenState extends State<GameScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
+        height: MediaQuery.of(context).size.height * 0.75,
         decoration: BoxDecoration(
           color: AppColors.bgSecondary,
           borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusLG)),
@@ -1334,14 +1330,49 @@ class _GameScreenState extends State<GameScreen> {
                             ),
                           ),
                         ],
-                        if (item.transferable) ...[
-                          SizedBox(height: 12),
-                          HeistPrimaryButton(
-                            text: 'Transfer to...',
-                            onPressed: () => _showTransferDialog(item),
-                            icon: Icons.send,
-                          ),
-                        ],
+                        SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _showTransferDialog(item),
+                                icon: Icon(Icons.send, size: 16),
+                                label: Text('Transfer'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.accentPrimary,
+                                  side: BorderSide(color: AppColors.accentPrimary),
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _useItem(item),
+                                icon: Icon(Icons.touch_app, size: 16),
+                                label: Text('Use'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.accentSecondary,
+                                  side: BorderSide(color: AppColors.accentSecondary),
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _dropItem(item),
+                                icon: Icon(Icons.delete_outline, size: 16),
+                                label: Text('Drop'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.textSecondary,
+                                  side: BorderSide(color: AppColors.borderSubtle),
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   );
@@ -1408,5 +1439,22 @@ class _GameScreenState extends State<GameScreen> {
         ],
       ),
     );
+  }
+  
+  // Use an item
+  void _useItem(Item item) {
+    widget.wsService.useItem(item.id);
+    Navigator.pop(context); // Close inventory
+    _showSnackBar('Trying to use ${item.name}...', color: AppColors.info);
+  }
+  
+  // Drop an item
+  void _dropItem(Item item) {
+    widget.wsService.dropItem(item.id);
+    setState(() {
+      _myInventory.removeWhere((i) => i.id == item.id);
+    });
+    Navigator.pop(context); // Close inventory
+    _showSnackBar('Dropped ${item.name} in $_currentLocation', color: AppColors.info);
   }
 }

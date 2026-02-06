@@ -189,6 +189,22 @@ class WebSocketService {
     });
   }
   
+  /// Use an item
+  void useItem(String itemId) {
+    send({
+      'type': 'use_item',
+      'item_id': itemId,
+    });
+  }
+  
+  /// Drop an item in current location
+  void dropItem(String itemId) {
+    send({
+      'type': 'drop_item',
+      'item_id': itemId,
+    });
+  }
+  
   /// Handle incoming messages
   void _handleMessage(dynamic rawMessage) {
     try {
@@ -238,6 +254,14 @@ class WebSocketService {
           break;
         case 'item_transferred':
           _itemTransferredController.add(message);
+          break;
+        case 'item_dropped':
+          // Item was dropped - currently just logged
+          debugPrint('📦 Item dropped: ${message['item_name']} in ${message['location']}');
+          break;
+        case 'info':
+          // Generic info message - currently just logged
+          debugPrint('ℹ️ Info: ${message['message']}');
           break;
         case 'error':
           _errorController.add(message);
