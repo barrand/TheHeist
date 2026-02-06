@@ -178,7 +178,7 @@ def parse_experience_locations(experience_file: Path) -> List[Dict]:
             break
         elif in_locations and line.startswith('- **'):
             # Extract location name
-            # Format: - **Safe House** - Description
+            # Format: - **ID**: `crew_hideout`
             parts = line.split('**')
             if len(parts) >= 2:
                 location_name = parts[1].strip()

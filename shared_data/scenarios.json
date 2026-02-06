@@ -12,7 +12,7 @@
       "summary": "Infiltrate a gala, secure access, crack the vault, and escape unnoticed.",
       "roles_required": ["mastermind", "safe_cracker"],
       "locations": [
-        "Safe House",
+        "Crew Hideout",
         "Gas Station",
         "Museum Front Steps",
         "Museum Side Entrance",

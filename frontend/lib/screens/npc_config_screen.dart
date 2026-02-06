@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../models/npc.dart';
+import '../widgets/common/top_toast.dart';
 import '../widgets/common/heist_primary_button.dart';
 import '../widgets/common/heist_text_field.dart';
 import '../widgets/common/section_header.dart';
@@ -66,12 +67,7 @@ class _NPCConfigScreenState extends State<NPCConfigScreen> {
 
   void _startConversation() async {
     if (_apiKeyController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter your Gemini API key'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
+      showTopToast(context, 'Please enter your Gemini API key', color: AppColors.danger);
       return;
     }
 

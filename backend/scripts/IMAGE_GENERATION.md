@@ -142,7 +142,7 @@ GET /api/images/{experience_id}/location/{location_id}
 
 Example:
 ```
-http://localhost:8000/api/images/museum_gala_vault/location/safe_house
+http://localhost:8000/api/images/museum_gala_vault/location/crew_hideout
 ```
 
 ### Item Images
@@ -276,7 +276,7 @@ Image.network(
 
 ### Images not loading in frontend
 1. Check image exists: `ls backend/generated_images/[experience_id]/`
-2. Test endpoint: `curl http://localhost:8000/api/images/[experience_id]/location/safe_house`
+2. Test endpoint: `curl http://localhost:8000/api/images/[experience_id]/location/crew_hideout`
 3. Check browser console for 404 errors
 
 ### Re-generate all images

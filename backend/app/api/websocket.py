@@ -323,6 +323,7 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
                 npcs=[npc.model_dump(mode='json') for npc in game_state.npcs],
                 locations=[loc.model_dump(mode='json') for loc in game_state.locations]
             )
+            logger.info(f"📍 Sending {len(game_state.locations)} locations to player {pid}")
             await ws_manager.send_to_player(room_code, pid, game_started.model_dump(mode='json'))
         
         logger.info(f"🎮 Game started in room {room_code} - scenario: {scenario}")

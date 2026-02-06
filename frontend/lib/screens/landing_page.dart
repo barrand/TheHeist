@@ -6,6 +6,7 @@ import '../widgets/common/heist_secondary_button.dart';
 import '../widgets/common/heist_text_field.dart';
 import '../services/room_service.dart';
 import '../services/websocket_service.dart';
+import '../widgets/common/top_toast.dart';
 import 'npc_test_screen.dart';
 import 'room_lobby_screen.dart';
 
@@ -239,13 +240,7 @@ class _LandingPageState extends State<LandingPage> {
   }
 
   void _showError(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.danger,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    showTopToast(context, message, color: AppColors.danger, seconds: 3);
   }
 
   void _onTestNPC(BuildContext context) {
@@ -277,13 +272,7 @@ class _LandingPageState extends State<LandingPage> {
         
         // Show room code to user
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Room created: $roomCode\nSecond player joins this code!'),
-              backgroundColor: AppColors.success,
-              duration: const Duration(seconds: 8),
-            ),
-          );
+          showTopToast(context, 'Room created: $roomCode\nSecond player joins this code!', color: AppColors.success, seconds: 8);
         }
       } else {
         // Safe Cracker asks for room code to join

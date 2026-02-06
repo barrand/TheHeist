@@ -3,6 +3,7 @@ import 'package:the_heist/core/theme/app_colors.dart';
 import 'package:the_heist/core/theme/app_dimensions.dart';
 import 'package:the_heist/services/websocket_service.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
+import 'package:the_heist/widgets/common/top_toast.dart';
 import 'package:the_heist/models/item.dart';
 
 /// Game screen where players complete their tasks
@@ -36,7 +37,7 @@ class _GameScreenState extends State<GameScreen> {
   bool _gameEnded = false;
   String? _gameResult;
   String? _gameSummary;
-  String _currentLocation = 'Safe House'; // All games start at Safe House
+  String _currentLocation = 'Crew Hideout'; // Starting location
   bool _showCompletedTasks = false;
   
   // Track all players, NPCs, and locations
@@ -208,13 +209,7 @@ class _GameScreenState extends State<GameScreen> {
   }
   
   void _showSnackBar(String message, {Color? color}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color ?? AppColors.info,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    showTopToast(context, message, color: color);
   }
   
   void _completeTask(String taskId, String taskType) {
@@ -433,7 +428,7 @@ class _GameScreenState extends State<GameScreen> {
             height: 150,
             color: AppColors.bgPrimary,
             child: Image.network(
-              'http://localhost:8000/images/${widget.scenario}/location_${_currentLocation.toLowerCase().replaceAll(' ', '_')}.png',
+              'http://localhost:8000/api/images/${widget.scenario}/location/${_currentLocation.toLowerCase().replaceAll(' ', '_')}',
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 // Fallback to gradient if image not available
@@ -734,7 +729,7 @@ class _GameScreenState extends State<GameScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavButton(Icons.map, 'Map', _showMapDialog),
+          _buildNavButton(Icons.map, 'Map', _allLocations.isNotEmpty ? _showMapDialog : null),
           _buildNavButton(Icons.backpack, 'Bag', _showInventory),
           _buildNavButton(Icons.search, 'Search', _searchRoom),
         ],
@@ -742,44 +737,35 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
   
-  Widget _buildNavButton(IconData icon, String label, VoidCallback onTap) {
+  Widget _buildNavButton(IconData icon, String label, VoidCallback? onTap) {
+    final isDisabled = onTap == null;
     return InkWell(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: AppColors.textSecondary, size: 24),
-          SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 10,
+      child: Opacity(
+        opacity: isDisabled ? 0.4 : 1.0,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: AppColors.textSecondary, size: 24),
+            SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 10,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
   
   void _showMapDialog() {
-    // Use all locations from game state, or fall back to locations from tasks
-    List<String> locationNames;
-    if (_allLocations.isNotEmpty) {
-      // Use locations sent from backend
-      locationNames = _allLocations
-          .map((loc) => loc['name'] as String)
-          .toList();
-    } else {
-      // Fallback: extract from tasks
-      final Set<String> taskLocations = _myTasks
-          .map((task) => task['location'] as String?)
-          .where((loc) => loc != null && loc.isNotEmpty)
-          .cast<String>()
-          .toSet();
-      taskLocations.add('Safe House');
-      locationNames = taskLocations.toList();
-    }
+    // Get location names from backend (populated on game start)
+    final locationNames = _allLocations
+        .map((loc) => loc['name'] as String)
+        .toList();
     
     final sortedLocations = locationNames..sort();
     
@@ -1220,103 +1206,106 @@ class _GameScreenState extends State<GameScreen> {
                             borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
                             border: Border.all(color: AppColors.borderSubtle),
                           ),
-                          child: Row(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Item image (80x80)
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: AppColors.bgSecondary,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.accentSecondary),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(7),
-                                  child: Image.network(
-                                    'http://localhost:8000/images/${widget.scenario}/item_${item.id}.png',
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      // Fallback icon if image not available
-                                      return Center(
-                                        child: Icon(
-                                          Icons.inventory_2,
-                                          color: AppColors.accentSecondary,
-                                          size: 40,
-                                        ),
-                                      );
-                                    },
+                              // Image and details row
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Item image (80x80)
+                                  Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.bgSecondary,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: AppColors.accentSecondary),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(7),
+                                      child: Image.network(
+                                        'http://localhost:8000/api/images/${widget.scenario}/item/${item.id}',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          // Fallback icon if image not available
+                                          return Center(
+                                            child: Icon(
+                                              Icons.inventory_2,
+                                              color: AppColors.accentSecondary,
+                                              size: 40,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              // Item details
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item.name,
-                                      style: TextStyle(
-                                        color: AppColors.textPrimary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      item.description,
-                                      style: TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 13,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (item.requiredFor != null) ...[
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Required for: ${item.requiredFor}',
-                                        style: TextStyle(
-                                          color: AppColors.accentPrimary,
-                                          fontSize: 11,
-                                          fontStyle: FontStyle.italic,
+                                  SizedBox(width: 12),
+                                  // Item details
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.name,
+                                          style: TextStyle(
+                                            color: AppColors.textPrimary,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ],
+                                        SizedBox(height: 4),
+                                        Text(
+                                          item.description,
+                                          style: TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 13,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (item.requiredFor != null) ...[
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Required for: ${item.requiredFor}',
+                                            style: TextStyle(
+                                              color: AppColors.accentPrimary,
+                                              fontSize: 11,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // Pick Up button below the row
+                              SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    widget.wsService.pickupItem(item.id);
+                                    _showSnackBar('Picked up: ${item.name}', color: AppColors.success);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.accentPrimary,
+                                    padding: EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  child: Text('Pick Up'),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        // Pick Up button below the row
-                        SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              widget.wsService.pickUpItem(item.id);
-                              _showSnackBar('Picked up: ${item.name}', color: AppColors.success);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.accentPrimary,
-                              padding: EdgeInsets.symmetric(vertical: 10),
-                            ),
-                            child: Text('Pick Up'),
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
   
@@ -1382,83 +1371,85 @@ class _GameScreenState extends State<GameScreen> {
                       borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
                       border: Border.all(color: AppColors.accentSecondary),
                     ),
-                    child: Row(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Item image (80x80)
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: AppColors.bgSecondary,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.accentSecondary),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(7),
-                            child: Image.network(
-                              'http://localhost:8000/images/${widget.scenario}/item_${item.id}.png',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                // Fallback icon if image not available
-                                return Center(
-                                  child: Icon(
-                                    Icons.inventory_2,
-                                    color: AppColors.accentSecondary,
-                                    size: 40,
-                                  ),
-                                );
-                              },
+                        // Image and details row
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Item image (80x80)
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: AppColors.bgSecondary,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.accentSecondary),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(7),
+                                child: Image.network(
+                                  'http://localhost:8000/api/images/${widget.scenario}/item/${item.id}',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    // Fallback icon if image not available
+                                    return Center(
+                                      child: Icon(
+                                        Icons.inventory_2,
+                                        color: AppColors.accentSecondary,
+                                        size: 40,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        // Item details
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name,
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                item.description,
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 13,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (item.requiredFor != null) ...[
-                                SizedBox(height: 4),
-                                Text(
-                                  'Required for: ${item.requiredFor}',
-                                  style: TextStyle(
-                                    color: AppColors.accentPrimary,
-                                    fontSize: 11,
-                                    fontStyle: FontStyle.italic,
+                            SizedBox(width: 12),
+                            // Item details
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ],
-                          ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    item.description,
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (item.requiredFor != null) ...[
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Required for: ${item.requiredFor}',
+                                      style: TextStyle(
+                                        color: AppColors.accentPrimary,
+                                        fontSize: 11,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Action buttons below the item
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
+                        // Action buttons below the item
+                        SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () => _showTransferDialog(item),
                                 icon: Icon(Icons.send, size: 16),
@@ -1495,15 +1486,15 @@ class _GameScreenState extends State<GameScreen> {
                                   padding: EdgeInsets.symmetric(vertical: 8),
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                  );
+                },
+              ),
             ),
-          );
-        },
-      ),
-    ),
           ],
         ),
       ),

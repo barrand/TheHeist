@@ -722,7 +722,7 @@ Success Fail Success Fail  │
 │  PREP HACKING DEVICE            │
 │                                 │
 │  🎮 Minigame: wire_connecting   │
-│  📍 Location: Safe House ✓      │
+│  📍 Location: Crew Hideout ✓   │
 │                                 │
 │  Description:                   │
 │  Assemble USB device in van,    │
@@ -979,14 +979,14 @@ Success Fail Success Fail  │
 │                                 │
 │  ┌───────────────────────────┐ │
 │  │ 👤 You (Hacker)           │ │
-│  │ 📍 Safe House              │ │
+│  │ 📍 Crew Hideout            │ │
 │  │ 🎮 Prep Hacking Device    │ │← Current task
 │  │ ● In Progress             │ │← Status
 │  └───────────────────────────┘ │
 │                                 │
 │  ┌───────────────────────────┐ │
 │  │ 👑 Brian (Mastermind)     │ │
-│  │ 📍 Safe House              │ │
+│  │ 📍 Crew Hideout            │ │
 │  │ 💬 Briefing Crew          │ │
 │  │ ✓ Completed               │ │
 │  └───────────────────────────┘ │
@@ -1702,7 +1702,7 @@ The current implementation shows a simpler list-based search results:
 
 ```
 ┌─────────────────────────────────┐
-│  🔍 Search Results: Safe House ✕│
+│  🔍 Search Results: Crew Hideout ✕│
 │                                 │
 │  ┌───────────────────────────┐ │
 │  │ ┌────┐                    │ │
@@ -1746,7 +1746,7 @@ When player has a task like "🔍 Search: Hunt for Burner Phone"
 │  < Back                         │
 │                                 │
 │  🔍 SEARCHING                   │
-│  Safe House - Office            │
+│  Crew Hideout - Office          │
 │                                 │
 │  📋 TASK: Find Burner Phone     │← From task
 │                                 │
@@ -2488,10 +2488,10 @@ Icon size:              24px
 - **Tone**: Dark, noir atmosphere
 - **Content**: Interior or exterior view of the location
 - **File Format**: PNG or WebP
-- **Naming**: `location_[location_id].png` (e.g., `location_safe_house.png`)
+- **Naming**: `location_[location_id].png` (e.g., `location_crew_hideout.png`)
 
 **Examples**:
-- Safe House: Dark room with planning table, maps on wall
+- Crew Hideout: Dark room with planning table, maps on wall
 - Museum Grand Hall: Elegant hall with chandeliers, guests
 - Vault Room: Heavy steel vault door, dim lighting
 - Museum Basement: Concrete corridor, pipes, service entrance

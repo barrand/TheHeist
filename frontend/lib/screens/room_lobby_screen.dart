@@ -8,6 +8,7 @@ import 'package:the_heist/services/roles_service.dart';
 import 'package:the_heist/services/scenarios_service.dart';
 import 'package:the_heist/services/websocket_service.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
+import 'package:the_heist/widgets/common/top_toast.dart';
 import 'package:the_heist/widgets/common/heist_secondary_button.dart';
 import 'package:the_heist/widgets/common/section_header.dart';
 import 'package:the_heist/widgets/modals/role_selection_modal.dart';
@@ -256,13 +257,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   }
   
   void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? AppColors.danger : AppColors.success,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    showTopToast(context, message, color: isError ? AppColors.danger : AppColors.success);
   }
   
   void _selectRole(String roleId) {

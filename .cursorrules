@@ -15,9 +15,18 @@
 - Keep it simple and focused
 - Suggest cleanup opportunities as you work
 - Use industry best practices (separate view, data, business logic)
+- When asked to change something "everywhere" or "all", search the ENTIRE codebase first, then fix every instance in one pass
 
 ## Testing & Validation
-- After modifying Flutter code, check compilation with ReadLints tool
-- If lints show compilation errors, fix them immediately before proceeding
-- Test critical paths after significant changes (game flow, WebSocket, etc.)
-- Don't assume code works - verify it compiles and runs
+- Use ReadLints after Flutter edits, fix errors immediately
+- After app restart, verify both services respond (curl check frontend:8087 and backend:8000/health)
+- Wait 10-15s for Flutter to compile before checking
+- Never claim "it's working" without HTTP verification
+
+## Cross-Cutting Changes
+When touching both frontend and backend, trace the FULL data flow:
+- Check models match on both sides (backend/app/models ↔ frontend/lib/models)
+- Verify hardcoded defaults match everywhere (especially initial/starting values)
+- Test API endpoints with curl before claiming success
+- For 404s: check backend logs for actual URLs requested, verify file/data exists
+- For data issues: trace transformations (name → ID → filename), check for stale hardcoded values

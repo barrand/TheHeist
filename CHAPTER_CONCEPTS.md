@@ -88,7 +88,7 @@ All scenarios tie into gathering evidence, resources, or weakening Valdez's netw
 #### 🏛️ **Museum Gala Vault Heist**
 - **Objective**: Steal the "Eye of Orion" jewels—actually containing a micro-SD card with Valdez financial records
 - **Story Connection**: Museum director is Valdez's accountant; the jewels hide offshore account evidence
-- **Locations**: Safe house, museum exterior/interior, vault, getaway vehicle
+- **Locations**: Crew hideout, museum exterior/interior, vault, getaway vehicle
 
 #### 🏦 **Bank Safe Deposit Box**
 - **Objective**: Access specific deposit box containing shell company documents

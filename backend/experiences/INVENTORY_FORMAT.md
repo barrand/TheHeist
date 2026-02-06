@@ -6,23 +6,41 @@ Items can be found in locations through room searches or obtained from NPCs. Pla
 
 ## Format in Experience Files
 
+**IMPORTANT**: Both locations and items MUST have explicit **ID** fields. These IDs determine the image filenames:
+- Location images: `location_{id}.png` (e.g., `location_crew_hideout.png`)
+- Item images: `item_{id}.png` (e.g., `item_safe_cracking_tools.png`)
+
+### Locations Section Format
+
+```markdown
+## Locations
+
+### Crew Hideout (Starting Location)
+- **ID**: `crew_hideout`
+- **Name**: Crew Hideout
+- **Description**: Secret base where the crew plans the heist
+- **Visual**: Gritty underground hideout with exposed brick walls...
+```
+
 ### Location Items Section
 
-Add an `## Items by Location` section listing all discoverable items:
+Add an `## Items by Location` section listing all discoverable items. Use the location name (not ID) as the section header:
 
 ```markdown
 ## Items by Location
 
-### Safe House
+### Crew Hideout
 - **ID**: `safe_cracking_tools`
   - **Name**: Safe Cracking Tools
   - **Description**: Professional lockpick set and dial manipulation tools
+  - **Visual**: Open black leather case with metallic tools
   - **Required For**: SC2 (Crack the Vault Lock)
   - **Hidden**: false (visible when searching)
 
 - **ID**: `blueprints`
   - **Name**: Museum Blueprints
   - **Description**: Stolen floor plans showing vault location and security systems
+  - **Visual**: Rolled architectural blueprints with security markings
   - **Required For**: MM1 (alternative way to learn vault location)
   - **Hidden**: false
 
@@ -116,12 +134,12 @@ Tasks can require items:
 
 If player doesn't have required item:
 - Task shows as locked with "⚠️ Needs: Safe Cracking Tools"
-- Player must search Safe House to find the tools
+- Player must search Crew Hideout to find the tools
 - Once picked up, task becomes available
 
 ## Example: Complete Item Flow
 
-1. **Discovery**: MM searches Safe House → Finds "Safe Cracking Tools"
+1. **Discovery**: MM searches Crew Hideout → Finds "Safe Cracking Tools"
 2. **Pickup**: MM picks up tools (added to inventory)
 3. **Travel**: MM travels to Grand Hall to meet SC
 4. **Transfer**: MM opens Bag → Transfer to SC (both at Grand Hall)
@@ -145,7 +163,7 @@ When item is picked up:
 ```
 ┌─────────────────────────────┐
 │  SEARCH RESULTS          ✕  │
-│  Safe House                 │
+│  Crew Hideout               │
 │                             │
 │  ITEMS FOUND:               │
 │  ┌───────────────────────┐ │

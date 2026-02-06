@@ -31,7 +31,7 @@ class Player(BaseModel):
     name: str = Field(..., description="Player display name")
     role: Optional[str] = Field(None, description="Selected role (mastermind, hacker, etc.)")
     connected: bool = Field(default=True, description="Is player currently connected")
-    location: str = Field(default="Safe House", description="Current location in game")
+    location: str = Field(default="Crew Hideout", description="Current location in game")
     inventory: List[Item] = Field(default_factory=list, description="Items player is carrying")
     joined_at: datetime = Field(default_factory=datetime.utcnow, description="When player joined")
 

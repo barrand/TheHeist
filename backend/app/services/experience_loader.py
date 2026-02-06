@@ -29,8 +29,8 @@ class ExperienceLoader:
     ### Hacker
     **Tasks:**
     1. **🎮 wire_connecting** - Prep Hacking Device
-       - Assemble and configure the specialized hacking device at the safe house.
-       - *Location:* Safe House
+       - Assemble and configure the specialized hacking device at the crew hideout.
+       - *Location:* Crew Hideout
        - *Dependencies:* None (Starting task)
     """
     
@@ -166,28 +166,38 @@ class ExperienceLoader:
             category = section_match.group(1).strip()
             section_content = section_match.group(2)
             
-            # Extract individual locations with their visual descriptions
-            # Format: - **Name** - Description
-            #           - **Visual**: visual description
-            location_blocks = re.split(r'(?=^\s*-\s+\*\*[^*]+\*\*)', section_content, flags=re.MULTILINE)
+            # Extract individual locations with explicit IDs
+            # New format: - **ID**: `location_id`
+            #             - **Name**: Location Name
+            #             - **Description**: Description text
+            #             - **Visual**: visual description
+            location_blocks = re.split(r'(?=^\s*-\s+\*\*ID\*\*:)', section_content, flags=re.MULTILINE)
             
             for block in location_blocks:
                 if not block.strip():
                     continue
                 
-                # Extract name and description
-                loc_match = re.search(r'^\s*-\s+\*\*(.+?)\*\*\s*[-:](.+)$', block, re.MULTILINE)
-                if not loc_match:
+                # Extract ID (required)
+                id_match = re.search(r'-\s+\*\*ID\*\*:\s*`?([a-z_]+)`?', block, re.IGNORECASE)
+                if not id_match:
                     continue
-                    
-                name = loc_match.group(1).strip()
-                description = loc_match.group(2).strip()
+                
+                loc_id = id_match.group(1).strip()
+                
+                # Extract name (required)
+                name_match = re.search(r'-\s+\*\*Name\*\*:\s*(.+?)(?=\n|$)', block)
+                if not name_match:
+                    continue
+                name = name_match.group(1).strip()
+                
+                # Extract description (required)
+                desc_match = re.search(r'-\s+\*\*Description\*\*:\s*(.+?)(?=\n\s*-|$)', block, re.DOTALL)
+                description = desc_match.group(1).strip() if desc_match else ""
                 
                 # Extract visual description if present
                 visual_match = re.search(r'-\s+\*\*Visual\*\*:\s*(.+?)(?=\n\s*$|$)', block, re.DOTALL)
                 visual = visual_match.group(1).strip() if visual_match else ""
                 
-                loc_id = name.lower().replace(" ", "_").replace("'", "")
                 locations.append(Location(
                     id=loc_id,
                     name=name,

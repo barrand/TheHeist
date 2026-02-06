@@ -22,7 +22,7 @@ The city's most prestigious Natural History Museum is hosting its annual black-t
 This scenario takes place across the following locations:
 
 ### Off-Site Preparation
--   **Safe House** - Crew meeting, briefing, equipment staging.
+-   **Crew Hideout** - Crew meeting, briefing, equipment staging.
 -   **Getaway Vehicle Staging** - Driver's pre-arranged parking spot for the getaway car.
 
 ### Museum Exterior
@@ -94,7 +94,7 @@ Here are the key discovery moments that will unfold during the heist:
 1.  **MM1. 💬 NPC** - Brief Safe Cracker in Safehouse
     *   *Description:* Review blueprints, discuss initial plan, assign roles for recon.
     *   *NPC: Yourself (Mastermind, focused, strategic) - "Alright, this is the plan. We hit the museum during the gala. You handle the hardware, I'll handle the social. Let's start with recon."*
-    *   *Location:* Safe House
+    *   *Location:* Crew Hideout
     *   *Dependencies:* None (starting task)
 
 2.  **MM2. 💬 NPC** - Infiltrate Gala

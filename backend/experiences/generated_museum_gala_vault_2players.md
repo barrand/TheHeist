@@ -12,24 +12,32 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 ## Locations
 
 ### Crew Hideout (Starting Location)
-- **Crew Hideout** - Secret base where the crew plans the heist. All players start here.
-  - **Visual**: Gritty underground hideout with exposed brick walls, dim industrial lighting with hanging bulbs, large planning table covered in blueprints and photos, corkboard wall with red strings connecting evidence, vintage leather couch, old metal lockers, scattered tactical gear and equipment, monitors showing security feeds, noir aesthetic with dramatic shadows, purple and cyan accent lighting
+- **ID**: `crew_hideout`
+- **Name**: Crew Hideout
+- **Description**: Secret base where the crew plans the heist. All players start here.
+- **Visual**: Gritty underground hideout with exposed brick walls, dim industrial lighting with hanging bulbs, large planning table covered in blueprints and photos, corkboard wall with red strings connecting evidence, vintage leather couch, old metal lockers, scattered tactical gear and equipment, monitors showing security feeds, noir aesthetic with dramatic shadows, purple and cyan accent lighting
 
 ### Museum Interior
-- **Grand Hall** - Main gala space where guests mingle
-  - **Visual**: Elegant museum hall with high vaulted ceilings, marble floors with geometric patterns, ornate chandeliers casting warm light, classical art pieces on walls in gold frames, wealthy guests in formal attire mingling, champagne glasses, modern art sculptures, grand staircase in background, ambient purple uplighting on columns, sophisticated heist movie atmosphere
+- **ID**: `grand_hall`
+- **Name**: Grand Hall
+- **Description**: Main gala space where guests mingle
+- **Visual**: Elegant museum hall with high vaulted ceilings, marble floors with geometric patterns, ornate chandeliers casting warm light, classical art pieces on walls in gold frames, wealthy guests in formal attire mingling, champagne glasses, modern art sculptures, grand staircase in background, ambient purple uplighting on columns, sophisticated heist movie atmosphere
 
-- **Museum Basement** - Corridor leading to the restricted vault area
-  - **Visual**: Industrial concrete corridor with exposed pipes along ceiling, flickering fluorescent lights, restricted area warning signs on walls, security doors with keypads, metal grating on floors, emergency exit signs, cold blue-green lighting, ominous atmosphere, steel support beams, utility boxes and electrical panels, narrow passage leading deeper
+- **ID**: `museum_basement`
+- **Name**: Museum Basement
+- **Description**: Corridor leading to the restricted vault area
+- **Visual**: Industrial concrete corridor with exposed pipes along ceiling, flickering fluorescent lights, restricted area warning signs on walls, security doors with keypads, metal grating on floors, emergency exit signs, cold blue-green lighting, ominous atmosphere, steel support beams, utility boxes and electrical panels, narrow passage leading deeper
 
-- **Vault Room** - Secure basement vault containing the Eye of Orion jewels
-  - **Visual**: High-security vault with massive circular steel door featuring chrome combination lock wheel, dramatic spotlight illuminating the vault entrance, reinforced concrete walls, security camera in corner with blinking red light, keypad access panel, polished metal surfaces, tense heist moment lighting with cyan and purple dramatic highlights, professional bank vault aesthetic
+- **ID**: `vault_room`
+- **Name**: Vault Room
+- **Description**: Secure basement vault containing the Eye of Orion jewels
+- **Visual**: High-security vault with massive circular steel door featuring chrome combination lock wheel, dramatic spotlight illuminating the vault entrance, reinforced concrete walls, security camera in corner with blinking red light, keypad access panel, polished metal surfaces, tense heist moment lighting with cyan and purple dramatic highlights, professional bank vault aesthetic
 
 **Total Locations**: 4
 
 ## Items by Location
 
-### Safe House
+### Crew Hideout
 - **ID**: `safe_cracking_tools`
   - **Name**: Safe Cracking Tools
   - **Description**: Professional lockpick set, dial manipulation tools, and stethoscope for listening to tumblers

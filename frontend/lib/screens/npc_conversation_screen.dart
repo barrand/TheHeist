@@ -3,6 +3,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../models/npc.dart';
 import '../services/backend_service.dart';
+import '../widgets/common/top_toast.dart';
 import '../widgets/npc/objective_card.dart';
 import '../widgets/npc/chat_bubble.dart';
 import '../widgets/npc/quick_response_button.dart';
@@ -75,20 +76,13 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       } else {
         print('⚠️ Backend health check failed');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Backend server is not responding. Make sure it\'s running on http://localhost:8000'),
-              duration: Duration(seconds: 5),
-            ),
-          );
+          showTopToast(context, 'Backend server is not responding. Make sure it\'s running on http://localhost:8000', seconds: 5);
         }
       }
     } catch (e) {
       print('❌ Error checking backend health: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to connect to backend: $e')),
-        );
+        showTopToast(context, 'Failed to connect to backend: $e');
       }
     }
   }
