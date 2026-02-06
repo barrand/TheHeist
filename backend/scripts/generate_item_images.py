@@ -94,7 +94,7 @@ async def generate_item_image(
             config=types.GenerateImagesConfig(
                 number_of_images=1,
                 aspect_ratio="1:1",  # Square
-                safety_filter_level="block_some",
+                safety_filter_level="block_low_and_above",
                 person_generation="dont_allow",  # Items shouldn't have people
             )
         )

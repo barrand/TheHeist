@@ -93,7 +93,7 @@ async def generate_location_image(
             config=types.GenerateImagesConfig(
                 number_of_images=1,
                 aspect_ratio="3:2",  # Close to 300x150
-                safety_filter_level="block_some",
+                safety_filter_level="block_low_and_above",
                 person_generation="allow_adult",
             )
         )
