@@ -145,6 +145,14 @@ class _GameScreenState extends State<GameScreen> {
       }
     });
     
+    // Info messages (e.g., item use feedback)
+    widget.wsService.info.listen((message) {
+      final infoMessage = message['message'] as String?;
+      if (infoMessage != null) {
+        _showSnackBar(infoMessage, color: AppColors.info);
+      }
+    });
+    
     // Listen for all messages
     widget.wsService.messages.listen((message) {
       // Game ended
@@ -1445,7 +1453,7 @@ class _GameScreenState extends State<GameScreen> {
   void _useItem(Item item) {
     widget.wsService.useItem(item.id);
     Navigator.pop(context); // Close inventory
-    _showSnackBar('Trying to use ${item.name}...', color: AppColors.info);
+    // Backend will send info message with result
   }
   
   // Drop an item
