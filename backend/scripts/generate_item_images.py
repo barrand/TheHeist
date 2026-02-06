@@ -15,9 +15,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from google import genai
 from google.genai import types
-from app.core.config import get_settings
 
-settings = get_settings()
+# Import from scripts config (not backend app config)
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir))
+from config import GEMINI_API_KEY
 
 # Image generation settings
 ITEM_SIZE = 80  # Square
@@ -124,7 +126,7 @@ async def generate_all_item_images(experience_id: str, items: List[Dict]):
     print(f"{'='*60}\n")
     
     # Initialize Gemini client
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY)
     
     results = []
     for item in items:

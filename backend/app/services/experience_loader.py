@@ -152,7 +152,8 @@ class ExperienceLoader:
         locations = []
         
         # Find the Locations section
-        locations_match = re.search(r'## Locations\s*\n(.*?)(?=\n##|\Z)', content, re.DOTALL)
+        # Use greedy match to capture all content until next ## section
+        locations_match = re.search(r'## Locations\s*\n(.*?)(?=^##\s|\Z)', content, re.DOTALL | re.MULTILINE)
         if not locations_match:
             logger.warning("No ## Locations section found")
             return locations
