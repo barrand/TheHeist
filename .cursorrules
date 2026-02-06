@@ -15,3 +15,9 @@
 - Keep it simple and focused
 - Suggest cleanup opportunities as you work
 - Use industry best practices (separate view, data, business logic)
+
+## Testing & Validation
+- After modifying Flutter code, check compilation with ReadLints tool
+- If lints show compilation errors, fix them immediately before proceeding
+- Test critical paths after significant changes (game flow, WebSocket, etc.)
+- Don't assume code works - verify it compiles and runs
