@@ -1,6 +1,34 @@
 # Image Generation System
 
-This system generates location and item images for game experiences using Google Imagen API.
+This system generates all visual assets for game experiences using Google Imagen API.
+
+## Model Strategy
+
+We use a **two-tier approach** to optimize quality and cost:
+
+### Tier 1: Premium Quality (Imagen 4.0 - nano-banana)
+**Used for:** Player role images (shared across all experiences)
+- The Mastermind, Hacker, Safe Cracker, etc.
+- Generated once in male/female versions
+- Highest quality for player-facing characters
+- Cost: ~$0.04 per image
+- Total one-time cost: ~$0.96 for all 24 images
+
+### Tier 2: Cost-Effective (Imagen 3.0 Fast)
+**Used for:** Per-experience unique content
+- Room/location images
+- Item images  
+- NPC character images
+- Generated fresh for each new experience
+- Good quality, much faster, cheaper
+- Cost: ~$0.02 per image
+- Typical experience cost: ~$0.32
+
+**Why this works:**
+- Players see their role avatar most → deserves premium quality
+- Rooms/items/NPCs are unique per experience → hundreds of generations
+- 50% cost savings on high-volume content
+- Still excellent quality for environmental assets
 
 ## Architecture
 
@@ -31,7 +59,7 @@ backend/generated_images/
 
 1. **Host Clicks "Start Game"** → Backend checks if images exist for experience
 2. **If Missing** → Generate images synchronously (blocks game start)
-3. **Generation Order** → Rooms → Items → NPCs (using nano-banana/Imagen 4.0)
+3. **Generation Order** → Rooms → Items → NPCs (using Imagen 3.0 Fast)
 4. **Images Saved** → Stored in `backend/generated_images/[experience_id]/`
 5. **Game Starts** → Players receive game with all images ready
 6. **Frontend Requests** → Images served via HTTP endpoint
@@ -93,11 +121,11 @@ When the host clicks "Start Game", the backend automatically:
 1. Checks if images exist for the experience ID
 2. If missing, generates images synchronously (game waits)
 3. Shows loading message to players: "🎨 Generating experience images..."
-4. Generates in order: Rooms → Items → NPCs (using nano-banana/Imagen 4.0)
+4. Generates in order: Rooms → Items → NPCs (using Imagen 3.0 Fast)
 5. Game starts after images are ready
 6. Subsequent games with same experience start instantly (cached)
 
-**Generation time:** ~30-60 seconds for new experiences, instant for cached experiences
+**Generation time:** ~20-40 seconds for new experiences (faster with Imagen 3.0), instant for cached experiences
 
 Logged to backend logs:
 - `🎨 Starting image generation for [experience_id]...`
@@ -181,37 +209,63 @@ Image.network(
 
 ## Image Specifications
 
-### Location Images
+### Location Images (Per-Experience)
 - **Dimensions**: 300x150px (2:1 aspect ratio)
 - **Style**: Borderlands cel-shaded, dark noir atmosphere
 - **Format**: PNG
-- **Model**: Imagen 4.0 (nano-banana) - highest quality
+- **Model**: Imagen 3.0 Fast - cost-effective for unique content
 - **Naming**: `location_{location_id}.png`
+- **Storage**: `generated_images/{experience_id}/`
 
-### Item Images
+### Item Images (Per-Experience)
 - **Dimensions**: 80x80px (1:1 square)
 - **Style**: Photo-realistic product shot
 - **Background**: Transparent or dark gradient
 - **Format**: PNG
-- **Model**: Imagen 4.0 (nano-banana) - highest quality
+- **Model**: Imagen 3.0 Fast - cost-effective for unique content
 - **Naming**: `item_{item_id}.png`
+- **Storage**: `generated_images/{experience_id}/`
+
+### NPC Images (Per-Experience)
+- **Dimensions**: 256x256px square
+- **Style**: Borderlands cel-shaded character portrait
+- **Format**: PNG
+- **Model**: Imagen 3.0 Fast - cost-effective for unique content
+- **Naming**: `npc_{npc_id}.png`
+- **Storage**: `generated_images/{experience_id}/`
+
+### Player Role Images (Shared Across All Experiences)
+- **Dimensions**: 256x256px square
+- **Style**: Borderlands cel-shaded character portrait
+- **Format**: PNG
+- **Model**: Imagen 4.0 (nano-banana) - highest quality
+- **Naming**: `{role_id}_{gender}.png` (e.g., `hacker_female.png`)
+- **Storage**: `scripts/output/role_images/`
+- **Note**: Generated once, reused for all experiences
 
 ## Cost Estimation
 
-**Imagen 4.0 (nano-banana) Pricing** (as of 2026):
-- ~$0.04 per image generation (highest quality model)
+### Model Pricing (as of 2026)
+- **Imagen 3.0 Fast**: ~$0.02 per image (per-experience content)
+- **Imagen 4.0**: ~$0.04 per image (shared player roles)
 
-**Typical Experience**:
-- 5 locations × $0.04 = $0.20
-- 8 items × $0.04 = $0.32
-- **Total per experience: ~$0.52**
+### Per-Experience Generation Cost
+**Typical Experience** (generated using Imagen 3.0 Fast):
+- 5 locations × $0.02 = $0.10
+- 8 items × $0.02 = $0.16
+- 3 NPCs × $0.02 = $0.06
+- **Total per experience: ~$0.32**
 
-**Reusability**:
-- Generated once per experience
-- Cached permanently for that experience
-- Used for unlimited game sessions
-- Very cost-effective over time
-- Higher quality worth the cost for immersive experience
+### One-Time Player Role Generation Cost
+**All 12 Player Roles** (generated once using Imagen 4.0):
+- 12 roles × 2 genders × $0.04 = $0.96
+- **One-time cost, shared across all experiences**
+
+### Overall Strategy
+- ✅ **Per-experience content** (rooms, items, NPCs): Cheap & fast (Imagen 3.0)
+- ✅ **Shared player roles**: Premium quality (Imagen 4.0)
+- ✅ Experience images cached permanently, used for unlimited sessions
+- ✅ Very cost-effective over time
 
 ## Troubleshooting
 

@@ -45,8 +45,9 @@ set in year 2020, contemporary clothing and technology (not futuristic)"""
 
 def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=None, 
                        background=None, expression="friendly", details=None, 
-                       attitude="approachable", accent_colors=None, output_file=None):
-    """Generate NPC character portrait using Imagen 4.0 in Borderlands style.
+                       attitude="approachable", accent_colors=None, output_file=None,
+                       use_premium_model=False):
+    """Generate character portrait in Borderlands style.
     
     Args:
         name: Character name
@@ -61,6 +62,8 @@ def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=Non
         accent_colors: List of color accents for UI theme consistency (e.g., ["purple clothing accents", "magenta accessories"])
                       or color scheme name: "purple" (vibrant purple, magenta, cyan highlights)
         output_file: Custom output path (optional)
+        use_premium_model: If True, use Imagen 4.0 (for shared player roles). 
+                          If False, use Imagen 3.0 Fast (for per-experience NPCs). Default: False
     """
     
     print(f"🎨 Generating character portrait...")
@@ -144,9 +147,14 @@ portrait view, centered, waist-up composition"""
         # Create client with API key
         client = genai.Client(api_key=GEMINI_API_KEY)
         
-        # Use Imagen 4.0 for high-quality character generation
+        # Choose model based on use case
+        model = 'imagen-4.0-generate-001' if use_premium_model else 'imagen-3.0-generate-001'
+        model_name = "Imagen 4.0 (premium)" if use_premium_model else "Imagen 3.0 Fast (cost-effective)"
+        
+        print(f"   Model: {model_name}")
+        
         response = client.models.generate_images(
-            model='imagen-4.0-generate-001',
+            model=model,
             prompt=prompt,
             config=types.GenerateImagesConfig(
                 number_of_images=1,

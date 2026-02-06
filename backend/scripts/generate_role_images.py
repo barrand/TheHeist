@@ -226,7 +226,8 @@ def generate_role_image(role_id):
     # Determine output path
     output_path = Path('output/role_images') / f"{role_id}.png"
     
-    # Generate using the NPC image script
+    # Generate using the NPC image script with premium model (Imagen 4.0)
+    # Player role images are shared across all experiences, so use highest quality
     generate_npc_image(
         name=design['name'],
         role=design['role'],
@@ -238,7 +239,8 @@ def generate_role_image(role_id):
         details=design['details'],
         attitude=design['attitude'],
         accent_colors=design['accent_colors'],
-        output_file=str(output_path)
+        output_file=str(output_path),
+        use_premium_model=True
     )
     
     print(f"✅ Generated {design['name']} portrait!")

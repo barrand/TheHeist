@@ -226,7 +226,8 @@ def generate_role_image(role_id, gender="both"):
         # Get gendered ethnicity
         ethnicity_gendered = get_ethnicity_for_gender(design['ethnicity'], gen)
         
-        # Generate using the NPC image script
+        # Generate using the NPC image script with premium model (Imagen 4.0)
+        # Player role images are shared across all experiences, so use highest quality
         generate_npc_image(
             name=design['name'],
             role=design['role'],
@@ -238,7 +239,8 @@ def generate_role_image(role_id, gender="both"):
             details=design['details'],
             attitude=design['attitude'],
             accent_colors=design['accent_colors'],
-            output_file=str(output_path)
+            output_file=str(output_path),
+            use_premium_model=True
         )
         
         print(f"✅ Generated {design['name']} ({gen}) portrait!")
