@@ -12,6 +12,7 @@ class HeistTextField extends StatelessWidget {
   final int? maxLines;
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
+  final void Function(String)? onSubmitted;
   final IconData? prefixIcon;
   final Widget? suffixIcon;
   final bool enabled;
@@ -27,6 +28,7 @@ class HeistTextField extends StatelessWidget {
     this.maxLines = 1,
     this.validator,
     this.onChanged,
+    this.onSubmitted,
     this.prefixIcon,
     this.suffixIcon,
     this.enabled = true,
@@ -42,6 +44,7 @@ class HeistTextField extends StatelessWidget {
       maxLines: maxLines,
       validator: validator,
       onChanged: onChanged,
+      onFieldSubmitted: onSubmitted,
       enabled: enabled,
       textCapitalization: textCapitalization,
       style: TextStyle(
