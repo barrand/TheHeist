@@ -235,6 +235,12 @@ class NPCConversationService:
         cover = next((c for c in npc.cover_options if c.cover_id == session.cover_id), None)
         already_achieved = set(game_state.achieved_outcomes.get(player_id, []))
         npc_response, outcomes = self._get_npc_response(npc, cover, session, player_text, difficulty, already_achieved)
+        
+        # Hard rule: a fit-1 response NEVER yields info, even if the LLM included it
+        if fit_score <= 1 and outcomes:
+            logger.info(f"Blocking {len(outcomes)} outcome(s) because fit_score={fit_score}")
+            outcomes = []
+        
         session.add_message(npc_response, is_player=False)
         
         # Track achieved outcomes
