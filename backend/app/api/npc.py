@@ -84,13 +84,17 @@ async def start_conversation(request: StartConversationRequest) -> StartConversa
         cover = next((c for c in npc.cover_options if c.cover_id == request.cover_id), None)
         needed = set(request.target_outcomes) if request.target_outcomes else set()
         
+        # Use a short label from the outcome ID, NOT the full secret description
+        def _outcome_label(outcome_id: str) -> str:
+            return outcome_id.replace("_", " ").title()
+        
         info_objectives = [
-            {"id": i.info_id, "description": i.description}
+            {"id": i.info_id, "description": _outcome_label(i.info_id)}
             for i in npc.information_known
             if i.info_id and i.info_id in needed
         ]
         action_objectives = [
-            {"id": a.action_id, "description": a.description}
+            {"id": a.action_id, "description": _outcome_label(a.action_id)}
             for a in npc.actions_available
             if a.action_id in needed
         ]
