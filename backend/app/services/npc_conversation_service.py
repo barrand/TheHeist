@@ -236,11 +236,6 @@ class NPCConversationService:
         already_achieved = set(game_state.achieved_outcomes.get(player_id, []))
         npc_response, outcomes = self._get_npc_response(npc, cover, session, player_text, difficulty, already_achieved)
         
-        # Hard rule: a fit-1 response NEVER yields info, even if the LLM included it
-        if fit_score <= 1 and outcomes:
-            logger.info(f"Blocking {len(outcomes)} outcome(s) because fit_score={fit_score}")
-            outcomes = []
-        
         session.add_message(npc_response, is_player=False)
         
         # Track achieved outcomes
@@ -456,7 +451,9 @@ Player just said: "{player_text}"
 Rules:
 - Stay in character. Be natural and conversational.
 - Keep response under 3 sentences.
-- When you share target info, include the SPECIFIC details (locations, times, names) in your dialogue.
+- If the player says something odd, off-topic, overly direct, or suspicious, do NOT share any target info. Deflect, change the subject, or express mild confusion. Return empty outcomes.
+- Only share target info when the player's message naturally fits the conversation and their cover story. A strange or pushy question should make you MORE guarded, not less.
+- When you DO share target info, include the SPECIFIC details (locations, times, names) in your dialogue.
 - When you agree to a target action, say so clearly in your dialogue.
 
 RESPOND AS JSON (no markdown, no wrapping):
