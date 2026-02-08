@@ -324,24 +324,6 @@ class _GameScreenState extends State<GameScreen> {
     _startNpcConversation(npcData);
   }
   
-  String _getTaskTypeLabel(String type) {
-    switch (type) {
-      case 'minigame':
-        return '🎮 Minigame';
-      case 'npc_llm':
-        return '💬 Talk to NPC';
-      case 'search':
-        return '🔍 Search';
-      case 'handoff':
-        return '🤝 Hand Off Item';
-      case 'info_share':
-        return '🗣️ Share Info';
-      case 'discovery':
-        return '🎯 Explore';
-      default:
-        return type;
-    }
-  }
   
   String _formatRoleName(String role) {
     // Convert snake_case to Title Case
@@ -1029,10 +1011,8 @@ class _GameScreenState extends State<GameScreen> {
   
   Widget _buildTaskCard(Map<String, dynamic> task, {required bool isAtCurrentLocation}) {
     final String description = task['description'] ?? 'Unknown task';
-    final String location = task['location'] ?? 'Unknown';
     final String status = task['status'] ?? 'locked';
     final String type = task['type'] ?? 'minigame';
-    final String? minigameId = task['minigame_id'];
     
     final bool isAvailable = status == 'available';
     final bool isCompleted = status == 'completed';
@@ -1063,82 +1043,34 @@ class _GameScreenState extends State<GameScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Task name/description
-            Text(
-              description,
-              style: TextStyle(
-                color: isGrayedOut ? AppColors.textSecondary : AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            
-            SizedBox(height: AppDimensions.spaceXS),
-            
-            // Type label & minigame ID
+            // Task description -- this is the only text the player needs
             Row(
               children: [
-                Text(
-                  _getTaskTypeLabel(type),
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
+                if (isCompleted)
+                  Padding(
+                    padding: EdgeInsets.only(right: 6),
+                    child: Icon(Icons.check_circle, color: AppColors.success, size: 16),
                   ),
-                ),
-                if (minigameId != null) ...[
-                  SizedBox(width: AppDimensions.spaceXS),
-                  Text(
-                    minigameId,
+                Expanded(
+                  child: Text(
+                    description,
                     style: TextStyle(
-                      color: AppColors.textTertiary,
-                      fontSize: 10,
-                      fontStyle: FontStyle.italic,
+                      color: isCompleted
+                          ? AppColors.success
+                          : isGrayedOut
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      decoration: isCompleted ? TextDecoration.lineThrough : null,
                     ),
                   ),
-                ],
+                ),
               ],
             ),
             
-            // Location indicator (only for location-specific tasks)
-            if (!isLocationAgnostic) ...[
-              SizedBox(height: AppDimensions.spaceXS),
-              Row(
-                children: [
-                  Icon(Icons.location_on, color: AppColors.textSecondary, size: 12),
-                  SizedBox(width: 4),
-                  Text(
-                    location,
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            
-            // Type-specific content
+            // Type-specific action content (buttons, hints -- only when useful)
             _buildTaskTypeContent(task, isAvailable: isAvailable, isAtCurrentLocation: isAtCurrentLocation, isGrayedOut: isGrayedOut),
-            
-            // Completed indicator
-            if (isCompleted)
-              Padding(
-                padding: EdgeInsets.only(top: AppDimensions.spaceXS),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: AppColors.success, size: 14),
-                    SizedBox(width: 4),
-                    Text(
-                      'Completed',
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
           ],
         ),
     );
@@ -1173,299 +1105,133 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
   
-  /// SEARCH task: checklist of required items
+  /// SEARCH task: no extra content -- description says it all, auto-completes on pickup
   Widget _buildSearchTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    final searchItems = (task['search_items'] as List<dynamic>?)?.cast<String>() ?? [];
-    if (searchItems.isEmpty) return SizedBox.shrink();
-    
-    final inventoryItemIds = _myInventory.map((i) => i.id).toSet();
-    
-    return Padding(
-      padding: EdgeInsets.only(top: AppDimensions.spaceXS),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Items needed:',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 4),
-          ...searchItems.map((itemId) {
-            final found = inventoryItemIds.contains(itemId);
-            final displayName = itemId.replaceAll('_', ' ');
-            return Padding(
-              padding: EdgeInsets.only(bottom: 2),
-              child: Row(
-                children: [
-                  Icon(
-                    found ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: found ? AppColors.success : AppColors.textTertiary,
-                    size: 14,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    displayName,
-                    style: TextStyle(
-                      color: found ? AppColors.success : AppColors.textSecondary,
-                      fontSize: 12,
-                      decoration: found ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-          if (canAct) ...[
-            SizedBox(height: 4),
-            Text(
-              '🔍 Search the room to find these items',
-              style: TextStyle(
-                color: AppColors.accentPrimary,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+    return SizedBox.shrink();
   }
   
-  /// NPC_LLM task: talk button
+  /// NPC_LLM task: talk button only
   Widget _buildNpcTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    final npcName = task['npc_name'] as String? ?? 'NPC';
-    final targetOutcomes = (task['target_outcomes'] as List<dynamic>?)?.cast<String>() ?? [];
+    if (!canAct) return SizedBox.shrink();
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (targetOutcomes.isNotEmpty) ...[
-          SizedBox(height: AppDimensions.spaceXS),
-          ...targetOutcomes.map((outcome) {
-            final displayName = outcome.replaceAll('_', ' ');
-            return Padding(
-              padding: EdgeInsets.only(bottom: 2),
-              child: Row(
-                children: [
-                  Icon(Icons.chat_bubble_outline, color: AppColors.textTertiary, size: 12),
-                  SizedBox(width: 6),
-                  Text(
-                    displayName,
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-        if (canAct) ...[
-          SizedBox(height: AppDimensions.spaceMD),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _openNpcConversationForTask(task),
-              icon: Icon(Icons.chat_bubble_outline, size: 16),
-              label: Text(
-                'Talk to $npcName',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentPrimary,
-                padding: EdgeInsets.symmetric(vertical: 12),
-              ),
+    final npcName = task['npc_name'] as String? ?? 'NPC';
+    
+    return Padding(
+      padding: EdgeInsets.only(top: AppDimensions.spaceSM),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => _openNpcConversationForTask(task),
+          icon: Icon(Icons.chat_bubble_outline, size: 16),
+          label: Text(
+            'Talk to $npcName',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ],
-      ],
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accentPrimary,
+            padding: EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
     );
   }
   
   /// MINIGAME task: start button (placeholder)
   Widget _buildMinigameTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    final minigameId = task['minigame_id'] as String? ?? 'minigame';
-    final taskId = task['id'] ?? '';
-    final displayName = minigameId.replaceAll('_', ' ');
-    
     if (!canAct) return SizedBox.shrink();
     
-    return Column(
-      children: [
-        SizedBox(height: AppDimensions.spaceMD),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _manualCompleteTask(taskId),
-            icon: Icon(Icons.gamepad, size: 16),
-            label: Text(
-              'Start $displayName',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentPrimary,
-              padding: EdgeInsets.symmetric(vertical: 12),
+    final taskId = task['id'] ?? '';
+    
+    return Padding(
+      padding: EdgeInsets.only(top: AppDimensions.spaceSM),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => _manualCompleteTask(taskId),
+          icon: Icon(Icons.gamepad, size: 16),
+          label: Text(
+            'Start Minigame',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accentPrimary,
+            padding: EdgeInsets.symmetric(vertical: 12),
+          ),
         ),
-      ],
+      ),
     );
   }
   
   /// INFO_SHARE task: confirm shared button
   Widget _buildInfoShareTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    final infoDesc = task['info_description'] as String? ?? task['description'] as String? ?? '';
+    if (!canAct) return SizedBox.shrink();
+    
     final taskId = task['id'] ?? '';
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (infoDesc.isNotEmpty) ...[
-          SizedBox(height: AppDimensions.spaceXS),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.info_outline, color: AppColors.textTertiary, size: 12),
-              SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Tell your teammate in person, then confirm below',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-        if (canAct) ...[
-          SizedBox(height: AppDimensions.spaceMD),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _manualCompleteTask(taskId),
-              icon: Icon(Icons.check, size: 16),
-              label: Text(
-                'Confirm Shared',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                padding: EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-  
-  /// HANDOFF task: item + recipient info (auto-completes on transfer)
-  Widget _buildHandoffTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    final handoffItem = task['handoff_item'] as String? ?? '';
-    final handoffToRole = task['handoff_to_role'] as String? ?? '';
-    final hasItem = _myInventory.any((i) => i.id == handoffItem);
-    final itemDisplayName = handoffItem.replaceAll('_', ' ');
-    final roleDisplayName = handoffToRole.isNotEmpty ? _formatRoleName(handoffToRole) : 'teammate';
-    
     return Padding(
-      padding: EdgeInsets.only(top: AppDimensions.spaceXS),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                hasItem ? Icons.inventory_2 : Icons.radio_button_unchecked,
-                color: hasItem ? AppColors.accentPrimary : AppColors.textTertiary,
-                size: 14,
-              ),
-              SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Give $itemDisplayName to $roleDisplayName',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
+      padding: EdgeInsets.only(top: AppDimensions.spaceSM),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => _manualCompleteTask(taskId),
+          icon: Icon(Icons.check, size: 16),
+          label: Text(
+            'Confirm Shared',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          if (canAct && hasItem) ...[
-            SizedBox(height: 4),
-            Text(
-              '🤝 Open your Bag and transfer the item',
-              style: TextStyle(
-                color: AppColors.accentPrimary,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-          if (canAct && !hasItem) ...[
-            SizedBox(height: 4),
-            Text(
-              'You need $itemDisplayName first',
-              style: TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ],
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.success,
+            padding: EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
       ),
     );
   }
   
+  /// HANDOFF task: no extra content -- description says it all, auto-completes on transfer
+  Widget _buildHandoffTaskContent(Map<String, dynamic> task, {required bool canAct}) {
+    return SizedBox.shrink();
+  }
+  
   /// DISCOVERY task: mark complete button
   Widget _buildDiscoveryTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    final taskId = task['id'] ?? '';
-    
     if (!canAct) return SizedBox.shrink();
     
-    return Column(
-      children: [
-        SizedBox(height: AppDimensions.spaceMD),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _manualCompleteTask(taskId),
-            icon: Icon(Icons.check, size: 16),
-            label: Text(
-              'Mark Complete',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentPrimary,
-              padding: EdgeInsets.symmetric(vertical: 12),
+    final taskId = task['id'] ?? '';
+    
+    return Padding(
+      padding: EdgeInsets.only(top: AppDimensions.spaceSM),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => _manualCompleteTask(taskId),
+          icon: Icon(Icons.check, size: 16),
+          label: Text(
+            'Mark Complete',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accentPrimary,
+            padding: EdgeInsets.symmetric(vertical: 12),
+          ),
         ),
-      ],
+      ),
     );
   }
   
