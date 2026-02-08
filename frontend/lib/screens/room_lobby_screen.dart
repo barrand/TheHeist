@@ -36,6 +36,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   List<Map<String, dynamic>> _players = [];
   String? _myPlayerId;
   String? _myRole;
+  String _myDifficulty = 'easy';  // Player difficulty: easy, medium, hard
   bool _isHost = false;
   String _selectedScenarioId = 'museum_gala_vault';  // Default to Museum Gala
   
@@ -166,8 +167,10 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       final scenario = message['scenario'];
       final objective = message['objective'];
       final yourTasks = message['your_tasks'] ?? [];
+      final locations = List<Map<String, dynamic>>.from(message['locations'] ?? []);
+      final npcs = List<Map<String, dynamic>>.from(message['npcs'] ?? []);
       
-      debugPrint('🎮 LOBBY: Scenario: $scenario');
+      debugPrint('🎮 LOBBY: Scenario: $scenario, ${locations.length} locations, ${npcs.length} NPCs');
       debugPrint('🎮 LOBBY: Objective: $objective');
       debugPrint('🎮 LOBBY: Tasks count: ${yourTasks.length}');
       
@@ -182,6 +185,9 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             playerRole: _myRole,
             allPlayers: _players,
             myPlayerId: _myPlayerId,
+            roomCode: widget.roomCode,
+            locations: locations,
+            npcs: npcs,
           ),
         ),
       );
@@ -278,7 +284,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
     }
     
     debugPrint('🎭 LOBBY: Sending selectRole to server...');
-    widget.wsService.selectRole(roleId);
+    widget.wsService.selectRole(roleId, difficulty: _myDifficulty);
     setState(() {
       _myRole = roleId;
       debugPrint('🎭 LOBBY: Optimistically set my role to: $roleId');
@@ -441,6 +447,12 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                 
                 // Your role selector button
                 _buildRoleSelectorButton(),
+                
+                // Difficulty selector (shows after role selected)
+                if (_myRole != null) ...[
+                  SizedBox(height: AppDimensions.spaceMD),
+                  _buildDifficultySelector(),
+                ],
                 
                 SizedBox(height: AppDimensions.space2XL),
                 
@@ -987,6 +999,83 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
     );
   }
   
+  Widget _buildDifficultySelector() {
+    final options = [
+      {'id': 'easy', 'label': 'Easy', 'desc': 'Relaxed conversations'},
+      {'id': 'medium', 'label': 'Medium', 'desc': 'Balanced challenge'},
+      {'id': 'hard', 'label': 'Hard', 'desc': 'NPCs are skeptical'},
+    ];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.speed, size: 18, color: AppColors.textTertiary),
+            SizedBox(width: 8),
+            Text(
+              'DIFFICULTY',
+              style: TextStyle(
+                color: AppColors.textTertiary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            for (int i = 0; i < options.length; i++) ...[
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _myDifficulty = options[i]['id']!);
+                    // Re-send role with updated difficulty
+                    if (_myRole != null) {
+                      widget.wsService.selectRole(_myRole!, difficulty: _myDifficulty);
+                    }
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _myDifficulty == options[i]['id']
+                          ? AppColors.accentPrimary.withValues(alpha: 0.2)
+                          : AppColors.bgSecondary,
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+                      border: Border.all(
+                        color: _myDifficulty == options[i]['id']
+                            ? AppColors.accentPrimary
+                            : AppColors.borderSubtle,
+                        width: _myDifficulty == options[i]['id'] ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          options[i]['label']!,
+                          style: TextStyle(
+                            color: _myDifficulty == options[i]['id']
+                                ? AppColors.accentPrimary
+                                : AppColors.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (i < options.length - 1) SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
   void _openRoleSelectionModal() {
     showDialog(
       context: context,

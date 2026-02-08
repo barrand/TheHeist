@@ -1,6 +1,6 @@
 """
 Background image generation service.
-Generates location and item images for experiences.
+Generates location, item, and NPC images for experiences.
 """
 
 import asyncio
@@ -14,18 +14,19 @@ logger = logging.getLogger(__name__)
 _generation_tasks = {}
 
 
-def parse_experience_for_generation(experience_dict: Dict) -> tuple[List[Dict], List[Dict]]:
+def parse_experience_for_generation(experience_dict: Dict) -> tuple[List[Dict], List[Dict], List[Dict]]:
     """
-    Parse experience data to extract locations and items that need images.
+    Parse experience data to extract locations, items, and NPCs that need images.
     
     Args:
         experience_dict: Parsed experience data from experience_loader
     
     Returns:
-        tuple: (locations, items) lists
+        tuple: (locations, items, npcs) lists
     """
     locations = []
     items = []
+    npcs = []
     
     # Extract locations with visual descriptions
     if 'locations' in experience_dict:
@@ -61,28 +62,45 @@ def parse_experience_for_generation(experience_dict: Dict) -> tuple[List[Dict], 
                         'visual': item.get('visual', '')
                     })
     
-    return locations, items
+    # Extract NPCs with visual fields for image generation
+    if 'npcs' in experience_dict:
+        for npc in experience_dict['npcs']:
+            npcs.append({
+                'id': npc.get('id', ''),
+                'name': npc.get('name', ''),
+                'role': npc.get('role', ''),
+                'location': npc.get('location', ''),
+                'gender': npc.get('gender', 'person'),
+                'ethnicity': npc.get('ethnicity', ''),
+                'clothing': npc.get('clothing', ''),
+                'expression': npc.get('expression', 'friendly'),
+                'attitude': npc.get('attitude', 'approachable'),
+                'details': npc.get('details', ''),
+            })
+    
+    return locations, items, npcs
 
 
-def check_images_exist(experience_id: str) -> tuple[bool, int, int]:
+def check_images_exist(experience_id: str) -> tuple[bool, int, int, int]:
     """
     Check if images exist for an experience.
     
     Returns:
-        tuple: (all_exist, location_count, item_count)
+        tuple: (all_exist, location_count, item_count, npc_count)
     """
     images_dir = Path(__file__).parent.parent.parent / "generated_images" / experience_id
     
     if not images_dir.exists():
-        return False, 0, 0
+        return False, 0, 0, 0
     
     location_count = len(list(images_dir.glob("location_*.png")))
     item_count = len(list(images_dir.glob("item_*.png")))
+    npc_count = len(list(images_dir.glob("npc_*.png")))
     
     # Consider images ready if we have at least some
-    has_images = location_count > 0 or item_count > 0
+    has_images = location_count > 0 or item_count > 0 or npc_count > 0
     
-    return has_images, location_count, item_count
+    return has_images, location_count, item_count, npc_count
 
 
 async def generate_all_images_for_experience(experience_id: str, experience_dict: Dict) -> bool:
@@ -105,25 +123,30 @@ async def generate_all_images_for_experience(experience_id: str, experience_dict
         return True
     
     # Parse expected counts first
-    locations, items = parse_experience_for_generation(experience_dict)
+    locations, items, npcs = parse_experience_for_generation(experience_dict)
     expected_loc_count = len(locations)
     expected_item_count = len(items)
+    expected_npc_count = len(npcs)
     
     # Check if images already exist (ALL of them, not just some)
-    exists, loc_count, item_count = check_images_exist(experience_id)
-    if exists and loc_count == expected_loc_count and item_count == expected_item_count:
-        logger.info(f"✅ Images already exist for {experience_id} ({loc_count} locations, {item_count} items)")
+    exists, loc_count, item_count, npc_count = check_images_exist(experience_id)
+    if (exists 
+        and loc_count == expected_loc_count 
+        and item_count == expected_item_count
+        and npc_count == expected_npc_count):
+        logger.info(f"✅ Images already exist for {experience_id} ({loc_count} locations, {item_count} items, {npc_count} NPCs)")
         return True
     elif exists:
-        logger.info(f"⚠️ Partial images found ({loc_count}/{expected_loc_count} locations, {item_count}/{expected_item_count} items), regenerating missing...")
+        logger.info(f"⚠️ Partial images found ({loc_count}/{expected_loc_count} locations, {item_count}/{expected_item_count} items, {npc_count}/{expected_npc_count} NPCs), regenerating missing...")
     
     logger.info(f"🎨 Generating images for {experience_id} at game start...")
     
     try:
-        # locations and items already parsed above
-        logger.info(f"🎨 Will generate: {len(locations)} locations, {len(items)} items")
+        # locations, items, and npcs already parsed above
+        logger.info(f"🎨 Will generate: {len(locations)} locations, {len(items)} items, {len(npcs)} NPCs")
         logger.info(f"🎨 Locations: {[loc['name'] for loc in locations]}")
         logger.info(f"🎨 Items: {[item['name'] for item in items]}")
+        logger.info(f"🎨 NPCs: {[npc['name'] for npc in npcs]}")
         
         # Import generation functions
         import sys
@@ -133,19 +156,20 @@ async def generate_all_images_for_experience(experience_id: str, experience_dict
         
         from generate_location_images import generate_all_location_images
         from generate_item_images import generate_all_item_images
+        from generate_npc_images import generate_all_npc_images
         
         # Mark as generating
         _generation_tasks[experience_id] = True
         
-        # Generate in order: Rooms → Items → NPCs
-        logger.info(f"🎨 Step 1/2: Generating location images...")
+        # Generate in order: Locations → Items → NPCs
+        logger.info(f"🎨 Step 1/3: Generating location images...")
         await generate_all_location_images(experience_id, locations)
         
-        logger.info(f"🎨 Step 2/2: Generating item images...")
+        logger.info(f"🎨 Step 2/3: Generating item images...")
         await generate_all_item_images(experience_id, items)
         
-        # NPCs are generated separately when experience is created
-        # We don't regenerate them here
+        logger.info(f"🎨 Step 3/3: Generating NPC images...")
+        await generate_all_npc_images(experience_id, npcs)
         
         logger.info(f"✅ All images generated for {experience_id}")
         return True

@@ -222,13 +222,14 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
 
 
 async def handle_select_role(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
-    """Handle role selection"""
+    """Handle role selection (with optional difficulty)"""
     room_manager = get_room_manager()
     ws_manager = get_ws_manager()
     
     role = data.get("role")
+    difficulty = data.get("difficulty", "easy")
     
-    logger.info(f"🎭 Player {player_id} selecting role: {role} in room {room_code}")
+    logger.info(f"🎭 Player {player_id} selecting role: {role} (difficulty: {difficulty}) in room {room_code}")
     
     success = room_manager.set_player_role(room_code, player_id, role)
     if not success:
@@ -239,11 +240,12 @@ async def handle_select_role(room_code: str, player_id: str, data: Dict[str, Any
         })
         return
     
-    # Broadcast role selection
+    # Set difficulty and broadcast role selection
     room = room_manager.get_room(room_code)
     player = room.players[player_id]
+    player.difficulty = difficulty
     
-    logger.info(f"✅ Role {role} assigned to {player.name} ({player_id})")
+    logger.info(f"✅ Role {role} (difficulty: {difficulty}) assigned to {player.name} ({player_id})")
     logger.info(f"📢 Broadcasting role_selected to all players in room {room_code}")
     
     role_selected = RoleSelectedMessage(
@@ -300,7 +302,8 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
             'items_by_location': {
                 loc: [item.model_dump() for item in items]
                 for loc, items in game_state.items_by_location.items()
-            }
+            },
+            'npcs': [npc.model_dump() for npc in game_state.npcs]
         }
         
         logger.info(f"🎨 Starting image generation for {scenario}...")

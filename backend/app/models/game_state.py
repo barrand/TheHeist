@@ -3,7 +3,7 @@ Data models for game state and tasks
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 from enum import Enum
 
 
@@ -34,6 +34,20 @@ class Location(BaseModel):
     visual: str = Field(default="", description="Visual description for image generation")
 
 
+class PrerequisiteType(str, Enum):
+    """Type of prerequisite for a task"""
+    TASK = "task"            # Another task must be completed
+    OUTCOME = "outcome"      # An NPC outcome (info or action) must be achieved
+    ITEM = "item"            # Player must have this item in inventory
+
+
+class Prerequisite(BaseModel):
+    """A prerequisite that must be met before a task can start"""
+    type: PrerequisiteType = Field(..., description="Type of prerequisite")
+    id: str = Field(..., description="ID of the task, outcome, or item required")
+    description: Optional[str] = Field(None, description="Human-readable description")
+
+
 class Task(BaseModel):
     """A task that a player must complete"""
     id: str = Field(..., description="Unique task ID (e.g., 'MM1', 'H3')")
@@ -43,7 +57,14 @@ class Task(BaseModel):
     assigned_player_id: Optional[str] = Field(None, description="Specific player assigned")
     location: str = Field(..., description="Where task takes place")
     status: TaskStatus = Field(default=TaskStatus.LOCKED, description="Current status")
-    dependencies: List[str] = Field(default_factory=list, description="Task IDs that must complete first")
+    
+    # Prerequisites (typed: task, outcome, item)
+    prerequisites: List[Prerequisite] = Field(default_factory=list, description="Prerequisites to unlock this task")
+    # Keep dependencies for backward compatibility during migration
+    dependencies: List[str] = Field(default_factory=list, description="Task IDs that must complete first (legacy)")
+    
+    # NPC task completion criteria
+    target_outcomes: List[str] = Field(default_factory=list, description="For NPC_LLM: outcome IDs to achieve for auto-completion")
     
     # Type-specific metadata
     minigame_id: Optional[str] = Field(None, description="For MINIGAME: which minigame to play")
@@ -56,8 +77,19 @@ class Task(BaseModel):
     info_description: Optional[str] = Field(None, description="For INFO_SHARE: what info to share")
     
     def can_start(self, completed_task_ids: set) -> bool:
-        """Check if all dependencies are met"""
+        """Check if all dependencies are met (legacy task-ID only)"""
         return all(dep_id in completed_task_ids for dep_id in self.dependencies)
+    
+    def can_start_rich(self, completed_task_ids: set, achieved_outcomes: set, player_items: set) -> bool:
+        """Check if all typed prerequisites are met"""
+        for prereq in self.prerequisites:
+            if prereq.type == PrerequisiteType.TASK and prereq.id not in completed_task_ids:
+                return False
+            if prereq.type == PrerequisiteType.OUTCOME and prereq.id not in achieved_outcomes:
+                return False
+            if prereq.type == PrerequisiteType.ITEM and prereq.id not in player_items:
+                return False
+        return True
     
     def unlock_if_ready(self, completed_task_ids: set) -> bool:
         """Change status to AVAILABLE if dependencies met"""
@@ -67,13 +99,46 @@ class Task(BaseModel):
         return False
 
 
+class NPCInfoItem(BaseModel):
+    """A piece of information an NPC knows"""
+    info_id: Optional[str] = Field(None, description="Trackable ID (None = flavor only)")
+    confidence: str = Field(..., description="How freely NPC shares: HIGH, MEDIUM, LOW")
+    description: str = Field(..., description="What the NPC knows")
+
+
+class NPCAction(BaseModel):
+    """An action an NPC can be convinced to perform"""
+    action_id: str = Field(..., description="Trackable action ID")
+    confidence: str = Field(..., description="How hard to convince: HIGH, MEDIUM, LOW, VERY HIGH")
+    description: str = Field(..., description="What the NPC can be convinced to do")
+
+
+class NPCCoverOption(BaseModel):
+    """A cover story a player can use when talking to this NPC"""
+    cover_id: str = Field(..., description="Cover identifier (e.g., 'new_guard', 'journalist')")
+    description: str = Field(..., description="What the player claims to be")
+    trust_level: str = Field(..., description="NPC's initial trust: low, medium, high")
+    trust_description: str = Field(..., description="Prose explanation of why NPC trusts/distrusts this cover")
+
+
 class NPCData(BaseModel):
-    """NPC information for conversations"""
+    """NPC information for conversations and image generation"""
     id: str = Field(..., description="NPC identifier")
     name: str = Field(..., description="NPC display name")
     role: str = Field(..., description="NPC's job/role")
     personality: str = Field(..., description="Personality description for LLM")
     location: str = Field(..., description="Where NPC is located")
+    gender: str = Field(default="person", description="Gender for image generation")
+    ethnicity: str = Field(default="", description="Ethnicity for image generation")
+    clothing: str = Field(default="", description="Clothing description for image generation")
+    expression: str = Field(default="friendly", description="Facial expression for image generation")
+    attitude: str = Field(default="approachable", description="Personality vibe for image generation")
+    details: str = Field(default="", description="Visual details/props for image generation")
+    
+    # Structured conversation data
+    information_known: List[NPCInfoItem] = Field(default_factory=list, description="Info items this NPC knows")
+    actions_available: List[NPCAction] = Field(default_factory=list, description="Actions this NPC can be convinced to perform")
+    cover_options: List[NPCCoverOption] = Field(default_factory=list, description="Cover stories players can use with this NPC")
 
 
 class Item(BaseModel):
@@ -99,6 +164,12 @@ class GameState(BaseModel):
     items_by_location: Dict[str, List[Item]] = Field(default_factory=dict, description="location_name -> available items")
     timeline_minutes: int = Field(default=120, description="Total time available")
     elapsed_minutes: int = Field(default=0, description="Time elapsed")
+    
+    # NPC conversation tracking
+    achieved_outcomes: Dict[str, List[str]] = Field(default_factory=dict, description="player_id -> [outcome_ids] (persists across cooldowns)")
+    npc_suspicion: Dict[str, Dict[str, int]] = Field(default_factory=dict, description="player_id -> {npc_id -> suspicion_level 0-5}")
+    npc_cooldowns: Dict[str, Dict[str, float]] = Field(default_factory=dict, description="player_id -> {npc_id -> cooldown_expiry_timestamp}")
+    chosen_covers: Dict[str, Dict[str, str]] = Field(default_factory=dict, description="player_id -> {npc_id -> cover_id}")
     
     def get_tasks_for_role(self, role: str) -> List[Task]:
         """Get all tasks assigned to a specific role"""

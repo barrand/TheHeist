@@ -5,6 +5,8 @@ import 'package:the_heist/services/websocket_service.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
 import 'package:the_heist/widgets/common/top_toast.dart';
 import 'package:the_heist/models/item.dart';
+import 'package:the_heist/models/npc.dart';
+import 'package:the_heist/screens/npc_conversation_screen.dart';
 
 /// Game screen where players complete their tasks
 class GameScreen extends StatefulWidget {
@@ -15,6 +17,9 @@ class GameScreen extends StatefulWidget {
   final String? playerRole;
   final List<Map<String, dynamic>>? allPlayers;
   final String? myPlayerId;
+  final String? roomCode;
+  final List<Map<String, dynamic>>? locations;
+  final List<Map<String, dynamic>>? npcs;
   
   const GameScreen({
     super.key,
@@ -25,6 +30,9 @@ class GameScreen extends StatefulWidget {
     this.playerRole,
     this.allPlayers,
     this.myPlayerId,
+    this.roomCode,
+    this.locations,
+    this.npcs,
   });
   
   @override
@@ -54,12 +62,18 @@ class _GameScreenState extends State<GameScreen> {
     super.initState();
     _myTasks = widget.yourTasks.map((t) => Map<String, dynamic>.from(t)).toList();
     
-    // Initialize with passed-in player data if available
+    // Initialize with passed-in data
     if (widget.allPlayers != null) {
       _allPlayers = widget.allPlayers!.map((p) => Map<String, dynamic>.from(p)).toList();
     }
     if (widget.myPlayerId != null) {
       _myPlayerId = widget.myPlayerId;
+    }
+    if (widget.locations != null) {
+      _allLocations = widget.locations!.map((l) => Map<String, dynamic>.from(l)).toList();
+    }
+    if (widget.npcs != null) {
+      _npcs = widget.npcs!.map((n) => Map<String, dynamic>.from(n)).toList();
     }
     
     _setupWebSocketListeners();
@@ -210,6 +224,48 @@ class _GameScreenState extends State<GameScreen> {
   
   void _showSnackBar(String message, {Color? color}) {
     showTopToast(context, message, color: color);
+  }
+  
+  void _startNpcConversation(Map<String, dynamic> npcData) {
+    // Build cover options from NPC data
+    final coverOptionsRaw = npcData['cover_options'] as List<dynamic>? ?? [];
+    final coverOptions = coverOptionsRaw.map((c) => CoverOption.fromJson(Map<String, dynamic>.from(c))).toList();
+    
+    final npc = NPC(
+      id: npcData['id'] ?? '',
+      name: npcData['name'] ?? 'Unknown',
+      role: npcData['role'] ?? '',
+      personality: npcData['personality'] ?? '',
+      location: npcData['location'] ?? '',
+      coverOptions: coverOptions,
+    );
+    
+    // Build objectives from player's relevant incomplete tasks
+    final relevantTypes = {'discovery', 'npc_llm', 'search', 'explore'};
+    final npcObjectives = _myTasks
+        .where((task) => 
+            relevantTypes.contains(task['type']) && 
+            task['status'] != 'completed')
+        .map((task) => Objective(
+              id: task['id'] ?? '',
+              description: task['description'] ?? '',
+              confidence: ConfidenceLevel.medium,
+            ))
+        .toList();
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NPCConversationScreen(
+          npc: npc,
+          objectives: npcObjectives,
+          apiKey: '',
+          scenarioId: widget.scenario,
+          roomCode: widget.roomCode,
+          playerId: _myPlayerId,
+        ),
+      ),
+    );
   }
   
   void _completeTask(String taskId, String taskType) {
@@ -667,6 +723,7 @@ class _GameScreenState extends State<GameScreen> {
         ...npcsHere.map((npc) {
           final name = npc['name'] ?? 'Unknown';
           final role = npc['role'] ?? '';
+          final npcId = npc['id'] ?? '';
           
           return Container(
             margin: EdgeInsets.only(bottom: AppDimensions.spaceXS),
@@ -704,6 +761,22 @@ class _GameScreenState extends State<GameScreen> {
                           ),
                         ),
                     ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () => _startNpcConversation(npc),
+                  icon: Icon(Icons.chat_bubble_outline, size: 16),
+                  label: Text('Chat'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentPrimary,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: Size(0, 32),
+                    textStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+                    ),
                   ),
                 ),
               ],

@@ -20,9 +20,15 @@ from .room import (
 from .game_state import (
     TaskType,
     TaskStatus,
+    PrerequisiteType,
+    Prerequisite,
     Location,
     Task,
+    NPCInfoItem,
+    NPCAction,
+    NPCCoverOption,
     NPCData,
+    Item as GameItem,
     GameState,
 )
 
@@ -64,9 +70,15 @@ __all__ = [
     # Game state models
     "TaskType",
     "TaskStatus",
+    "PrerequisiteType",
+    "Prerequisite",
     "Location",
     "Task",
+    "NPCInfoItem",
+    "NPCAction",
+    "NPCCoverOption",
     "NPCData",
+    "GameItem",
     "GameState",
     # WebSocket messages
     "JoinRoomMessage",

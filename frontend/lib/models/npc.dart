@@ -6,6 +6,7 @@ class NPC {
   final String? imageUrl;
   final String personality;
   final String location;
+  final List<CoverOption> coverOptions;
 
   const NPC({
     required this.id,
@@ -14,7 +15,47 @@ class NPC {
     this.imageUrl,
     required this.personality,
     required this.location,
+    this.coverOptions = const [],
   });
+}
+
+/// Cover story option for NPC conversation
+class CoverOption {
+  final String coverId;
+  final String description;
+  final String trustLevel;
+
+  const CoverOption({
+    required this.coverId,
+    required this.description,
+    required this.trustLevel,
+  });
+
+  factory CoverOption.fromJson(Map<String, dynamic> json) {
+    return CoverOption(
+      coverId: json['cover_id'] ?? '',
+      description: json['description'] ?? '',
+      trustLevel: json['trust_level'] ?? 'medium',
+    );
+  }
+}
+
+/// Quick response option with debug fit score
+class QuickResponseOption {
+  final String text;
+  final int fitScore;
+
+  const QuickResponseOption({
+    required this.text,
+    required this.fitScore,
+  });
+
+  factory QuickResponseOption.fromJson(Map<String, dynamic> json) {
+    return QuickResponseOption(
+      text: json['text'] ?? '',
+      fitScore: json['fit_score'] ?? 3,
+    );
+  }
 }
 
 /// Objective that the player is trying to achieve

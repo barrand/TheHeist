@@ -42,14 +42,14 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
   - **Name**: Safe Cracking Tools
   - **Description**: Professional lockpick set, dial manipulation tools, and stethoscope for listening to tumblers
   - **Visual**: Open black leather case containing shiny metallic lockpicks, tension wrenches, dial manipulation tools, and professional stethoscope with chrome ear pieces, tools arranged neatly in foam cutouts, reflective metal surfaces, professional safe-cracking kit, heist movie prop aesthetic, purple velvet lining visible
-  - **Required For**: SC2 (Crack the Vault Lock)
+  - **Required For**: SC3 (Crack the Vault Lock)
   - **Hidden**: false
 
 - **ID**: `earpiece_set`
   - **Name**: Radio Earpiece Set
   - **Description**: Two-way radio earpieces for team communication
   - **Visual**: Pair of sleek black wireless earpieces with curved design, small cyan LED indicator lights, flexible black cables, compact communication devices, modern spy tech aesthetic, glossy black finish with purple accent trim, professional covert operations equipment
-  - **Required For**: MM2 (Share Vault Intel) - makes communication easier
+  - **Required For**: MM3 (Share Vault Intel) - makes communication easier
   - **Hidden**: false
 
 - **ID**: `gala_invitation`
@@ -101,16 +101,17 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **Details**: Holding clipboard, wearing glasses
 - **Personality**: Bored and lonely on the night shift. Loves sports and misses the excitement of his old job. Gets chatty when someone shows interest in his stories. Genuinely believes nothing interesting ever happens at the museum.
 - **Information Known**:
-  - HIGH: The Eye of Orion jewels are in the new vault exhibit in the basement, east wing
-  - HIGH: He's been assigned to guard the vault exhibit all week
-  - MEDIUM: His patrol schedule - he leaves the vault area around 9 PM for his break
-  - MEDIUM: The vault was installed just two weeks ago
+  - `vault_location` HIGH: The Eye of Orion jewels are in the new vault exhibit in the basement, east wing
+  - `guard_assignment` HIGH: He's been assigned to guard the vault exhibit all week
+  - `patrol_schedule` MEDIUM: His patrol schedule - he leaves the vault area around 9 PM for his break
+  - `vault_age` MEDIUM: The vault was installed just two weeks ago
   - LOW: The museum director is paranoid about security since the last incident
-- **Conversation Hints**: 
-  - Bring up sports to get him talking
-  - Show sympathy about his boring shift
-  - Ask casual questions about the museum exhibits
-  - Don't mention the vault directly at first
+- **Actions Available**:
+  - `leave_post` HIGH: Can be convinced to leave his post early for a smoke break - he's bored and would welcome an excuse
+- **Cover Story Options**:
+  - `new_guard`: "New security guard, just transferred here - first night on the job" -- Trust: HIGH (fellow guard, would share tips and schedules freely)
+  - `journalist`: "Reporter from Art Weekly magazine, covering tonight's gala" -- Trust: LOW (trained to say "no comment" to press, would be guarded)
+  - `caterer`: "Catering staff working the gala event tonight" -- Trust: MEDIUM (friendly to service workers but wouldn't share security details)
 
 ### Museum Curator - Dr. Elena Vasquez
 - **ID**: `museum_curator`
@@ -125,104 +126,128 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **Details**: Holding wine glass, wearing museum ID badge
 - **Personality**: Passionate about the museum's collection. Loves talking about the exhibits and their history. Very proud of the new Eye of Orion acquisition. Professional but warm at social events. Trusts that security has everything under control.
 - **Information Known**:
-  - HIGH: The Eye of Orion was just acquired for $12 million
-  - HIGH: The jewels will be on public display starting Monday
-  - MEDIUM: The vault has a state-of-the-art combination lock system
-  - MEDIUM: Only three people know the combination (herself, the director, and head of security)
+  - `jewel_value` HIGH: The Eye of Orion was just acquired for $12 million
+  - `display_date` HIGH: The jewels will be on public display starting Monday
+  - `vault_lock_type` MEDIUM: The vault has a state-of-the-art combination lock system
+  - `combo_holders` MEDIUM: Only three people know the combination - herself, the director, and head of security
   - LOW: The security system has backup power in case of outages
   - LOW: The museum's insurance company required extra security measures
-- **Conversation Hints**:
-  - Show interest in the museum's collection
-  - Ask about recent acquisitions
-  - Compliment the gala event
-  - She won't give up security details easily unless she really trusts you
+- **Actions Available**:
+  - `distract_director` VERY HIGH: Could be convinced to pull the museum director away from the security office for a toast, but would need a very compelling reason
+- **Cover Story Options**:
+  - `art_collector`: "Private art collector, considering a major donation to the museum" -- Trust: HIGH (would love to impress a potential donor, might share insider details about acquisitions)
+  - `journalist`: "Arts journalist writing a feature on the museum's new acquisitions" -- Trust: MEDIUM (happy to talk about exhibits but cautious about security topics)
+  - `new_guard`: "New security guard, checking in about exhibit protocols" -- Trust: LOW (would redirect to head of security, wouldn't share curatorial info)
 
 ## Task Types
 
-Every task in this heist is one of five types:
+Every task in this heist is one of these types:
 
-- **🎮 Minigame**: Player-controlled action from `roles.json`
+- **🎮 Minigame**: Player-controlled action (e.g., dial_rotation, wire_connecting)
 - **💬 NPC/LLM**: Dialogue or interaction with AI-controlled character
-- **🔍 Search/Hunt**: Player searches a location for hidden items
+- **🔍 Search/Hunt**: Player searches a location for items
 - **🤝 Item Handoff**: Physical item transfer between players (tracked in inventory)
 - **🗣️ Info Share**: Verbal information exchange between players (real-life conversation)
-- **🎯 Discovery**: Open-ended exploration task - player discovers how to proceed
+- **🎯 Discovery**: Open-ended exploration task
 
-## Roles & Dependencies
+## Roles & Tasks
 
 ### Mastermind
 
 **Tasks:**
-1. **MM1. 🎯 DISCOVERY** - Learn Vault Intel
-   - *Description:* Gather intelligence about the vault location and security details. Explore the museum, mingle at the gala, and talk to people who might know. Look for security personnel, museum staff, or anyone who might reveal useful information.
-   - *Objectives to Discover:*
-     - Vault location (basement, east wing)
-     - Security patrol schedule
-     - Best time to access vault
-   - *Location:* Any museum location (explore to find sources)
-   - *Hint:* Try the Grand Hall - that's where the gala is happening
-   - *Dependencies:* None (starting task)
+1. **MM1. 💬 NPC_LLM** - Gather Vault Intel from Security Guard
+   - *Description:* Talk to the security guard at the gala to learn the vault's location and his patrol schedule. Be careful not to raise his suspicion.
+   - *NPC:* `security_guard` (Marcus Romano)
+   - *Target Outcomes:* `vault_location`, `patrol_schedule`
+   - *Location:* Grand Hall
+   - *Prerequisites:* None (starting task)
 
-2. **MM2. 🗣️ INFO** - Share Vault Intel with Safe Cracker
-   - *Description:* Radio the Safe Cracker with the vault's location (basement, east wing) and the security details you learned.
+2. **MM2. 💬 NPC_LLM** - Convince Guard to Leave His Post
+   - *Description:* Now that you know about the vault and Marcus's schedule, convince him to step away from his post early. He's bored - give him a reason to take a break.
+   - *NPC:* `security_guard` (Marcus Romano)
+   - *Target Outcomes:* `leave_post`
+   - *Location:* Grand Hall
+   - *Prerequisites:*
+     - Outcome `vault_location` (need to know about the vault to approach this naturally)
+
+3. **MM3. 🗣️ INFO** - Share Vault Intel with Safe Cracker
+   - *Description:* Radio the Safe Cracker with the vault's location (basement, east wing) and the security patrol details you learned.
    - *Location:* Any (radio communication)
-   - *Dependencies:* `MM1` (learned vault location and security details)
+   - *Prerequisites:*
+     - Task `MM1` (learned vault location and security details)
 
 ### Safe Cracker
 
 **Tasks:**
-1. **SC1. 🔍 SEARCH** - Navigate to Basement Vault
-   - *Description:* Using the intel from Mastermind, make your way to the basement vault in the east wing while the guard is distracted.
-   - *Location:* Museum Basement
-   - *Dependencies:* `MM1` (guard distracted), `MM2` (received vault location)
+1. **SC1. 🔍 SEARCH** - Gather Equipment
+   - *Description:* Grab your safe cracking tools from the crew hideout before heading to the museum.
+   - *Search Items:* safe_cracking_tools
+   - *Location:* Crew Hideout
+   - *Prerequisites:* None (starting task)
 
-2. **SC2. 🎮 dial_rotation** - Crack the Vault Lock
-   - *Description:* Use your expert skills to manipulate the vault's combination dial and retrieve the Eye of Orion jewels.
+2. **SC2. 🔍 SEARCH** - Navigate to Basement Vault
+   - *Description:* Using the intel from Mastermind, make your way to the basement vault in the east wing. The guard needs to be away from his post first.
+   - *Location:* Museum Basement
+   - *Prerequisites:*
+     - Task `MM3` (received vault location from Mastermind)
+     - Outcome `leave_post` (guard has left his post)
+
+3. **SC3. 🎮 dial_rotation** - Crack the Vault Lock
+   - *Description:* Use your expert skills and tools to manipulate the vault's combination dial and retrieve the Eye of Orion jewels.
    - *Location:* Vault Room
-   - *Dependencies:* `SC1` (reached vault)
+   - *Prerequisites:*
+     - Task `SC2` (reached the vault)
+     - Item `safe_cracking_tools` (need your tools to crack the lock)
 
 ## Task Summary
 
-Total tasks: 4
-Critical path tasks: 4
+Total tasks: 6
+Critical path tasks: 6
 Supporting tasks: 0
 
 By type:
-- Minigames (🎮): 1 (25%)
-- Discovery tasks (🎯): 1 (25%)
-- Search tasks (🔍): 1 (25%)
-- Info shares (🗣️): 1 (25%)
+- NPC/LLM (💬): 2 (33%)
+- Search (🔍): 2 (33%)
+- Minigames (🎮): 1 (17%)
+- Info shares (🗣️): 1 (17%)
 
 ## Dependency Tree Diagram
 
 ```mermaid
 flowchart TD
     START([START HEIST])
-    
-    START --> MM1{{🎯 MM: Learn Vault Intel}}
-    START --> SC1{{🔍 SC: Navigate to Vault}}
-    
-    MM1 --> MM2[🗣️ MM: Share Vault Location]
-    MM1 --> SC1
-    
-    MM2 --> SC2{{🎮 SC: Crack Vault}}
-    SC1 --> SC2
-    
-    SC2 --> COMPLETE([HEIST COMPLETE])
+
+    START --> MM1["💬 MM1: Gather Vault Intel\n(talk to Marcus)"]
+    START --> SC1["🔍 SC1: Gather Equipment\n(get tools)"]
+
+    MM1 -->|"vault_location"| MM2["💬 MM2: Convince Guard\nto Leave Post"]
+    MM1 --> MM3["🗣️ MM3: Share Vault Intel\nwith Safe Cracker"]
+
+    MM2 -->|"leave_post"| SC2
+    MM3 --> SC2["🔍 SC2: Navigate to\nBasement Vault"]
+
+    SC2 --> SC3["🎮 SC3: Crack the\nVault Lock"]
+    SC1 -->|"safe_cracking_tools"| SC3
+
+    SC3 --> COMPLETE([HEIST COMPLETE])
 ```
 
 ## Key Collaboration Points
 
-- **Intelligence Gathering**: Mastermind explores the gala and talks to people to learn vault location and security details
-- **Exploration**: Player must discover which NPCs have useful information (Security Guard, Curator, etc.)
+- **Intelligence Gathering**: Mastermind talks to the security guard to learn vault location and patrol schedule
+- **NPC Manipulation**: Mastermind convinces the guard to leave his post, clearing the path
 - **Information Sharing**: Mastermind radios the vault intel to Safe Cracker
-- **Execution**: Safe Cracker uses the intel to navigate to vault and crack it
+- **Preparation**: Safe Cracker gathers equipment at the hideout
+- **Execution**: Safe Cracker uses the intel and tools to navigate to vault and crack it
 
 ## Story Flow
 
-1. Mastermind mingles at the gala, observing and gathering information
-2. Mastermind talks to various people (security guard, curator, guests) to piece together intel
-3. Through conversations, learns vault is in "basement, east wing" and guard's schedule
-4. Mastermind radios Safe Cracker: "Basement, east wing, guard's away at 9 PM"
-5. Safe Cracker navigates to vault using the intel
-6. Safe Cracker cracks the combination lock and retrieves the jewels
+1. Both players start at the Crew Hideout
+2. Safe Cracker grabs the safe cracking tools
+3. Mastermind heads to the Grand Hall and mingles at the gala
+4. Mastermind spots the security guard and starts a conversation
+5. Through careful conversation, learns the vault is in "basement, east wing" and the guard's schedule
+6. Mastermind radios Safe Cracker: "Basement, east wing - but the guard is still at his post"
+7. Mastermind continues talking to Marcus, building rapport, and convinces him to take a smoke break
+8. With the guard away, Safe Cracker navigates through the basement to the vault
+9. Safe Cracker uses the tools to crack the combination lock and retrieves the jewels

@@ -13,8 +13,13 @@ from app.models.game_state import (
     Task,
     TaskType,
     TaskStatus,
+    PrerequisiteType,
+    Prerequisite,
     Location,
     NPCData,
+    NPCInfoItem,
+    NPCAction,
+    NPCCoverOption,
     Item
 )
 
@@ -212,8 +217,8 @@ class ExperienceLoader:
         """Extract NPC data from structured NPC section"""
         npcs = []
         
-        # Find the NPCs section
-        npcs_match = re.search(r'## NPCs\s*\n(.*?)(?=\n##|\Z)', content, re.DOTALL)
+        # Find the NPCs section (stop at next ## but not ###)
+        npcs_match = re.search(r'## NPCs\s*\n(.*?)(?=\n## (?!#)|\Z)', content, re.DOTALL)
         if not npcs_match:
             logger.warning("No NPCs section found in experience file")
             return npcs
@@ -247,24 +252,168 @@ class ExperienceLoader:
             personality_match = re.search(r'-\s*\*\*Personality\*\*:\s*(.+)', block)
             personality = personality_match.group(1).strip() if personality_match else "Friendly and helpful"
             
+            # Extract visual fields for image generation
+            gender_match = re.search(r'-\s*\*\*Gender\*\*:\s*(.+)', block)
+            gender = gender_match.group(1).strip() if gender_match else "person"
+            
+            ethnicity_match = re.search(r'-\s*\*\*Ethnicity\*\*:\s*(.+)', block)
+            ethnicity = ethnicity_match.group(1).strip() if ethnicity_match else ""
+            
+            clothing_match = re.search(r'-\s*\*\*Clothing\*\*:\s*(.+)', block)
+            clothing = clothing_match.group(1).strip() if clothing_match else ""
+            
+            expression_match = re.search(r'-\s*\*\*Expression\*\*:\s*(.+)', block)
+            expression = expression_match.group(1).strip() if expression_match else "friendly"
+            
+            attitude_match = re.search(r'-\s*\*\*Attitude\*\*:\s*(.+)', block)
+            attitude = attitude_match.group(1).strip() if attitude_match else "approachable"
+            
+            details_match = re.search(r'-\s*\*\*Details\*\*:\s*(.+)', block)
+            details = details_match.group(1).strip() if details_match else ""
+            
+            # Extract structured information known
+            information_known = self._extract_npc_info_items(block)
+            
+            # Extract actions available
+            actions_available = self._extract_npc_actions(block)
+            
+            # Extract cover story options
+            cover_options = self._extract_npc_cover_options(block)
+            
             npc = NPCData(
                 id=npc_id,
                 name=name,
                 role=role,
                 personality=personality,
-                location=location
+                location=location,
+                gender=gender,
+                ethnicity=ethnicity,
+                clothing=clothing,
+                expression=expression,
+                attitude=attitude,
+                details=details,
+                information_known=information_known,
+                actions_available=actions_available,
+                cover_options=cover_options,
             )
             npcs.append(npc)
-            logger.debug(f"Parsed NPC: {name} ({role}) at {location}")
+            logger.debug(f"Parsed NPC: {name} ({role}) at {location} - {len(information_known)} info items, {len(actions_available)} actions, {len(cover_options)} covers")
         
         return npcs
+    
+    def _extract_npc_info_items(self, block: str) -> List[NPCInfoItem]:
+        """Extract structured info items from NPC block
+        
+        Format:
+          - `vault_location` HIGH: Description text
+          - MEDIUM: Description text (no ID = flavor only)
+        """
+        items = []
+        
+        # Find Information Known section
+        info_match = re.search(r'-\s*\*\*Information Known\*\*:\s*\n(.*?)(?=\n-\s*\*\*|\Z)', block, re.DOTALL)
+        if not info_match:
+            return items
+        
+        info_text = info_match.group(1)
+        
+        for line in info_text.strip().split('\n'):
+            line = line.strip()
+            if not line.startswith('-'):
+                continue
+            line = line.lstrip('- ').strip()
+            
+            # Try format with ID: `info_id` CONFIDENCE: description
+            id_match = re.match(r'`(\w+)`\s+(HIGH|MEDIUM|LOW|VERY HIGH):\s*(.+)', line)
+            if id_match:
+                items.append(NPCInfoItem(
+                    info_id=id_match.group(1),
+                    confidence=id_match.group(2),
+                    description=id_match.group(3).strip()
+                ))
+            else:
+                # Format without ID: CONFIDENCE: description (flavor only)
+                no_id_match = re.match(r'(HIGH|MEDIUM|LOW|VERY HIGH):\s*(.+)', line)
+                if no_id_match:
+                    items.append(NPCInfoItem(
+                        info_id=None,
+                        confidence=no_id_match.group(1),
+                        description=no_id_match.group(2).strip()
+                    ))
+        
+        return items
+    
+    def _extract_npc_actions(self, block: str) -> List[NPCAction]:
+        """Extract actions available from NPC block
+        
+        Format:
+          - `leave_post` HIGH: Description text
+        """
+        actions = []
+        
+        # Find Actions Available section
+        actions_match = re.search(r'-\s*\*\*Actions Available\*\*:\s*\n(.*?)(?=\n-\s*\*\*|\Z)', block, re.DOTALL)
+        if not actions_match:
+            return actions
+        
+        actions_text = actions_match.group(1)
+        
+        for line in actions_text.strip().split('\n'):
+            line = line.strip()
+            if not line.startswith('-'):
+                continue
+            line = line.lstrip('- ').strip()
+            
+            # Format: `action_id` CONFIDENCE: description
+            action_match = re.match(r'`(\w+)`\s+(HIGH|MEDIUM|LOW|VERY HIGH):\s*(.+)', line)
+            if action_match:
+                actions.append(NPCAction(
+                    action_id=action_match.group(1),
+                    confidence=action_match.group(2),
+                    description=action_match.group(3).strip()
+                ))
+        
+        return actions
+    
+    def _extract_npc_cover_options(self, block: str) -> List[NPCCoverOption]:
+        """Extract cover story options from NPC block
+        
+        Format:
+          - `cover_id`: "Description text" -- Trust: LEVEL (explanation)
+        """
+        covers = []
+        
+        # Find Cover Story Options section
+        covers_match = re.search(r'-\s*\*\*Cover Story Options\*\*:\s*\n(.*?)(?=\n-\s*\*\*|\n###|\Z)', block, re.DOTALL)
+        if not covers_match:
+            return covers
+        
+        covers_text = covers_match.group(1)
+        
+        for line in covers_text.strip().split('\n'):
+            line = line.strip()
+            if not line.startswith('-'):
+                continue
+            line = line.lstrip('- ').strip()
+            
+            # Format: `cover_id`: "description" -- Trust: LEVEL (explanation)
+            cover_match = re.match(r'`(\w+)`:\s*"(.+?)"\s*--\s*Trust:\s*(HIGH|MEDIUM|LOW)\s*\((.+?)\)', line)
+            if cover_match:
+                covers.append(NPCCoverOption(
+                    cover_id=cover_match.group(1),
+                    description=cover_match.group(2).strip(),
+                    trust_level=cover_match.group(3).lower(),
+                    trust_description=cover_match.group(4).strip()
+                ))
+        
+        return covers
     
     def _extract_items(self, content: str) -> Dict[str, List[Item]]:
         """Extract items by location from ## Items by Location section"""
         items_by_location = {}
         
         # Find the Items by Location section
-        items_match = re.search(r'## Items by Location\s*\n(.*?)(?=\n##|\Z)', content, re.DOTALL)
+        items_match = re.search(r'## Items by Location\s*\n(.*?)(?=\n## (?!#)|\Z)', content, re.DOTALL)
         if not items_match:
             logger.warning("No Items by Location section found in experience file")
             return items_by_location
@@ -363,7 +512,12 @@ class ExperienceLoader:
             task_description = task_match.group(3).strip()
             task_details = task_match.group(4).strip()
             
-            task_id = f"{role_code}{task_num}"
+            # Try to extract explicit task ID from header (e.g., "MM1. 💬 NPC_LLM")
+            explicit_id_match = re.match(r'([A-Z]{1,3}\d+)\.\s+', task_emoji_and_type)
+            if explicit_id_match:
+                task_id = explicit_id_match.group(1)
+            else:
+                task_id = f"{role_code}{task_num}"
             
             # Parse task type from emoji
             task_type = TaskType.MINIGAME  # default
@@ -374,7 +528,10 @@ class ExperienceLoader:
             
             # Extract metadata
             location = self._extract_field(task_details, "Location")
+            prerequisites = self._extract_prerequisites(task_details)
+            # Also extract legacy dependencies for backward compatibility
             dependencies = self._extract_dependencies(task_details)
+            target_outcomes = self._extract_target_outcomes(task_details)
             
             # Create task
             task = Task(
@@ -384,7 +541,9 @@ class ExperienceLoader:
                 assigned_role=role,
                 location=location or "Unknown",
                 status=TaskStatus.LOCKED,
-                dependencies=dependencies
+                prerequisites=prerequisites,
+                dependencies=dependencies,
+                target_outcomes=target_outcomes,
             )
             
             # Add type-specific metadata
@@ -395,10 +554,14 @@ class ExperienceLoader:
                     task.minigame_id = minigame_match.group(1)
             
             elif task_type == TaskType.NPC_LLM:
-                # Extract NPC ID (new format: *NPC:* `npc_id`)
+                # Extract NPC ID (format: *NPC:* `npc_id` (NPC Name))
                 npc_id_match = re.search(r'\*NPC:\*\s*`([^`]+)`', task_details)
                 if npc_id_match:
                     task.npc_id = npc_id_match.group(1).strip()
+                    # Also extract NPC name from parenthetical
+                    npc_name_match = re.search(r'\*NPC:\*\s*`[^`]+`\s*\((.+?)\)', task_details)
+                    if npc_name_match:
+                        task.npc_name = npc_name_match.group(1).strip()
                 else:
                     # Fallback to old format: *NPC: Name (personality)*
                     npc_match = re.search(r'\*NPC:\s*(.+?)\s*\((.+?)\)', task_details)
@@ -408,11 +571,17 @@ class ExperienceLoader:
                         task.npc_id = task.npc_name.lower().replace(" ", "_")
             
             elif task_type == TaskType.SEARCH:
-                # Extract items to find
-                find_match = re.search(r'\*Find:\s*(.+?)\*', task_details)
-                if find_match:
-                    items = [item.strip() for item in find_match.group(1).split(',')]
+                # Extract items to find (new format: *Search Items:* item1, item2)
+                search_match = re.search(r'\*Search Items:\*\s*(.+?)(?:\n|$)', task_details)
+                if search_match:
+                    items = [item.strip() for item in search_match.group(1).split(',')]
                     task.search_items = items
+                else:
+                    # Fallback to old format: *Find: items*
+                    find_match = re.search(r'\*Find:\s*(.+?)\*', task_details)
+                    if find_match:
+                        items = [item.strip() for item in find_match.group(1).split(',')]
+                        task.search_items = items
             
             elif task_type == TaskType.HANDOFF:
                 # Extract item and recipient from description
@@ -439,8 +608,81 @@ class ExperienceLoader:
             return match.group(1).strip()
         return None
     
+    def _extract_prerequisites(self, text: str) -> List[Prerequisite]:
+        """Extract typed prerequisites from Prerequisites field
+        
+        Formats:
+          - *Prerequisites:* None (starting task)
+          - *Prerequisites:*
+            - Task `MM1` (description)
+            - Outcome `vault_location` (description)
+            - Item `safe_cracking_tools` (description)
+        """
+        prereqs = []
+        
+        # Find Prerequisites section (multi-line)
+        prereq_match = re.search(r'\*Prerequisites:\*\s*(.*?)(?=\n\s*\n|\n\s*\d+\.|\Z)', text, re.DOTALL)
+        if not prereq_match:
+            return prereqs
+        
+        prereq_text = prereq_match.group(1).strip()
+        
+        # Check for None
+        if "None" in prereq_text or "starting task" in prereq_text.lower():
+            return prereqs
+        
+        # Parse each prerequisite line
+        type_map = {
+            'task': PrerequisiteType.TASK,
+            'outcome': PrerequisiteType.OUTCOME,
+            'item': PrerequisiteType.ITEM,
+        }
+        
+        for line in prereq_text.split('\n'):
+            line = line.strip()
+            if not line.startswith('-'):
+                # Could be single-line format: Task `MM1` (description)
+                if line:
+                    single_match = re.match(r'(Task|Outcome|Item)\s+`(\w+)`\s*(?:\((.+?)\))?', line, re.IGNORECASE)
+                    if single_match:
+                        ptype = type_map.get(single_match.group(1).lower())
+                        if ptype:
+                            prereqs.append(Prerequisite(
+                                type=ptype,
+                                id=single_match.group(2),
+                                description=single_match.group(3) if single_match.group(3) else None
+                            ))
+                continue
+            
+            line = line.lstrip('- ').strip()
+            
+            # Format: Type `id` (description)
+            prereq_line_match = re.match(r'(Task|Outcome|Item)\s+`(\w+)`\s*(?:\((.+?)\))?', line, re.IGNORECASE)
+            if prereq_line_match:
+                ptype = type_map.get(prereq_line_match.group(1).lower())
+                if ptype:
+                    prereqs.append(Prerequisite(
+                        type=ptype,
+                        id=prereq_line_match.group(2),
+                        description=prereq_line_match.group(3) if prereq_line_match.group(3) else None
+                    ))
+        
+        return prereqs
+    
     def _extract_dependencies(self, text: str) -> List[str]:
-        """Extract task dependencies from Dependencies field"""
+        """Extract task dependencies - supports both old and new formats.
+        
+        Old format: *Dependencies:* `MM1` (description)
+        New format: *Prerequisites:* Task `MM1` (description)
+        
+        Returns only task IDs for legacy compatibility.
+        """
+        # First try new Prerequisites format
+        prereqs = self._extract_prerequisites(text)
+        if prereqs:
+            return [p.id for p in prereqs if p.type == PrerequisiteType.TASK]
+        
+        # Fall back to old Dependencies format
         deps_text = self._extract_field(text, "Dependencies")
         if not deps_text:
             return []
@@ -449,17 +691,40 @@ class ExperienceLoader:
         if "None" in deps_text or "Starting task" in deps_text.lower():
             return []
         
-        # Extract task IDs in parentheses (e.g., "Briefing complete (MM1)")
+        # Extract task IDs in backticks or parentheses
         dependencies = []
-        for match in re.finditer(r'\(([A-Z]{1,3}\d+)\)', deps_text):
+        # Try backtick format first: `MM1`
+        for match in re.finditer(r'`([A-Z]{1,3}\d+)`', deps_text):
             dependencies.append(match.group(1))
+        
+        if not dependencies:
+            # Fallback to parentheses format: (MM1)
+            for match in re.finditer(r'\(([A-Z]{1,3}\d+)\)', deps_text):
+                dependencies.append(match.group(1))
         
         return dependencies
     
+    def _extract_target_outcomes(self, text: str) -> List[str]:
+        """Extract target outcomes for NPC tasks
+        
+        Format: *Target Outcomes:* `vault_location`, `patrol_schedule`
+        """
+        outcomes_text = self._extract_field(text, "Target Outcomes")
+        if not outcomes_text:
+            return []
+        
+        # Extract IDs from backticks
+        outcomes = []
+        for match in re.finditer(r'`(\w+)`', outcomes_text):
+            outcomes.append(match.group(1))
+        
+        return outcomes
+    
     def _set_initial_statuses(self, tasks: Dict[str, Task]) -> None:
-        """Set initial task statuses (tasks with no dependencies are AVAILABLE)"""
+        """Set initial task statuses (tasks with no prerequisites/dependencies are AVAILABLE)"""
         for task in tasks.values():
-            if len(task.dependencies) == 0:
+            has_prereqs = len(task.prerequisites) > 0 or len(task.dependencies) > 0
+            if not has_prereqs:
                 task.status = TaskStatus.AVAILABLE
                 logger.debug(f"Task {task.id} is initially available")
             else:

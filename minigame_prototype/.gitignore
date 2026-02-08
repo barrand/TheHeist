@@ -1,0 +1,15 @@
+# Minigame prototype folder - throwaway code
+# Feel free to commit or ignore as needed
+
+# Flutter build artifacts
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/pubspec.lock
+
+# IDE
+**/.idea/
+**/.vscode/
+**/*.iml

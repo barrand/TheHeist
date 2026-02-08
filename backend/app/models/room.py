@@ -30,6 +30,7 @@ class Player(BaseModel):
     id: str = Field(..., description="Unique player identifier (UUID)")
     name: str = Field(..., description="Player display name")
     role: Optional[str] = Field(None, description="Selected role (mastermind, hacker, etc.)")
+    difficulty: str = Field(default="easy", description="Player difficulty: easy, medium, hard")
     connected: bool = Field(default=True, description="Is player currently connected")
     location: str = Field(default="Crew Hideout", description="Current location in game")
     inventory: List[Item] = Field(default_factory=list, description="Items player is carrying")

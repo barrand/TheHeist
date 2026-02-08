@@ -3,30 +3,32 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../models/npc.dart';
 import '../services/backend_service.dart';
-import '../widgets/common/top_toast.dart';
-import '../widgets/npc/objective_card.dart';
-import '../widgets/npc/chat_bubble.dart';
-import '../widgets/npc/quick_response_button.dart';
-import '../widgets/common/heist_primary_button.dart';
-import '../widgets/common/heist_text_field.dart';
 
-/// NPC Conversation Screen (Screen 10)
-/// Free-form conversation with NPCs using LLM via Python backend
-/// Hybrid interaction: Quick responses + free-form text
+/// NPC Conversation Screen with cover fit score system
 /// 
-/// Architecture: Flutter UI -> BackendService -> Python FastAPI -> Gemini
+/// Phase 1: Player selects a cover story
+/// Phase 2: Conversation with quick responses, suspicion meter, no free-form text
+/// 
+/// NOTE: ElevatedButton theme uses Size.fromHeight() which sets width=infinity.
+/// Any ElevatedButton inside a Row MUST override minimumSize to avoid crash.
 class NPCConversationScreen extends StatefulWidget {
   final NPC npc;
   final List<Objective> objectives;
-  final String apiKey;  // NOTE: Not used anymore, backend has the key
+  final String apiKey;
   final String difficulty;
+  final String? scenarioId;
+  final String? roomCode;
+  final String? playerId;
 
   const NPCConversationScreen({
     Key? key,
     required this.npc,
     required this.objectives,
     required this.apiKey,
-    this.difficulty = 'medium',
+    this.difficulty = 'easy',
+    this.scenarioId,
+    this.roomCode,
+    this.playerId,
   }) : super(key: key);
 
   @override
@@ -34,212 +36,166 @@ class NPCConversationScreen extends StatefulWidget {
 }
 
 class _NPCConversationScreenState extends State<NPCConversationScreen> {
-  final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final BackendService _backendService = BackendService();
   
+  // Conversation state
+  bool _isCoverSelection = true;
+  String? _selectedCoverId;
+  String _coverLabel = '';
   List<ChatMessage> _messages = [];
-  List<Objective> _objectives = [];
-  List<String> _quickResponses = [];
-  bool _showQuickResponses = true; // Show quick responses
+  List<QuickResponseOption> _quickResponses = [];
+  List<Map<String, dynamic>> _infoObjectives = [];
+  List<Map<String, dynamic>> _actionObjectives = [];
+  Set<String> _achievedOutcomes = {};
+  int _suspicion = 0;
   bool _isLoading = false;
-  bool _isInitialized = false;
-  bool _missionCompleted = false; // Track if objectives completed
-  bool _missionFailed = false; // Track if conversation failed
-
-  @override
-  void initState() {
-    super.initState();
-    _objectives = List.from(widget.objectives);
-    _checkBackendHealth();
-    _generateInitialQuickResponses();
-  }
+  bool _conversationFailed = false;
+  bool _allOutcomesAchieved = false;
 
   @override
   void dispose() {
-    _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _checkBackendHealth() async {
-    print('🏥 Checking backend health...');
-    try {
-      final isHealthy = await _backendService.checkHealth();
-      setState(() {
-        _isInitialized = isHealthy;
-      });
-      
-      if (isHealthy) {
-        print('✅ Backend is healthy');
-        _initializeConversation();
-      } else {
-        print('⚠️ Backend health check failed');
-        if (mounted) {
-          showTopToast(context, 'Backend server is not responding. Make sure it\'s running on http://localhost:8000', seconds: 5);
-        }
-      }
-    } catch (e) {
-      print('❌ Error checking backend health: $e');
-      if (mounted) {
-        showTopToast(context, 'Failed to connect to backend: $e');
-      }
+  String? _getNpcImageUrl() {
+    if (widget.scenarioId != null && widget.npc.id.isNotEmpty) {
+      return 'http://localhost:8000/api/images/${widget.scenarioId}/npc/${widget.npc.id}';
     }
+    return null;
   }
 
-  void _initializeConversation() {
-    // Add initial NPC greeting
-    setState(() {
-      _messages.add(ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: _getGreeting(),
-        isPlayer: false,
-        timestamp: DateTime.now(),
-      ));
-    });
-  }
-  
-  Future<void> _generateInitialQuickResponses() async {
-    // Wait a bit for health check to complete
-    await Future.delayed(const Duration(milliseconds: 500));
-    _generateQuickResponses();
-  }
+  // ---------------------------------------------------------------------------
+  // Cover Selection
+  // ---------------------------------------------------------------------------
 
-  String _getGreeting() {
-    final greetings = [
-      "Hello. Can I help you with something?",
-      "Hi there. What brings you here?",
-      "Good to see you. What's up?",
-    ];
-    return greetings[DateTime.now().millisecond % greetings.length];
-  }
-
-  Future<void> _generateQuickResponses() async {
-    if (!_isInitialized) {
-      // Use fallback responses if backend not available
-      setState(() {
-        _quickResponses = [
-          "Hi, I'm new here. Just getting oriented.",
-          "I was hoping to ask you a few questions.",
-          "Nice to meet you. How long have you worked here?",
-        ];
-      });
+  Future<void> _selectCover(CoverOption cover) async {
+    if (widget.roomCode == null || widget.playerId == null) {
+      debugPrint('❌ Missing roomCode or playerId for conversation');
       return;
     }
 
-    try {
-      print('🎲 Generating quick responses via backend...');
-      final responses = await _backendService.generateQuickResponses(
-        npc: widget.npc,
-        objectives: _objectives,
-        conversationHistory: _messages,
-      );
-      
-      setState(() {
-        _quickResponses = responses;
-      });
-      print('✅ Got ${responses.length} quick responses: $responses');
-      print('   _showQuickResponses = $_showQuickResponses');
-    } catch (e) {
-      print('❌ Error generating quick responses: $e');
-      // Keep existing responses or use fallback
-    }
-  }
-
-  Future<void> _sendMessage(String text) async {
-    if (text.trim().isEmpty || !_isInitialized) return;
-    if (_missionCompleted || _missionFailed) return; // Don't allow messaging if mission ended
-
-    setState(() {
-      _isLoading = true;
-      
-      // Add player message
-      _messages.add(ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: text,
-        isPlayer: true,
-        timestamp: DateTime.now(),
-      ));
-    });
-
-    _messageController.clear();
-    _scrollToBottom();
+    setState(() => _isLoading = true);
 
     try {
-      print('💬 Sending message to backend...');
-      // Get NPC response from backend (which calls Gemini)
-      final response = await _backendService.getNPCResponse(
-        npc: widget.npc,
-        objectives: _objectives,
-        playerMessage: text,
-        conversationHistory: _messages,
-        difficulty: widget.difficulty,
+      final result = await _backendService.startConversation(
+        npcId: widget.npc.id,
+        coverId: cover.coverId,
+        roomCode: widget.roomCode!,
+        playerId: widget.playerId!,
       );
-      
-      print('✅ Got NPC response: "${response.text}"');
-      
+
+      if (!mounted) return;
       setState(() {
-        // Add NPC response
+        _isCoverSelection = false;
+        _selectedCoverId = cover.coverId;
+        _coverLabel = result.coverLabel;
+        _suspicion = result.suspicion;
+        _quickResponses = result.quickResponses;
+        _infoObjectives = result.infoObjectives;
+        _actionObjectives = result.actionObjectives;
         _messages.add(ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          text: response.text,
+          text: result.greeting,
           isPlayer: false,
           timestamp: DateTime.now(),
         ));
-        
-        // Update objectives if any were revealed
-        for (final objectiveId in response.revealedObjectives) {
-          final index = _objectives.indexWhere((o) => o.id == objectiveId);
-          if (index != -1) {
-            _objectives[index] = _objectives[index].copyWith(isCompleted: true);
-            print('🎯 Objective completed: ${_objectives[index].description}');
-          }
-        }
-        
         _isLoading = false;
       });
-      
-      _scrollToBottom();
-      
-      // Generate new quick responses
-      await _generateQuickResponses();
-      
-      // Show success if objectives were revealed
-      if (response.revealedObjectives.isNotEmpty) {
-        // Check if all objectives are completed
-        final allCompleted = _objectives.every((obj) => obj.isCompleted);
-        if (allCompleted) {
-          setState(() {
-            _missionCompleted = true;
-          });
-        }
-      }
     } catch (e) {
-      print('❌ Error getting NPC response: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      debugPrint('❌ Error starting conversation: $e');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Conversation
+  // ---------------------------------------------------------------------------
+
+  Future<void> _sendChoice(int index) async {
+    if (_isLoading || _conversationFailed || _allOutcomesAchieved) return;
+    if (widget.roomCode == null || widget.playerId == null) return;
+
+    final chosen = _quickResponses[index];
+    
+    setState(() {
+      _isLoading = true;
+      _messages.add(ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: chosen.text,
+        isPlayer: true,
+        timestamp: DateTime.now(),
+      ));
+      _quickResponses = [];
+    });
+    _scrollToBottom();
+
+    try {
+      final result = await _backendService.sendConversationChoice(
+        responseIndex: index,
+        roomCode: widget.roomCode!,
+        playerId: widget.playerId!,
+        npcId: widget.npc.id,
+      );
+
+      if (!mounted) return;
       setState(() {
+        _messages.add(ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: result.npcResponse,
+          isPlayer: false,
+          timestamp: DateTime.now(),
+        ));
+        _suspicion = result.suspicion;
+        _quickResponses = result.quickResponses;
+        _conversationFailed = result.conversationFailed;
+        _isLoading = false;
+
+        // Track outcomes
+        for (final outcome in result.outcomes) {
+          _achievedOutcomes.add(outcome);
+        }
+
+        // Check if all objectives are done
+        final allInfoIds = _infoObjectives.map((o) => o['id'] as String).toSet();
+        final allActionIds = _actionObjectives.map((o) => o['id'] as String).toSet();
+        final allNeeded = allInfoIds.union(allActionIds);
+        if (allNeeded.isNotEmpty && allNeeded.every((id) => _achievedOutcomes.contains(id))) {
+          _allOutcomesAchieved = true;
+        }
+      });
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
         _messages.add(ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           text: "Sorry, I didn't catch that. Could you repeat?",
           isPlayer: false,
           timestamp: DateTime.now(),
         ));
-        _isLoading = false;
       });
-      _scrollToBottom();
     }
   }
 
   void _scrollToBottom() {
-    Future.delayed(Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
       }
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -252,365 +208,562 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
           icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.npc.name,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+        title: Text('Back', style: TextStyle(fontSize: 16, color: AppColors.textPrimary)),
+        titleSpacing: -8,
+      ),
+      body: _isCoverSelection ? _buildCoverSelection() : _buildConversation(),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 1: Cover Selection
+  // ---------------------------------------------------------------------------
+
+  Widget _buildCoverSelection() {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(AppDimensions.containerPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // NPC portrait
+                Center(child: _buildNpcPortrait()),
+                SizedBox(height: AppDimensions.spaceSM),
+                
+                // NPC name
+                Text(
+                  widget.npc.name.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary, letterSpacing: 2,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  widget.npc.role,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: AppColors.accentPrimary),
+                ),
+                
+                if (widget.npc.personality.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(top: AppDimensions.spaceXS, bottom: AppDimensions.spaceMD),
+                    child: Text(
+                      widget.npc.personality,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Cover story selection (bottom)
+        _buildCoverOptions(),
+      ],
+    );
+  }
+
+  Widget _buildCoverOptions() {
+    return Container(
+      padding: EdgeInsets.all(AppDimensions.containerPadding),
+      decoration: BoxDecoration(
+        color: AppColors.bgSecondary,
+        border: Border(top: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'CHOOSE YOUR APPROACH',
+            style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600,
+              color: AppColors.accentPrimary, letterSpacing: 1.5,
+            ),
+          ),
+          SizedBox(height: 10),
+          if (_isLoading)
+            Center(child: CircularProgressIndicator(color: AppColors.accentPrimary))
+          else
+            for (final cover in widget.npc.coverOptions) ...[
+              _buildCoverButton(cover),
+              SizedBox(height: 8),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoverButton(CoverOption cover) {
+    final trustColor = cover.trustLevel == 'high'
+        ? AppColors.success
+        : cover.trustLevel == 'low'
+            ? AppColors.danger
+            : AppColors.warning;
+
+    return OutlinedButton(
+      onPressed: () => _selectCover(cover),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.textPrimary,
+        side: BorderSide(color: AppColors.borderSubtle),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusMD)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '"${cover.description}"',
+              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+            ),
+          ),
+          SizedBox(width: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: trustColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              cover.trustLevel.toUpperCase(),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: trustColor, letterSpacing: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 2: Active Conversation
+  // ---------------------------------------------------------------------------
+
+  Widget _buildConversation() {
+    return Column(
+      children: [
+        // Suspicion meter
+        _buildSuspicionMeter(),
+        
+        // Scrollable content
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: EdgeInsets.all(AppDimensions.containerPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Cover story label
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgTertiary,
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+                  ),
+                  child: Text(
+                    'Cover: "$_coverLabel"',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                  ),
+                ),
+                SizedBox(height: AppDimensions.spaceSM),
+
+                // Objectives
+                if (_infoObjectives.isNotEmpty || _actionObjectives.isNotEmpty)
+                  _buildObjectivesCard(),
+                
+                SizedBox(height: AppDimensions.spaceSM),
+                
+                // NPC portrait (smaller in conversation)
+                Center(
+                  child: SizedBox(
+                    width: 120, height: 120,
+                    child: _buildNpcPortrait(small: true),
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  widget.npc.name.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary, letterSpacing: 1),
+                ),
+                SizedBox(height: AppDimensions.spaceSM),
+                
+                Divider(color: AppColors.borderSubtle, height: 1),
+                SizedBox(height: AppDimensions.spaceSM),
+                
+                // Chat messages
+                for (final message in _messages) _buildChatBubble(message),
+                
+                // Typing indicator
+                if (_isLoading) _buildTypingIndicator(),
+                
+                // Result banners
+                if (_conversationFailed) _buildFailureBanner(),
+                if (_allOutcomesAchieved) _buildSuccessBanner(),
+                
+                SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ),
+        
+        // Quick responses (bottom, no free-form text)
+        if (!_conversationFailed && !_allOutcomesAchieved && _quickResponses.isNotEmpty)
+          _buildQuickResponses(),
+      ],
+    );
+  }
+
+  Widget _buildSuspicionMeter() {
+    final labels = ['Relaxed', 'Comfortable', 'Curious', 'Cautious', 'Suspicious', 'Done'];
+    final colors = [
+      AppColors.success,
+      AppColors.success,
+      AppColors.warning,
+      AppColors.warning,
+      AppColors.danger,
+      AppColors.danger,
+    ];
+    
+    final label = _suspicion < labels.length ? labels[_suspicion] : 'Unknown';
+    final color = _suspicion < colors.length ? colors[_suspicion] : AppColors.danger;
+    
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: AppDimensions.containerPadding, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.bgSecondary,
+        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.visibility, size: 16, color: color),
+          SizedBox(width: 8),
+          Text('SUSPICION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 1)),
+          SizedBox(width: 12),
+          // Meter dots
+          for (int i = 0; i < 5; i++) ...[
+            Container(
+              width: 24, height: 8,
+              decoration: BoxDecoration(
+                color: i < _suspicion ? color : AppColors.bgTertiary,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: i < _suspicion ? color : AppColors.borderSubtle, width: 1),
               ),
             ),
-            Text(
-              widget.npc.role,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
+            if (i < 4) SizedBox(width: 4),
+          ],
+          SizedBox(width: 12),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildObjectivesCard() {
+    final allObjectives = [
+      ..._infoObjectives.map((o) => {'id': o['id'], 'desc': o['description'], 'type': 'info'}),
+      ..._actionObjectives.map((o) => {'id': o['id'], 'desc': o['description'], 'type': 'action'}),
+    ];
+
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bgTertiary,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'OBJECTIVES',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentPrimary, letterSpacing: 1),
+          ),
+          SizedBox(height: 6),
+          for (final obj in allObjectives)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    _achievedOutcomes.contains(obj['id'])
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    size: 16,
+                    color: _achievedOutcomes.contains(obj['id'])
+                        ? AppColors.success
+                        : AppColors.textTertiary,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      obj['desc'] as String,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: _achievedOutcomes.contains(obj['id'])
+                            ? AppColors.textSecondary
+                            : AppColors.textPrimary,
+                        decoration: _achievedOutcomes.contains(obj['id'])
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                  ),
+                  if (obj['type'] == 'action')
+                    Padding(
+                      padding: EdgeInsets.only(left: 4),
+                      child: Icon(Icons.flash_on, size: 14, color: AppColors.warning),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickResponses() {
+    return Container(
+      padding: EdgeInsets.all(AppDimensions.containerPadding),
+      decoration: BoxDecoration(
+        color: AppColors.bgSecondary,
+        border: Border(top: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'CHOOSE RESPONSE',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 1),
+          ),
+          SizedBox(height: 8),
+          for (int i = 0; i < _quickResponses.length; i++) ...[
+            _buildQuickResponseButton(_quickResponses[i], i),
+            if (i < _quickResponses.length - 1) SizedBox(height: 6),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickResponseButton(QuickResponseOption option, int index) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: _isLoading ? null : () => _sendChoice(index),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          side: BorderSide(color: AppColors.borderSubtle),
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusMD)),
+          alignment: Alignment.centerLeft,
+        ),
+        child: Row(
+          children: [
+            // Debug fit score
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              margin: EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: _fitScoreColor(option.fitScore).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'fit:${option.fitScore}',
+                style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w700,
+                  color: _fitScoreColor(option.fitScore),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                option.text,
+                style: TextStyle(fontSize: 14),
               ),
             ),
           ],
         ),
       ),
-      body: SafeArea(
-        child: Column(
+    );
+  }
+
+  Color _fitScoreColor(int fit) {
+    if (fit >= 4) return AppColors.success;
+    if (fit == 3) return AppColors.warning;
+    return AppColors.danger;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Chat Bubbles
+  // ---------------------------------------------------------------------------
+
+  Widget _buildChatBubble(ChatMessage message) {
+    final isPlayer = message.isPlayer;
+    return Align(
+      alignment: isPlayer ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: isPlayer ? AppColors.accentPrimary.withValues(alpha: 0.2) : AppColors.bgTertiary,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+          border: Border.all(
+            color: isPlayer ? AppColors.accentPrimary.withValues(alpha: 0.4) : AppColors.borderSubtle,
+          ),
+        ),
+        child: Text(
+          message.text,
+          style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.bgTertiary,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Scrollable top section with objectives and image
-            Expanded(
-              child: CustomScrollView(
-                controller: _scrollController,
-                slivers: [
-                  // Objectives section
-                  SliverToBoxAdapter(
-                    child: Container(
-                      padding: EdgeInsets.all(AppDimensions.containerPadding),
-                      child: ObjectiveCard(
-                        objectives: _objectives,
-                        npcName: widget.npc.name,
-                      ),
-                    ),
-                  ),
-                  
-                  // NPC portrait section (nice big image!)
-                  if (widget.npc.imageUrl != null)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppDimensions.containerPadding,
-                          vertical: AppDimensions.spaceSM,
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 300,  // Nice big size!
-                            height: 300,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: AppColors.accentPrimary,
-                                width: 4,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.accentPrimary.withValues(alpha: 0.3),
-                                  blurRadius: 20,
-                                  spreadRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.asset(
-                                widget.npc.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: AppColors.bgTertiary,
-                                    child: Icon(
-                                      Icons.person,
-                                      color: AppColors.textSecondary,
-                                      size: 80,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  
-                  // Personality text
-                  SliverToBoxAdapter(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppDimensions.containerPadding,
-                        vertical: AppDimensions.spaceXS,
-                      ),
-                      child: Text(
-                        widget.npc.personality,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textTertiary,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  SliverToBoxAdapter(
-                    child: Divider(color: AppColors.borderSubtle, height: 1),
-                  ),
-                  
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: AppDimensions.spaceXS),
-                  ),
-                  
-                  // Chat messages
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        if (index == _messages.length && _isLoading) {
-                          return Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppDimensions.containerPadding,
-                              vertical: AppDimensions.spaceMD,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '...',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-                        
-                        return Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppDimensions.containerPadding,
-                          ),
-                          child: ChatBubble(
-                            message: _messages[index],
-                            npcName: widget.npc.name,
-                          ),
-                        );
-                      },
-                      childCount: _messages.length + (_isLoading ? 1 : 0),
-                    ),
-                  ),
-                  
-                  // Success/Failure banner
-                  if (_missionCompleted || _missionFailed)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        margin: EdgeInsets.all(AppDimensions.containerPadding),
-                        padding: EdgeInsets.all(AppDimensions.cardPadding * 1.5),
-                        decoration: BoxDecoration(
-                          color: _missionCompleted ? Color(0xFF1E4D2B) : Color(0xFF4D1E1E),
-                          borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
-                          border: Border.all(
-                            color: _missionCompleted ? AppColors.success : AppColors.danger,
-                            width: 3,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              _missionCompleted ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                              color: _missionCompleted ? AppColors.success : AppColors.danger,
-                              size: 64,
-                            ),
-                            SizedBox(height: AppDimensions.spaceMD),
-                            Text(
-                              _missionCompleted ? '🎉 MISSION SUCCESS!' : '❌ MISSION FAILED',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: _missionCompleted ? AppColors.success : AppColors.danger,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: AppDimensions.spaceSM),
-                            Text(
-                              _missionCompleted 
-                                  ? 'You successfully obtained all the information you needed!'
-                                  : 'The NPC became suspicious and ended the conversation.',
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: AppColors.textPrimary,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: AppDimensions.spaceLG),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.accentPrimary,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 32,
-                                    vertical: 16,
-                                  ),
-                                ),
-                                child: Text(
-                                  'Return to Mission Select',
-                                  style: TextStyle(
-                                    color: AppColors.bgPrimary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  
-                  // Bottom padding for chat
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: 80),
-                  ),
-                ],
-              ),
+            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textSecondary)),
+            SizedBox(width: 10),
+            Text('${widget.npc.name} is thinking...', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontStyle: FontStyle.italic)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Result Banners
+  // ---------------------------------------------------------------------------
+
+  Widget _buildFailureBanner() {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: AppDimensions.spaceMD),
+      padding: EdgeInsets.all(AppDimensions.cardPadding * 1.5),
+      decoration: BoxDecoration(
+        color: Color(0xFF4D1E1E),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+        border: Border.all(color: AppColors.danger, width: 3),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.cancel_rounded, color: AppColors.danger, size: 48),
+          SizedBox(height: AppDimensions.spaceSM),
+          Text('CONVERSATION ENDED', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.danger)),
+          SizedBox(height: 8),
+          Text(
+            'The NPC became too suspicious. Try again later or ask a teammate.',
+            style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: AppDimensions.spaceLG),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, {'failed': true, 'npc_id': widget.npc.id}),
+              child: Text('BACK TO GAME', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ),
-            
-            // Input section (fixed at bottom) - hidden when mission ends
-            if (!_missionCompleted && !_missionFailed)
-              Container(
-                padding: EdgeInsets.all(AppDimensions.containerPadding),
-                decoration: BoxDecoration(
-                  color: AppColors.bgSecondary,
-                  border: Border(
-                    top: BorderSide(
-                      color: AppColors.borderSubtle,
-                    ),
-                  ),
-                ),
-                child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // DEBUG: Show state
-                  Text(
-                    'DEBUG: show=$_showQuickResponses, count=${_quickResponses.length}',
-                    style: TextStyle(color: Colors.yellow, fontSize: 10),
-                  ),
-                  
-                  // Quick responses (horizontal scroll)
-                  if (_showQuickResponses && _quickResponses.isNotEmpty) ...[
-                    Text(
-                      'QUICK RESPONSES',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textTertiary,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    // Vertical list of quick responses for better text display
-                    ...List.generate(_quickResponses.length, (index) {
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: 6),
-                        child: InkWell(
-                          onTap: () => _sendMessage(_quickResponses[index]),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: AppColors.bgTertiary,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.accentPrimary),
-                            ),
-                            child: Row(
-                              children: [
-                                Text(
-                                  '💬',
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _quickResponses[index],
-                                    style: TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 13,
-                                    ),
-                                    maxLines: 3,  // Allow up to 3 lines
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.send,
-                                  size: 14,
-                                  color: AppColors.accentPrimary,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                    SizedBox(height: 8),
-                    Divider(color: AppColors.borderSubtle, height: 1),
-                    SizedBox(height: 8),
-                  ],
-                  
-                  // Text input with inline send button
-                  Row(
-                    children: [
-                      Expanded(
-                        child: HeistTextField(
-                          controller: _messageController,
-                          hintText: 'Type your response...',
-                          maxLines: 1,
-                          onChanged: (_) => setState(() {}),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      // Send button
-                      SizedBox(
-                        width: 80,
-                        height: 40,
-                        child: ElevatedButton(
-                          onPressed: _messageController.text.trim().isEmpty || _isLoading
-                              ? null
-                              : () => _sendMessage(_messageController.text),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.accentPrimary,
-                            padding: EdgeInsets.zero,
-                          ),
-                          child: _isLoading 
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                )
-                              : Text(
-                                  'Send',
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuccessBanner() {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: AppDimensions.spaceMD),
+      padding: EdgeInsets.all(AppDimensions.cardPadding * 1.5),
+      decoration: BoxDecoration(
+        color: Color(0xFF1E4D2B),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+        border: Border.all(color: AppColors.success, width: 3),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.check_circle_rounded, color: AppColors.success, size: 48),
+          SizedBox(height: AppDimensions.spaceSM),
+          Text('OBJECTIVES COMPLETE!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.success)),
+          SizedBox(height: 8),
+          Text(
+            'You got everything you needed from this conversation.',
+            style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: AppDimensions.spaceLG),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, {'success': true}),
+              child: Text('CONTINUE', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // NPC Portrait
+  // ---------------------------------------------------------------------------
+
+  Widget _buildNpcPortrait({bool small = false}) {
+    final size = small ? 120.0 : 280.0;
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(small ? 12 : 16),
+        border: Border.all(color: AppColors.accentPrimary, width: small ? 2 : 3),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accentPrimary.withValues(alpha: 0.3),
+            blurRadius: small ? 10 : 20, spreadRadius: small ? 1 : 2,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(small ? 10 : 13),
+        child: _buildNpcImage(),
+      ),
+    );
+  }
+
+  Widget _buildNpcImage() {
+    final imageUrl = _getNpcImageUrl();
+    if (imageUrl != null) {
+      return Image.network(imageUrl, fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildImageFallback(),
+      );
+    }
+    return _buildImageFallback();
+  }
+
+  Widget _buildImageFallback() {
+    return Container(
+      color: AppColors.bgTertiary,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person, color: AppColors.textSecondary, size: 48),
+            SizedBox(height: 4),
+            Text(widget.npc.name, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
           ],
         ),
       ),

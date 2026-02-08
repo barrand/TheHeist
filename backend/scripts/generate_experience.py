@@ -222,6 +222,67 @@ Mix linear chains (A→B→C) with parallel options (A→B OR A→C) for variety
 - Make players work to get information (build trust, solve problems, trade favors)
 - Add red herrings and misdirection (NPCs don't know they're giving clues!)
 
+## NPC Conversation System Format (CRITICAL!)
+
+Each NPC MUST include structured data for the conversation system:
+
+### NPC Format:
+```markdown
+### Role Title - NPC Name
+- **ID**: `snake_case_id`
+- **Role**: Their job/role
+- **Location**: Where they are
+- **Age**: number
+- **Gender**: male/female
+- **Ethnicity**: description
+- **Clothing**: what they wear
+- **Expression**: facial expression
+- **Attitude**: personality vibe
+- **Details**: props/visual details
+- **Personality**: Detailed personality for LLM conversations (2-3 sentences)
+- **Information Known**:
+  - `info_id` HIGH: Description of what they know (tagged info that players need)
+  - `another_id` MEDIUM: Another piece of information
+  - LOW: Flavor text they might share (no ID = flavor only)
+- **Actions Available**:
+  - `action_id` HIGH: Something NPC can be convinced to do
+- **Cover Story Options**:
+  - `cover_id`: "What the player claims to be" -- Trust: HIGH (why NPC trusts this cover)
+  - `another_cover`: "Another cover story" -- Trust: LOW (why NPC distrusts this cover)
+  - `third_cover`: "Third option" -- Trust: MEDIUM (explanation)
+```
+
+Rules for NPCs:
+- Each NPC needs 3-6 tagged info items and 0-2 actions
+- Each NPC needs exactly 3 cover story options (one HIGH, one MEDIUM, one LOW trust)
+- Info IDs must be snake_case and unique across the experience
+- Action IDs must be snake_case and unique across the experience
+- HIGH confidence info = shared relatively easily, LOW = only through great rapport
+
+### Task Prerequisite Format:
+```markdown
+1. **MM1. 💬 NPC_LLM** - Task Description
+   - *Description:* Detailed description
+   - *NPC:* `npc_id` (NPC Name)
+   - *Target Outcomes:* `info_id_1`, `info_id_2`
+   - *Location:* Location Name
+   - *Prerequisites:* None (starting task)
+
+2. **MM2. 🎮 minigame_id** - Task Description
+   - *Description:* Detailed description
+   - *Location:* Location Name
+   - *Prerequisites:*
+     - Task `MM1` (description of why)
+     - Outcome `info_id` (what info is needed)
+     - Item `item_id` (what item is needed)
+```
+
+Rules for Tasks:
+- Use typed prerequisites: `Task`, `Outcome`, `Item` (not plain dependency IDs)
+- NPC tasks MUST have `*Target Outcomes:*` listing the info/action IDs needed
+- `*NPC:*` field must reference NPC by backtick ID: `*NPC:* \`npc_id\` (Name)`
+- Search tasks use `*Search Items:*` instead of `*Find:*`
+
 ## Standard Requirements
 
 1. **Follow the markdown format** shown in the example (structure, not content!)
@@ -233,6 +294,9 @@ Mix linear chains (A→B→C) with parallel options (A→B OR A→C) for variety
 7. **Include location list** at the beginning (12-18 locations)
 8. **Add generation header** showing scenario, roles, and player count
 9. **Generate both full and simplified Mermaid diagrams**
+10. **Use typed prerequisites** on all tasks (Task, Outcome, Item)
+11. **Include cover story options** for every NPC (3 per NPC, varying trust)
+12. **Tag all NPC info** with snake_case IDs for outcome tracking
 
 ## CREATIVITY GUIDELINES ⭐
 

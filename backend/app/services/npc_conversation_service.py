@@ -1,312 +1,558 @@
 """
 NPC Conversation Service
-Handles real-time NPC chat interactions using Google Gemini API
+Handles NPC conversations with cover fit score system, suspicion tracking,
+and structured outcome detection.
 
-Uses gemini-2.5-flash for fast, cost-effective conversations during gameplay.
-This service is specifically for NPC dialogue - not for image generation or 
-experience creation (those are separate services).
-
-Uses direct REST API instead of google-generativeai library to avoid gRPC issues.
+Uses Gemini for NPC dialogue and quick response generation.
+Suspicion is calculated server-side from fit scores (not by the LLM).
 """
 
 import logging
-from typing import Optional
-import requests
+import random
 import json
+import time
+from typing import Optional, List, Dict, Tuple
+import requests
 
-from app.models.npc import Objective, NPCInfo, ConfidenceLevel
+from app.models.npc import QuickResponseOption
+from app.models.game_state import (
+    NPCData, NPCInfoItem, NPCAction, NPCCoverOption, GameState
+)
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Suspicion change table: fit_score -> {difficulty -> delta}
+SUSPICION_TABLE = {
+    5: {"easy": -1, "medium": -1, "hard": 0},
+    4: {"easy": 0, "medium": 0, "hard": 0},
+    3: {"easy": 0, "medium": 0, "hard": 1},
+    2: {"easy": 0, "medium": 1, "hard": 2},
+    1: {"easy": 1, "medium": 2, "hard": 3},
+}
+
+COOLDOWN_DURATION_SECONDS = 60  # Same for all difficulties
+
+# Suspicion mood labels for the visible meter
+SUSPICION_LABELS = {
+    0: "Relaxed",
+    1: "Comfortable",
+    2: "Curious",
+    3: "Cautious",
+    4: "Suspicious",
+    5: "Done",
+}
+
+
+class ConversationSession:
+    """Tracks the state of an active NPC conversation"""
+    
+    def __init__(self, npc_id: str, player_id: str, cover_id: str, difficulty: str):
+        self.npc_id = npc_id
+        self.player_id = player_id
+        self.cover_id = cover_id
+        self.difficulty = difficulty
+        self.conversation_history: List[Dict] = []
+        self.current_responses: List[QuickResponseOption] = []
+        self.suspicion: int = 0
+    
+    def add_message(self, text: str, is_player: bool):
+        self.conversation_history.append({
+            "role": "player" if is_player else "npc",
+            "text": text,
+        })
+
 
 class NPCConversationService:
     """
-    Service for real-time NPC conversations during gameplay
+    Service for NPC conversations with cover fit score system.
     
-    Responsibilities:
-    - Generate NPC responses to player messages
-    - Detect when objectives are revealed
-    - Generate quick response suggestions
-    - Manage conversation difficulty levels
-    
-    NOT responsible for:
-    - Image generation (see image_generation_service.py in scripts)
-    - Experience generation (see experience_generation_service.py in scripts)
+    Key design:
+    - Quick responses have hidden fit scores (1-5)
+    - Suspicion is calculated server-side from fit scores
+    - The LLM generates dialogue and reports outcomes (info/actions)
+    - At least one quick response per turn has fit 4+
     """
     
     def __init__(self):
-        """Initialize Gemini service with API key from settings"""
         settings = get_settings()
         self.api_key = settings.gemini_api_key
         self.npc_model = settings.gemini_npc_model
         self.quick_response_model = settings.gemini_quick_response_model
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
-        logger.info(f"Initialized NPC Conversation Service - NPC model: {self.npc_model}, Quick response model: {self.quick_response_model}")
+        
+        # Active conversation sessions: (player_id, npc_id) -> ConversationSession
+        self.sessions: Dict[Tuple[str, str], ConversationSession] = {}
+        
+        logger.info(f"NPC Conversation Service initialized - NPC: {self.npc_model}, QR: {self.quick_response_model}")
     
-    def get_difficulty_instructions(self, difficulty: str) -> str:
-        """Get NPC behavior instructions based on difficulty setting"""
-        instructions = {
-            "easy": """
-- Be helpful and forthcoming
-- Share information after 1-2 questions
-- Give clear hints if they're on the right track
-""",
-            "hard": """
-- Be cautious and suspicious
-- Require significant rapport building
-- Only share information if they ask the perfect question
-- May lie or mislead if they're too direct
-""",
-            "medium": """
-- Be realistic - friendly but not too forthcoming
-- Share information after building some rapport
-- Give subtle hints if they're getting warm
-"""
-        }
-        return instructions.get(difficulty.lower(), instructions["medium"])
+    def get_session(self, player_id: str, npc_id: str) -> Optional[ConversationSession]:
+        return self.sessions.get((player_id, npc_id))
     
-    def build_npc_prompt(
+    def start_conversation(
         self,
-        npc: NPCInfo,
-        objectives: list[Objective],
-        player_message: str,
-        difficulty: str
-    ) -> str:
-        """Build the system prompt for NPC conversation"""
+        npc: NPCData,
+        cover_id: str,
+        player_id: str,
+        difficulty: str,
+        game_state: GameState,
+    ) -> Tuple[str, List[QuickResponseOption], int]:
+        """
+        Start a new conversation with an NPC.
         
-        # Filter objectives NPC knows about
-        known_objectives = [
-            obj for obj in objectives
-            if obj.confidence in [ConfidenceLevel.HIGH, ConfidenceLevel.MEDIUM]
-        ]
+        Returns: (greeting, quick_responses, suspicion)
+        """
+        # Check cooldown
+        cooldowns = game_state.npc_cooldowns.get(player_id, {})
+        if npc.id in cooldowns and time.time() < cooldowns[npc.id]:
+            remaining = int(cooldowns[npc.id] - time.time())
+            return (
+                f"I'm busy right now. Give me some space. (Cooldown: {remaining}s remaining)",
+                [],
+                0,
+            )
         
-        objectives_text = "\n".join([
-            f"- {obj.description} ("
-            f"{'you definitely know this' if obj.confidence == ConfidenceLevel.HIGH else 'you might know this'}"
-            f")"
-            for obj in known_objectives
-        ])
+        # Find the chosen cover
+        cover = next((c for c in npc.cover_options if c.cover_id == cover_id), None)
+        if not cover:
+            logger.error(f"Cover {cover_id} not found for NPC {npc.id}")
+            cover = npc.cover_options[0] if npc.cover_options else NPCCoverOption(
+                cover_id="unknown", description="Someone at the event",
+                trust_level="low", trust_description="An unknown person"
+            )
         
-        return f"""You are {npc.name}, a {npc.role}.
+        # Create session
+        session = ConversationSession(npc.id, player_id, cover_id, difficulty)
+        self.sessions[(player_id, npc.id)] = session
+        
+        # Store chosen cover in game state
+        if player_id not in game_state.chosen_covers:
+            game_state.chosen_covers[player_id] = {}
+        game_state.chosen_covers[player_id][npc.id] = cover_id
+        
+        # Reset suspicion for this conversation
+        if player_id not in game_state.npc_suspicion:
+            game_state.npc_suspicion[player_id] = {}
+        game_state.npc_suspicion[player_id][npc.id] = 0
+        
+        # Generate greeting
+        greeting = self._generate_greeting(npc, cover, difficulty)
+        session.add_message(greeting, is_player=False)
+        
+        # Generate first set of quick responses
+        quick_responses = self._generate_quick_responses(npc, cover, session, difficulty)
+        session.current_responses = quick_responses
+        
+        logger.info(f"Started conversation: {player_id} -> {npc.id} as '{cover.cover_id}' (difficulty: {difficulty})")
+        
+        return greeting, quick_responses, 0
+    
+    def process_player_choice(
+        self,
+        response_index: int,
+        player_id: str,
+        npc: NPCData,
+        difficulty: str,
+        game_state: GameState,
+    ) -> Tuple[str, List[str], int, int, List[QuickResponseOption], bool, Optional[float], List[str]]:
+        """
+        Process a player's quick response choice.
+        
+        Returns: (npc_response, outcomes, suspicion, suspicion_delta, 
+                  next_quick_responses, conversation_failed, cooldown_until, completed_tasks)
+        """
+        session = self.get_session(player_id, npc.id)
+        if not session:
+            return ("I don't think we've met.", [], 0, 0, [], False, None, [])
+        
+        # Get the chosen response and its fit score
+        if response_index < 0 or response_index >= len(session.current_responses):
+            response_index = 0
+        
+        chosen = session.current_responses[response_index]
+        player_text = chosen.text
+        fit_score = chosen.fit_score
+        
+        # Add player message to history
+        session.add_message(player_text, is_player=True)
+        
+        # Calculate suspicion delta from fit score + difficulty
+        delta = SUSPICION_TABLE.get(fit_score, {}).get(difficulty, 0)
+        new_suspicion = max(0, min(5, session.suspicion + delta))
+        session.suspicion = new_suspicion
+        
+        # Update game state suspicion
+        if player_id not in game_state.npc_suspicion:
+            game_state.npc_suspicion[player_id] = {}
+        game_state.npc_suspicion[player_id][npc.id] = new_suspicion
+        
+        logger.info(f"Player chose response (fit={fit_score}): '{player_text}' | suspicion: {session.suspicion - delta} + {delta} = {new_suspicion}")
+        
+        # Check for failure BEFORE getting NPC response
+        if new_suspicion >= 5:
+            # Conversation failed - get contextual dismissal
+            dismissal = self._generate_failure_dismissal(npc, session, player_text, difficulty)
+            session.add_message(dismissal, is_player=False)
+            
+            # Set cooldown
+            cooldown_until = time.time() + COOLDOWN_DURATION_SECONDS
+            if player_id not in game_state.npc_cooldowns:
+                game_state.npc_cooldowns[player_id] = {}
+            game_state.npc_cooldowns[player_id][npc.id] = cooldown_until
+            
+            # Clean up session
+            del self.sessions[(player_id, npc.id)]
+            
+            logger.info(f"Conversation FAILED: {player_id} -> {npc.id} (suspicion reached 5)")
+            
+            return (dismissal, [], 5, delta, [], True, cooldown_until, [])
+        
+        # Get NPC response with outcome detection
+        cover = next((c for c in npc.cover_options if c.cover_id == session.cover_id), None)
+        npc_response, outcomes = self._get_npc_response(npc, cover, session, player_text, difficulty)
+        session.add_message(npc_response, is_player=False)
+        
+        # Track achieved outcomes
+        completed_tasks = []
+        if outcomes:
+            if player_id not in game_state.achieved_outcomes:
+                game_state.achieved_outcomes[player_id] = []
+            for outcome_id in outcomes:
+                if outcome_id not in game_state.achieved_outcomes[player_id]:
+                    game_state.achieved_outcomes[player_id].append(outcome_id)
+            
+            # Check for auto-completed tasks
+            all_outcomes = set(game_state.achieved_outcomes[player_id])
+            for task in game_state.tasks.values():
+                if (task.target_outcomes and 
+                    task.status.value != "completed" and
+                    all(o in all_outcomes for o in task.target_outcomes)):
+                    task.status = "completed"
+                    completed_tasks.append(task.id)
+                    logger.info(f"Task auto-completed: {task.id} (all target outcomes achieved)")
+        
+        # Generate next quick responses
+        next_responses = self._generate_quick_responses(npc, cover, session, difficulty)
+        session.current_responses = next_responses
+        
+        return (npc_response, outcomes, new_suspicion, delta, next_responses, False, None, completed_tasks)
+    
+    def _generate_greeting(self, npc: NPCData, cover: NPCCoverOption, difficulty: str) -> str:
+        """Generate NPC's opening line based on cover story and trust level"""
+        prompt = f"""You are {npc.name}, a {npc.role}.
 Personality: {npc.personality}
-Location: {npc.location}
 
-The player is a member of a heist crew trying to gather information from you.
+Someone approaches you at the event. They claim to be: {cover.description}
 
-Information you know (and can share if asked properly):
-{objectives_text}
+Your instinct about this cover: {cover.trust_description}
 
-Difficulty: {difficulty}
-{self.get_difficulty_instructions(difficulty)}
+{self._get_difficulty_prompt(difficulty)}
 
-IMPORTANT: 
-- Stay in character at all times
-- Be natural and conversational
-- Share information gradually, not all at once
-- If they ask about something you don't know, you genuinely don't know
-- Keep responses under 3 sentences
-- Don't be too obvious about having "quest information"
-- DO NOT wrap your response in quotation marks
-- Write ONLY the dialogue text, no formatting or quotes
+Generate a SHORT greeting (1-2 sentences) that reflects your reaction to this person's cover story.
+Be natural and in character. Just the dialogue, no quotes or formatting."""
 
-Player says: "{player_message}"
-
-Your response as {npc.name} (plain text, no quotes):"""
-    
-    async def get_npc_response(
-        self,
-        npc: NPCInfo,
-        objectives: list[Objective],
-        player_message: str,
-        difficulty: str = "medium"
-    ) -> str:
-        """
-        Get NPC response to player message
-        
-        Args:
-            npc: NPC information
-            objectives: List of objectives player is trying to learn
-            player_message: What the player said
-            difficulty: Conversation difficulty (easy/medium/hard)
-            
-        Returns:
-            NPC's response text
-            
-        Raises:
-            Exception: If Gemini API call fails
-        """
-        logger.info(f"Getting NPC response: {npc.name} <- '{player_message}'")
-        
         try:
-            prompt = self.build_npc_prompt(npc, objectives, player_message, difficulty)
-            
-            # Use direct REST API call
-            url = f"{self.base_url}/models/{self.npc_model}:generateContent?key={self.api_key}"
-            
-            payload = {
-                "contents": [{
-                    "parts": [{"text": prompt}]
-                }],
-                "generationConfig": {
-                    "temperature": 0.7,
-                    "maxOutputTokens": 500,  # Increased for complete responses
-                }
-            }
-            
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
-            
-            data = response.json()
-            
-            # Log full API response for debugging
-            logger.info(f"NPC API response: {json.dumps(data, indent=2)}")
-            
-            npc_text = data["candidates"][0]["content"]["parts"][0]["text"]
-            
-            # Strip leading/trailing quotes if Gemini added them
-            npc_text = npc_text.strip()
-            if npc_text.startswith('"') and len(npc_text) > 1:
-                # Find the matching closing quote
-                npc_text = npc_text[1:]  # Remove leading quote
-                if npc_text.endswith('"'):
-                    npc_text = npc_text[:-1]  # Remove trailing quote
-            
-            logger.info(f"NPC response: '{npc_text}'")
-            return npc_text
-            
+            return self._call_llm(prompt, self.npc_model, temperature=0.7, max_tokens=150)
         except Exception as e:
-            logger.error(f"Error getting NPC response: {e}", exc_info=True)
-            raise
+            logger.error(f"Error generating greeting: {e}")
+            return f"Oh, hello there. What can I do for you?"
     
-    async def generate_quick_responses(
-        self,
-        npc: NPCInfo,
-        objectives: list[Objective],
-        conversation_history: list[dict]
-    ) -> list[str]:
-        """
-        Generate 3 quick response suggestions for the player
+    def _generate_quick_responses(
+        self, npc: NPCData, cover: Optional[NPCCoverOption], 
+        session: ConversationSession, difficulty: str
+    ) -> List[QuickResponseOption]:
+        """Generate 3 quick responses with random fit scores"""
         
-        Args:
-            npc: NPC information
-            objectives: List of objectives
-            conversation_history: Recent conversation messages
-            
-        Returns:
-            List of 3 suggested responses
-        """
-        logger.info(f"Generating quick responses for {npc.name}")
-        logger.info(f"Conversation history length: {len(conversation_history)}")
+        # Pick random fit targets (at least one must be 4 or 5)
+        fit_targets = self._pick_fit_targets()
         
-        # Get last few messages for context
-        recent_messages = conversation_history[-4:] if len(conversation_history) > 4 else conversation_history
-        conversation_context = "\n".join([
-            f"{'Player' if msg.get('isPlayer') else npc.name}: {msg.get('text', '')}"
-            for msg in recent_messages
-        ])
+        # Get remaining outcomes the player needs
+        remaining_info = [i for i in npc.information_known if i.info_id]
+        remaining_actions = npc.actions_available
+        outcomes_text = ""
+        if remaining_info:
+            outcomes_text += "Info player still needs: " + ", ".join(
+                [f"{i.info_id}: {i.description}" for i in remaining_info[:3]]
+            )
+        if remaining_actions:
+            outcomes_text += "\nActions player could convince NPC to do: " + ", ".join(
+                [f"{a.action_id}: {a.description}" for a in remaining_actions[:2]]
+            )
         
-        logger.info(f"Conversation context: {conversation_context}")
+        # Build conversation context
+        recent = session.conversation_history[-6:]
+        context = "\n".join([f"{'Player' if m['role'] == 'player' else npc.name}: {m['text']}" for m in recent])
         
-        incomplete_objectives = [obj for obj in objectives if not obj.is_completed]
-        objectives_text = "\n".join([f"- {obj.description}" for obj in incomplete_objectives])
+        cover_desc = cover.description if cover else "Someone at the event"
         
-        prompt = f"""Generate 3 player responses for this conversation.
+        # Build fit level descriptions for the prompt
+        fit_descriptions = []
+        for fit in fit_targets:
+            if fit >= 4:
+                fit_descriptions.append(f"Fit {fit}: Perfect/good for the cover. Natural and trust-building.")
+            elif fit == 3:
+                fit_descriptions.append(f"Fit {fit}: Neutral. Slightly off but not alarming.")
+            elif fit == 2:
+                fit_descriptions.append(f"Fit {fit}: Poor fit. Awkward for this cover, a perceptive NPC would notice.")
+            else:
+                fit_descriptions.append(f"Fit {fit}: Terrible fit. Obviously wrong for the cover. Can be funny or absurd.")
+        
+        prompt = f"""Generate 3 response options for an NPC conversation in a heist game.
 
-Recent conversation:
-{conversation_context}
+Player's cover: {cover_desc}
+NPC: {npc.name}, {npc.role}
+Conversation so far:
+{context if context else "(conversation just started)"}
 
-Objectives: {objectives_text[:100] if objectives_text else "Learn about their work"}
+{outcomes_text}
 
-Output 3 responses (one per line, no numbers):
-1. Friendly comment
-2. Question about objectives
-3. Indirect probe"""
+Generate responses at these cover fit levels: {fit_targets}
+{chr(10).join(fit_descriptions)}
+
+Rules:
+- Each response: 1-2 sentences, conversational
+- Higher-fit responses can still seek info -- they just do it naturally for the cover
+- Lower-fit responses should seem plausible at first glance but feel wrong for THIS cover with THIS NPC
+- Fit 1 responses can be funny or absurd
+- All should relate to the conversation context
+
+Return ONLY a JSON array (no markdown, no wrapping):
+[{{"text": "response text", "fit": {fit_targets[0]}}}, {{"text": "response text", "fit": {fit_targets[1]}}}, {{"text": "response text", "fit": {fit_targets[2]}}}]"""
         
         try:
-            # Use configured model for quick responses
-            url = f"{self.base_url}/models/{self.quick_response_model}:generateContent?key={self.api_key}"
+            raw = self._call_llm(prompt, self.quick_response_model, temperature=0.8, max_tokens=400)
             
-            payload = {
-                "contents": [{
-                    "parts": [{"text": prompt}]
-                }],
-                "generationConfig": {
-                    "temperature": 0.7,
-                    "maxOutputTokens": 200,  # Lower is fine for 1.5-flash-8b (no thinking tokens)
-                }
-            }
+            # Parse JSON response
+            # Strip markdown code fences if present
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+                if raw.endswith("```"):
+                    raw = raw[:-3]
+                raw = raw.strip()
             
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
+            parsed = json.loads(raw)
             
-            data = response.json()
-            logger.info(f"API response data keys: {data.keys()}")
-            logger.info(f"API response data: {data}")
+            responses = []
+            for item in parsed[:3]:
+                responses.append(QuickResponseOption(
+                    text=item["text"],
+                    fit_score=int(item["fit"])
+                ))
             
-            response_text = data["candidates"][0]["content"]["parts"][0]["text"]
+            # Shuffle so good options aren't always first
+            random.shuffle(responses)
             
-            logger.info(f"Raw quick response from API: {response_text}")
-            
-            # Parse the responses
-            responses = response_text.strip().split('\n')
-            responses = [r.strip() for r in responses if r.strip()][:3]
-            
-            # Remove any numbering (1., 2., 3., etc.)
-            responses = [r.lstrip('0123456789.-)] ').strip() for r in responses]
-            
-            logger.info(f"Parsed quick responses (count={len(responses)}): {responses}")
-            
-            # Ensure we have exactly 3 responses
-            if len(responses) < 3:
-                logger.warning(f"Only got {len(responses)} responses, using fallback")
-                responses = self._get_fallback_responses()
-            
-            logger.info(f"Final quick responses: {responses}")
+            logger.info(f"Generated quick responses: {[(r.text[:40], r.fit_score) for r in responses]}")
             return responses
             
         except Exception as e:
             logger.error(f"Error generating quick responses: {e}", exc_info=True)
-            logger.error(f"Returning fallback responses due to error")
-            return self._get_fallback_responses()
+            return self._fallback_quick_responses(fit_targets)
     
-    def _get_fallback_responses(self) -> list[str]:
-        """Get default fallback responses if LLM fails"""
-        return [
-            "Tell me more about your work here.",
-            "Have you noticed anything unusual?",
-            "How long have you been in this position?",
+    def _get_npc_response(
+        self, npc: NPCData, cover: Optional[NPCCoverOption],
+        session: ConversationSession, player_text: str, difficulty: str
+    ) -> Tuple[str, List[str]]:
+        """Get NPC response and detect outcomes via structured JSON"""
+        
+        cover_desc = cover.description if cover else "Someone at the event"
+        trust_desc = cover.trust_description if cover else "An unknown person"
+        
+        # Build info items for prompt
+        info_lines = []
+        for item in npc.information_known:
+            if item.info_id:
+                info_lines.append(f"- [{item.info_id}] {item.description} (confidence: {item.confidence})")
+            else:
+                info_lines.append(f"- {item.description} (flavor - share freely)")
+        
+        # Build action items for prompt
+        action_lines = []
+        for action in npc.actions_available:
+            action_lines.append(f"- [{action.action_id}] {action.description} (difficulty to convince: {action.confidence})")
+        
+        # Build conversation context
+        recent = session.conversation_history[-8:]
+        context = "\n".join([f"{'Player' if m['role'] == 'player' else npc.name}: {m['text']}" for m in recent])
+        
+        prompt = f"""You are {npc.name}, a {npc.role}.
+Personality: {npc.personality}
+Location: {npc.location}
+
+The person talking to you claims to be: {cover_desc}
+Your instinct: {trust_desc}
+
+Information you know (share naturally when earned through good conversation):
+{chr(10).join(info_lines) if info_lines else "Nothing specific."}
+
+Actions you can be convinced to perform:
+{chr(10).join(action_lines) if action_lines else "Nothing specific."}
+
+Current suspicion level: {session.suspicion} out of 5
+
+{self._get_difficulty_prompt(difficulty)}
+
+Conversation so far:
+{context}
+
+Player just said: "{player_text}"
+
+Rules:
+- Stay in character. Be natural and conversational.
+- Share tagged info only when genuinely earned through good rapport.
+- Agree to tagged actions only when genuinely persuaded -- say so naturally.
+- Keep response under 3 sentences.
+- IMPORTANT: It must always be POSSIBLE to achieve outcomes. Never stonewall completely.
+
+RESPOND AS JSON (no markdown, no wrapping):
+{{"response": "your dialogue", "outcomes": ["id1"]}}
+
+Only include IDs of info you EXPLICITLY shared or actions you AGREED to in this response.
+If nothing was revealed/agreed, use empty array: {{"response": "your dialogue", "outcomes": []}}"""
+        
+        try:
+            raw = self._call_llm(prompt, self.npc_model, temperature=0.7, max_tokens=300)
+            
+            # Parse JSON
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+                if raw.endswith("```"):
+                    raw = raw[:-3]
+                raw = raw.strip()
+            
+            parsed = json.loads(raw)
+            response_text = parsed.get("response", "...")
+            outcomes = parsed.get("outcomes", [])
+            
+            # Strip quotes from response if present
+            response_text = response_text.strip().strip('"')
+            
+            logger.info(f"NPC response: '{response_text}' | outcomes: {outcomes}")
+            return response_text, outcomes
+            
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse NPC JSON response: {e}. Raw: {raw[:200]}")
+            # Try to extract just the text
+            return raw.strip().strip('"'), []
+        except Exception as e:
+            logger.error(f"Error getting NPC response: {e}", exc_info=True)
+            return "Hmm, let me think about that.", []
+    
+    def _generate_failure_dismissal(
+        self, npc: NPCData, session: ConversationSession,
+        last_player_text: str, difficulty: str
+    ) -> str:
+        """Generate a contextual dismissal when suspicion hits 5"""
+        
+        prompt = f"""You are {npc.name}, a {npc.role}.
+Personality: {npc.personality}
+
+You've been talking to someone who has made you very suspicious. Your suspicion is now at maximum.
+The last thing they said was: "{last_player_text}"
+
+End this conversation naturally and firmly based on what they just said.
+Be in character. 1-2 sentences. Just the dialogue, no quotes or formatting."""
+        
+        try:
+            return self._call_llm(prompt, self.npc_model, temperature=0.7, max_tokens=150)
+        except Exception as e:
+            logger.error(f"Error generating failure dismissal: {e}")
+            return "I don't think I should be talking to you anymore. Please excuse me."
+    
+    def _get_difficulty_prompt(self, difficulty: str) -> str:
+        """Get difficulty-specific instructions for the NPC"""
+        if difficulty == "easy":
+            return """Player difficulty: easy
+- Accept their cover story at face value.
+- Be friendly and forthcoming. Share info after a few good exchanges.
+- Give clear hints if they're on the right track."""
+        elif difficulty == "hard":
+            return """Player difficulty: hard
+- Be observant and skeptical of their cover. Notice if questions don't fit.
+- Require significant rapport before sharing sensitive information.
+- A well-crafted question that fits the cover naturally still gets an answer.
+- IMPORTANT: It must always be POSSIBLE to extract info. Never stonewall."""
+        else:  # medium
+            return """Player difficulty: medium
+- Be realistic -- friendly but not too forthcoming.
+- Share information after building some rapport.
+- Give subtle hints if they're getting warm."""
+    
+    def _pick_fit_targets(self) -> List[int]:
+        """Pick 3 random fit targets, ensuring at least one is 4 or 5"""
+        # Ensure at least one high-fit option
+        guaranteed_good = random.choice([4, 5])
+        
+        # The other two are random (weighted toward variety)
+        other_options = random.choices(
+            [1, 2, 3, 4, 5],
+            weights=[15, 20, 25, 25, 15],  # Slight bias toward middle
+            k=2
+        )
+        
+        targets = [guaranteed_good] + other_options
+        random.shuffle(targets)
+        return targets
+    
+    def _fallback_quick_responses(self, fit_targets: List[int]) -> List[QuickResponseOption]:
+        """Fallback responses if LLM fails"""
+        fallbacks = [
+            QuickResponseOption(text="Tell me more about your work here.", fit_score=max(fit_targets)),
+            QuickResponseOption(text="Have you noticed anything unusual tonight?", fit_score=3),
+            QuickResponseOption(text="So... what's the deal with the security around here?", fit_score=min(fit_targets)),
         ]
+        random.shuffle(fallbacks)
+        return fallbacks
     
-    def detect_revealed_objectives(
-        self,
-        npc_text: str,
-        objectives: list[Objective]
-    ) -> list[str]:
-        """
-        Detect which objectives were revealed in the NPC's response
+    def _call_llm(self, prompt: str, model: str, temperature: float = 0.7, max_tokens: int = 300) -> str:
+        """Call Gemini API and return text response"""
+        url = f"{self.base_url}/models/{model}:generateContent?key={self.api_key}"
         
-        Args:
-            npc_text: What the NPC said
-            objectives: List of objectives to check
-            
-        Returns:
-            List of objective IDs that were revealed
-        """
-        revealed = []
-        lower_text = npc_text.lower()
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            }
+        }
         
-        for objective in objectives:
-            if objective.is_completed:
-                continue
-            
-            # Simple keyword detection
-            keywords = objective.description.lower().split()
-            keyword_matches = sum(1 for k in keywords if len(k) > 3 and k in lower_text)
-            
-            # If multiple keywords match, likely revealed
-            if keyword_matches >= 2:
-                revealed.append(objective.id)
-                logger.info(f"Objective revealed: {objective.description}")
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
         
-        return revealed
+        data = response.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    
+    def check_cooldown(self, player_id: str, npc_id: str, game_state: GameState) -> Tuple[bool, int]:
+        """Check if player is in cooldown for an NPC. Returns (in_cooldown, seconds_remaining)"""
+        cooldowns = game_state.npc_cooldowns.get(player_id, {})
+        if npc_id in cooldowns:
+            remaining = cooldowns[npc_id] - time.time()
+            if remaining > 0:
+                return True, int(remaining)
+            else:
+                # Cooldown expired - clean up
+                del cooldowns[npc_id]
+                # Also clean up suspicion and cover for fresh start
+                if player_id in game_state.npc_suspicion and npc_id in game_state.npc_suspicion[player_id]:
+                    del game_state.npc_suspicion[player_id][npc_id]
+                if player_id in game_state.chosen_covers and npc_id in game_state.chosen_covers[player_id]:
+                    del game_state.chosen_covers[player_id][npc_id]
+                # Clean up session
+                if (player_id, npc_id) in self.sessions:
+                    del self.sessions[(player_id, npc_id)]
+        
+        return False, 0
+
+
+# Global service instance
+_npc_service: Optional[NPCConversationService] = None
+
+
+def get_npc_conversation_service() -> NPCConversationService:
+    """Get or create global NPC conversation service"""
+    global _npc_service
+    if _npc_service is None:
+        _npc_service = NPCConversationService()
+    return _npc_service

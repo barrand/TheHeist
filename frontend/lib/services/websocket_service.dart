@@ -125,11 +125,12 @@ class WebSocketService {
   }
   
   /// Select a role in lobby
-  void selectRole(String role) {
-    debugPrint('🎭 WS: Sending select_role with role: $role');
+  void selectRole(String role, {String difficulty = 'easy'}) {
+    debugPrint('🎭 WS: Sending select_role with role: $role, difficulty: $difficulty');
     send({
       'type': 'select_role',
       'role': role,
+      'difficulty': difficulty,
     });
   }
   

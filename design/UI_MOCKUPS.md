@@ -1692,6 +1692,146 @@ Rosa didn't know about vault
 
 ---
 
+## Screen 10a: NPC Conversation Success Screen
+
+**Purpose**: Show success after obtaining information from NPC
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│       ✅ 🎯 ✨                  │
+│                                 │
+│   INFORMATION OBTAINED!         │← Large, animated
+│                                 │
+│       [NPC Portrait]            │
+│      BRENDA WILLIAMS            │
+│                                 │
+│  ╔═══════════════════════════╗ │
+│  ║                           ║ │
+│  ║  📋 LEARNED:               ║ │
+│  ║                           ║ │
+│  ║  • Car 7 has laser grid   ║ │← Key info obtained
+│  ║  • Disabled at 3:15pm     ║ │
+│  ║  • Guard shift change     ║ │
+│  ║                           ║ │
+│  ║  💎 BONUS INFO:           ║ │
+│  ║  Conductor is lazy,       ║ │← Extra details
+│  ║  leaves post for coffee   ║ │
+│  ║                           ║ │
+│  ╚═══════════════════════════╝ │
+│                                 │
+│  🔓 UPDATED OBJECTIVES:         │
+│  ✅ Learn Car 7 security        │← Completed
+│  🟢 Plan 3:15pm entry           │← New/unlocked
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │     CONTINUE              │ │← Primary CTA
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Success icon/animation
+- [ ] "Information Obtained!" header (green)
+- [ ] NPC portrait reminder
+- [ ] Information box
+  - [ ] Primary information learned (objective-related)
+  - [ ] Bonus information (extra context, tips)
+- [ ] Updated objectives section
+  - [ ] Shows completed objectives (checkmark)
+  - [ ] Shows newly unlocked objectives
+- [ ] Continue button (returns to game screen)
+- [ ] Optional: Share with team button
+
+**Success Triggers:**
+- NPC revealed key information
+- Objective confidence reached 100%
+- Completed trade/request successfully
+- Built enough rapport/trust
+
+---
+
+## Screen 10b: NPC Conversation Failure Screen
+
+**Purpose**: Show failure when NPC shuts down or becomes suspicious
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│       ❌ 🚨 ⚠️                  │
+│                                 │
+│   CONVERSATION ENDED            │← Large, red/orange
+│                                 │
+│       [NPC Portrait]            │
+│      BRENDA WILLIAMS            │
+│      😠 Suspicious              │← Mood indicator
+│                                 │
+│  ╔═══════════════════════════╗ │
+│  ║                           ║ │
+│  ║  ⚠️  WHAT HAPPENED:        ║ │
+│  ║                           ║ │
+│  ║  "Wait... why are you     ║ │← NPC's reaction
+│  ║   asking so many          ║ │
+│  ║   questions about the     ║ │
+│  ║   security? That's weird!"║ │
+│  ║                           ║ │
+│  ║  🚫 CONSEQUENCES:          ║ │
+│  ║  • Brenda is now cautious ║ │← Impact
+│  ║  • Can't talk to her again║ │
+│  ║  • Team reputation -1     ║ │
+│  ║                           ║ │
+│  ╚═══════════════════════════╝ │
+│                                 │
+│  💡 TIP: Build rapport first    │
+│     before asking direct        │← Helpful hint
+│     questions about security.   │
+│                                 │
+│  🔄 ALTERNATIVE OPTIONS:        │
+│  • Ask another NPC (Tommy)      │← Next steps
+│  • Search for security logs     │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │     CONTINUE              │ │← Primary CTA
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Failure/warning icon
+- [ ] "Conversation Ended" header (red/orange)
+- [ ] NPC portrait with updated mood (angry, suspicious, closed)
+- [ ] What Happened box
+  - [ ] NPC's reaction quote
+  - [ ] Why they shut down
+- [ ] Consequences box
+  - [ ] Impact on game state
+  - [ ] Reputation/alarm changes
+  - [ ] Future limitations
+- [ ] Tip (how to avoid next time)
+- [ ] Alternative options (other NPCs, other approaches)
+- [ ] Continue button (returns to game screen)
+
+**Failure Triggers:**
+- Asked too direct/suspicious questions
+- Failed trade/request
+- Reputation too low
+- NPC personality clash
+- Time pressure/rushed
+- Asked about info they don't know (frustration)
+
+**Animations:**
+- NPC portrait changes expression (0.3s)
+- Red warning flash (0.5s)
+- Consequences fade in (0.2s each)
+
+---
+
 ## Screen 11: Search/Hunt Screen
 
 **Purpose**: Search a location for items or explore to discover new things
@@ -2025,146 +2165,6 @@ When player just wants to look around without a task
 - Wrong sequence
 - Detection/caught
 - Broke tool/item
-
----
-
-## Screen 12c: NPC Conversation Success Screen
-
-**Purpose**: Show success after obtaining information from NPC
-
-### UI Elements:
-
-```
-┌─────────────────────────────────┐
-│                                 │
-│       ✅ 🎯 ✨                  │
-│                                 │
-│   INFORMATION OBTAINED!         │← Large, animated
-│                                 │
-│       [NPC Portrait]            │
-│      BRENDA WILLIAMS            │
-│                                 │
-│  ╔═══════════════════════════╗ │
-│  ║                           ║ │
-│  ║  📋 LEARNED:               ║ │
-│  ║                           ║ │
-│  ║  • Car 7 has laser grid   ║ │← Key info obtained
-│  ║  • Disabled at 3:15pm     ║ │
-│  ║  • Guard shift change     ║ │
-│  ║                           ║ │
-│  ║  💎 BONUS INFO:           ║ │
-│  ║  Conductor is lazy,       ║ │← Extra details
-│  ║  leaves post for coffee   ║ │
-│  ║                           ║ │
-│  ╚═══════════════════════════╝ │
-│                                 │
-│  🔓 UPDATED OBJECTIVES:         │
-│  ✅ Learn Car 7 security        │← Completed
-│  🟢 Plan 3:15pm entry           │← New/unlocked
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │     CONTINUE              │ │← Primary CTA
-│  └───────────────────────────┘ │
-│                                 │
-└─────────────────────────────────┘
-```
-
-**Components:**
-- [ ] Success icon/animation
-- [ ] "Information Obtained!" header (green)
-- [ ] NPC portrait reminder
-- [ ] Information box
-  - [ ] Primary information learned (objective-related)
-  - [ ] Bonus information (extra context, tips)
-- [ ] Updated objectives section
-  - [ ] Shows completed objectives (checkmark)
-  - [ ] Shows newly unlocked objectives
-- [ ] Continue button (returns to game screen)
-- [ ] Optional: Share with team button
-
-**Success Triggers:**
-- NPC revealed key information
-- Objective confidence reached 100%
-- Completed trade/request successfully
-- Built enough rapport/trust
-
----
-
-## Screen 12d: NPC Conversation Failure Screen
-
-**Purpose**: Show failure when NPC shuts down or becomes suspicious
-
-### UI Elements:
-
-```
-┌─────────────────────────────────┐
-│                                 │
-│       ❌ 🚨 ⚠️                  │
-│                                 │
-│   CONVERSATION ENDED            │← Large, red/orange
-│                                 │
-│       [NPC Portrait]            │
-│      BRENDA WILLIAMS            │
-│      😠 Suspicious              │← Mood indicator
-│                                 │
-│  ╔═══════════════════════════╗ │
-│  ║                           ║ │
-│  ║  ⚠️  WHAT HAPPENED:        ║ │
-│  ║                           ║ │
-│  ║  "Wait... why are you     ║ │← NPC's reaction
-│  ║   asking so many          ║ │
-│  ║   questions about the     ║ │
-│  ║   security? That's weird!"║ │
-│  ║                           ║ │
-│  ║  🚫 CONSEQUENCES:          ║ │
-│  ║  • Brenda is now cautious ║ │← Impact
-│  ║  • Can't talk to her again║ │
-│  ║  • Team reputation -1     ║ │
-│  ║                           ║ │
-│  ╚═══════════════════════════╝ │
-│                                 │
-│  💡 TIP: Build rapport first    │
-│     before asking direct        │← Helpful hint
-│     questions about security.   │
-│                                 │
-│  🔄 ALTERNATIVE OPTIONS:        │
-│  • Ask another NPC (Tommy)      │← Next steps
-│  • Search for security logs     │
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │     CONTINUE              │ │← Primary CTA
-│  └───────────────────────────┘ │
-│                                 │
-└─────────────────────────────────┘
-```
-
-**Components:**
-- [ ] Failure/warning icon
-- [ ] "Conversation Ended" header (red/orange)
-- [ ] NPC portrait with updated mood (angry, suspicious, closed)
-- [ ] What Happened box
-  - [ ] NPC's reaction quote
-  - [ ] Why they shut down
-- [ ] Consequences box
-  - [ ] Impact on game state
-  - [ ] Reputation/alarm changes
-  - [ ] Future limitations
-- [ ] Tip (how to avoid next time)
-- [ ] Alternative options (other NPCs, other approaches)
-- [ ] Continue button (returns to game screen)
-
-**Failure Triggers:**
-- Asked too direct/suspicious questions
-- Failed trade/request
-- Reputation too low
-- NPC personality clash
-- Time pressure/rushed
-- Asked about info they don't know (frustration)
-
-**Animations:**
-- NPC portrait changes expression (0.3s)
-- Red warning flash (0.5s)
-- Consequences fade in (0.2s each)
 
 ---
 
