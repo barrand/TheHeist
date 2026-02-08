@@ -544,9 +544,9 @@ They need to say something that puts you at ease first. {remaining} outcome(s) r
         # "should" threshold = start trying to share
         # "must" threshold = you MUST include an outcome in your response
         thresholds = {
-            "easy":   {"should": 3, "must": 5},
-            "medium": {"should": 4, "must": 7},
-            "hard":   {"should": 5, "must": 8},
+            "easy":   {"should": 4, "must": 6},
+            "medium": {"should": 5, "must": 8},
+            "hard":   {"should": 6, "must": 9},
         }
         t = thresholds.get(difficulty, thresholds["medium"])
         
