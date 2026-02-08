@@ -35,6 +35,9 @@ SUSPICION_TABLE = {
 
 COOLDOWN_DURATION_SECONDS = 60  # Same for all difficulties
 
+# Max turns before the NPC ends the conversation (escape valve)
+MAX_TURNS = {"easy": 10, "medium": 15, "hard": 20}
+
 # Suspicion mood labels for the visible meter
 SUSPICION_LABELS = {
     0: "Relaxed",
@@ -210,6 +213,23 @@ class NPCConversationService:
             logger.info(f"Conversation FAILED: {player_id} -> {npc.id} (suspicion reached 5)")
             
             return (dismissal, [], 5, delta, [], True, cooldown_until, [])
+        
+        # 2) Turn limit reached -- NPC ends the conversation naturally
+        turn_count = len([m for m in session.conversation_history if m['role'] == 'player'])
+        max_turns = MAX_TURNS.get(difficulty, 15)
+        if turn_count >= max_turns:
+            dismissal = "It's been lovely chatting, but I really must get back to my duties. Perhaps we can talk another time."
+            session.add_message(dismissal, is_player=False)
+            
+            cooldown_until = time.time() + COOLDOWN_DURATION_SECONDS
+            if player_id not in game_state.npc_cooldowns:
+                game_state.npc_cooldowns[player_id] = {}
+            game_state.npc_cooldowns[player_id][npc.id] = cooldown_until
+            
+            del self.sessions[(player_id, npc.id)]
+            
+            logger.info(f"Conversation timed out after {turn_count} turns (max {max_turns} for {difficulty})")
+            return (dismissal, [], new_suspicion, delta, [], True, cooldown_until, [])
         
         # Get NPC response with outcome detection
         cover = next((c for c in npc.cover_options if c.cover_id == session.cover_id), None)
