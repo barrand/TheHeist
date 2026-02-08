@@ -42,6 +42,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   List<Map<String, dynamic>> _myTasks = [];
   final List<String> _completedTaskIds = [];
+  final Set<String> _achievedOutcomes = {};
   bool _gameEnded = false;
   String? _gameResult;
   String? _gameSummary;
@@ -87,6 +88,10 @@ class _GameScreenState extends State<GameScreen> {
       
       setState(() {
         _completedTaskIds.add(taskId);
+        
+        // Track achieved outcomes (sent by backend for NPC_LLM tasks)
+        final outcomes = message['achieved_outcomes'] as List<dynamic>? ?? [];
+        _achievedOutcomes.addAll(outcomes.cast<String>());
         
         // Update task status if it's mine
         final taskIndex = _myTasks.indexWhere((t) => t['id'] == taskId);
@@ -1096,8 +1101,17 @@ class _GameScreenState extends State<GameScreen> {
           final prereqType = (map['type'] as String?) ?? 'task';
           
           // Check if this prereq is already met
-          final isMet = _completedTaskIds.contains(prereqId) ||
-              _myInventory.any((i) => i.id == prereqId);
+          bool isMet;
+          switch (prereqType) {
+            case 'outcome':
+              isMet = _achievedOutcomes.contains(prereqId);
+              break;
+            case 'item':
+              isMet = _myInventory.any((i) => i.id == prereqId);
+              break;
+            default: // 'task'
+              isMet = _completedTaskIds.contains(prereqId);
+          }
           
           // Build display text
           String label;

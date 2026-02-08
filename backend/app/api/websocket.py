@@ -371,7 +371,8 @@ async def handle_complete_task(room_code: str, player_id: str, data: Dict[str, A
 
 
 async def _broadcast_task_completed(
-    room_code: str, task_id: str, player_id: str, player_name: str, newly_available: list
+    room_code: str, task_id: str, player_id: str, player_name: str, newly_available: list,
+    achieved_outcomes: list = None
 ) -> None:
     """Broadcast task completion and send newly unlocked tasks to appropriate players"""
     ws_manager = get_ws_manager()
@@ -383,7 +384,8 @@ async def _broadcast_task_completed(
         task_id=task_id,
         by_player_id=player_id,
         by_player_name=player_name,
-        newly_available=newly_available
+        newly_available=newly_available,
+        achieved_outcomes=achieved_outcomes or [],
     )
     await ws_manager.broadcast_to_room(room_code, task_completed.model_dump(mode='json'))
     
@@ -501,6 +503,24 @@ async def handle_handoff_item(room_code: str, player_id: str, data: Dict[str, An
         )
         if success:
             await _broadcast_task_completed(room_code, task_id, player_id, from_player.name, newly_available)
+    
+    # Re-check locked tasks: the received item may satisfy ITEM prerequisites for the recipient
+    game_state = game_state_manager.get_game_state(room_code)
+    if game_state:
+        recipient_item_ids = {inv_item.id for inv_item in to_player.inventory}
+        item_unlocks = game_state.check_unlocks_with_items(recipient_item_ids)
+        for new_task_id in item_unlocks:
+            new_task = game_state.tasks.get(new_task_id)
+            if new_task:
+                for pid, p in room.players.items():
+                    if p.role == new_task.assigned_role:
+                        from app.models.websocket import TaskUnlockedMessage
+                        unlocked_msg = TaskUnlockedMessage(
+                            type="task_unlocked",
+                            task=new_task.model_dump(mode='json')
+                        )
+                        await ws_manager.send_to_player(room_code, pid, unlocked_msg.model_dump(mode='json'))
+                logger.info(f"🔓 Task {new_task_id} unlocked (ITEM prerequisite met after handoff to {to_player.name})")
 
 
 async def handle_search_room(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
@@ -607,6 +627,22 @@ async def handle_pickup_item(room_code: str, player_id: str, data: Dict[str, Any
         )
         if success:
             await _broadcast_task_completed(room_code, task_id, player_id, player.name, newly_available)
+    
+    # Re-check all locked tasks: this item may satisfy ITEM prerequisites
+    player_item_ids = {inv_item.id for inv_item in player.inventory}
+    item_unlocks = game_state.check_unlocks_with_items(player_item_ids)
+    for new_task_id in item_unlocks:
+        new_task = game_state.tasks.get(new_task_id)
+        if new_task:
+            for pid, p in room.players.items():
+                if p.role == new_task.assigned_role:
+                    from app.models.websocket import TaskUnlockedMessage
+                    unlocked_msg = TaskUnlockedMessage(
+                        type="task_unlocked",
+                        task=new_task.model_dump(mode='json')
+                    )
+                    await ws_manager.send_to_player(room_code, pid, unlocked_msg.model_dump(mode='json'))
+            logger.info(f"🔓 Task {new_task_id} unlocked (ITEM prerequisite met by {player.name})")
 
 
 async def handle_use_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:

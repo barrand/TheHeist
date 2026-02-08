@@ -127,6 +127,7 @@ class TaskCompletedMessage(BaseModel):
     by_player_id: str = Field(..., description="Who completed it")
     by_player_name: str = Field(..., description="Player's name")
     newly_available: List[str] = Field(default_factory=list, description="Newly unlocked task IDs")
+    achieved_outcomes: List[str] = Field(default_factory=list, description="Outcome IDs achieved by this task")
 
 
 class NPCResponseMessage(BaseModel):

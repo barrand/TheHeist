@@ -162,6 +162,10 @@ async def conversation_chat(request: ConversationChatRequest) -> ConversationCha
         
         # Check for NPC task auto-completions via GameStateManager
         if outcomes:
+            from app.services.websocket_manager import get_ws_manager
+            from app.models.websocket import TaskCompletedMessage, TaskUnlockedMessage
+            ws_manager = get_ws_manager()
+            
             completable = game_state_mgr.check_npc_completions(request.room_code, request.player_id, room)
             for task_id in completable:
                 success, newly_available, error = game_state_mgr.auto_complete_task(
@@ -169,16 +173,16 @@ async def conversation_chat(request: ConversationChatRequest) -> ConversationCha
                 )
                 if success:
                     completed_tasks.append(task_id)
-                    # Broadcast via websocket so all clients update
-                    from app.services.websocket_manager import get_ws_manager
-                    ws_manager = get_ws_manager()
-                    from app.models.websocket import TaskCompletedMessage, TaskUnlockedMessage
+                    # Include the outcomes this task achieved
+                    task_obj = game_state.tasks.get(task_id)
+                    task_outcomes = list(task_obj.target_outcomes) if task_obj and task_obj.target_outcomes else []
                     task_completed_msg = TaskCompletedMessage(
                         type="task_completed",
                         task_id=task_id,
                         by_player_id=request.player_id,
                         by_player_name=player.name if player else "Unknown",
                         newly_available=newly_available,
+                        achieved_outcomes=task_outcomes,
                     )
                     await ws_manager.broadcast_to_room(request.room_code, task_completed_msg.model_dump(mode='json'))
                     
@@ -193,6 +197,20 @@ async def conversation_chat(request: ConversationChatRequest) -> ConversationCha
                                         task=new_task.model_dump(mode='json')
                                     )
                                     await ws_manager.send_to_player(request.room_code, pid, unlocked_msg.model_dump(mode='json'))
+            
+            # Re-check all locked tasks: outcomes may unlock tasks with OUTCOME prerequisites
+            # even if no NPC_LLM task was auto-completed (idempotent -- already-unlocked tasks are skipped)
+            outcome_unlocks = game_state._check_unlocks(request.player_id, room=room)
+            for new_task_id in outcome_unlocks:
+                new_task = game_state.tasks.get(new_task_id)
+                if new_task:
+                    for pid, p in room.players.items():
+                        if p.role == new_task.assigned_role:
+                            unlocked_msg = TaskUnlockedMessage(
+                                type="task_unlocked",
+                                task=new_task.model_dump(mode='json')
+                            )
+                            await ws_manager.send_to_player(request.room_code, pid, unlocked_msg.model_dump(mode='json'))
         
         return ConversationChatResponse(
             npc_response=npc_response,

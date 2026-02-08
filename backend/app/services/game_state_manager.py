@@ -138,8 +138,8 @@ class GameStateManager:
                 player.inventory = [item for item in player.inventory if item.id != task.handoff_item]
                 logger.info(f"🤝 Player {player_id} handed off item: {task.handoff_item}")
         
-        # Unlock dependent tasks
-        newly_available = game_state.complete_task(task_id)
+        # Unlock dependent tasks (uses rich prerequisites)
+        newly_available = game_state.complete_task(task_id, player_id, room=room)
         
         logger.info(f"✅ Task {task_id} completed by player {player_id}, unlocked {len(newly_available)} new tasks")
         
@@ -268,8 +268,8 @@ class GameStateManager:
         task.status = TaskStatus.COMPLETED
         task.assigned_player_id = player_id
         
-        # Unlock dependent tasks
-        newly_available = game_state.complete_task(task_id)
+        # Unlock dependent tasks (uses rich prerequisites)
+        newly_available = game_state.complete_task(task_id, player_id, room=room)
         
         logger.info(f"✅ Task {task_id} auto-completed by player {player_id}, unlocked {len(newly_available)} new tasks")
         

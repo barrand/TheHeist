@@ -91,11 +91,24 @@ class Task(BaseModel):
                 return False
         return True
     
-    def unlock_if_ready(self, completed_task_ids: set) -> bool:
-        """Change status to AVAILABLE if dependencies met"""
-        if self.status == TaskStatus.LOCKED and self.can_start(completed_task_ids):
+    def unlock_if_ready(self, completed_task_ids: set, achieved_outcomes: set = None, player_items: set = None) -> bool:
+        """Change status to AVAILABLE if all prerequisites are met"""
+        if self.status != TaskStatus.LOCKED:
+            return False
+        
+        # Use rich prerequisites if available, otherwise fall back to legacy
+        if self.prerequisites:
+            if self.can_start_rich(
+                completed_task_ids,
+                achieved_outcomes or set(),
+                player_items or set(),
+            ):
+                self.status = TaskStatus.AVAILABLE
+                return True
+        elif self.can_start(completed_task_ids):
             self.status = TaskStatus.AVAILABLE
             return True
+        
         return False
 
 
@@ -186,10 +199,11 @@ class GameState(BaseModel):
         """Get set of all completed task IDs"""
         return {task.id for task in self.tasks.values() if task.status == TaskStatus.COMPLETED}
     
-    def complete_task(self, task_id: str) -> List[str]:
+    def complete_task(self, task_id: str, player_id: str = None, room=None) -> List[str]:
         """
-        Mark task as completed and unlock dependent tasks
-        Returns list of newly unlocked task IDs
+        Mark task as completed and unlock dependent tasks.
+        Uses rich prerequisites (TASK, OUTCOME, ITEM) when available.
+        Returns list of newly unlocked task IDs.
         """
         if task_id not in self.tasks:
             return []
@@ -197,13 +211,47 @@ class GameState(BaseModel):
         # Mark as completed
         self.tasks[task_id].status = TaskStatus.COMPLETED
         
-        # Get all completed task IDs
+        return self._check_unlocks(player_id, room=room)
+    
+    def _check_unlocks(self, player_id: str = None, room=None) -> List[str]:
+        """Re-check all locked tasks and unlock any whose prerequisites are now met.
+        
+        If room is provided, checks each task against its assigned player's inventory.
+        Otherwise item prerequisites are deferred to check_unlocks_with_items().
+        """
         completed = self.get_completed_task_ids()
         
-        # Check all locked tasks to see if they can be unlocked
+        # Gather all achieved outcomes (across all players)
+        all_outcomes: set = set()
+        for outcomes in self.achieved_outcomes.values():
+            all_outcomes.update(outcomes)
+        
+        # Build a role -> player_items mapping if room is available
+        role_items: dict = {}
+        if room:
+            for pid, p in room.players.items():
+                role_items[p.role] = {item.id for item in p.inventory}
+        
         newly_available = []
         for task in self.tasks.values():
-            if task.unlock_if_ready(completed):
+            # Use the assigned player's items for item prerequisites
+            task_player_items = role_items.get(task.assigned_role, set()) if room else set()
+            if task.unlock_if_ready(completed, all_outcomes, task_player_items):
+                newly_available.append(task.id)
+        
+        return newly_available
+    
+    def check_unlocks_with_items(self, player_items: set) -> List[str]:
+        """Re-check locked tasks considering a specific player's inventory."""
+        completed = self.get_completed_task_ids()
+        
+        all_outcomes: set = set()
+        for outcomes in self.achieved_outcomes.values():
+            all_outcomes.update(outcomes)
+        
+        newly_available = []
+        for task in self.tasks.values():
+            if task.unlock_if_ready(completed, all_outcomes, player_items):
                 newly_available.append(task.id)
         
         return newly_available
