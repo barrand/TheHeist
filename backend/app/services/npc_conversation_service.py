@@ -10,6 +10,7 @@ Suspicion is calculated server-side from fit scores (not by the LLM).
 import logging
 import random
 import json
+import re
 import time
 from typing import Optional, List, Dict, Tuple
 import requests
@@ -460,7 +461,8 @@ RESPOND AS JSON (no markdown, no wrapping):
 {{"response": "your dialogue", "outcomes": ["id1"]}}
 
 Include outcome IDs ONLY for target info/actions you EXPLICITLY shared or agreed to in THIS response.
-If nothing was revealed/agreed, use empty array: {{"response": "your dialogue", "outcomes": []}}"""
+If nothing was revealed/agreed, use empty array: {{"response": "your dialogue", "outcomes": []}}
+IMPORTANT: Do NOT include outcome IDs like [vault_location] in the dialogue text. Outcome IDs go ONLY in the "outcomes" array."""
         
         try:
             raw = self._call_llm(prompt, self.npc_model, temperature=0.7, max_tokens=300)
@@ -479,6 +481,10 @@ If nothing was revealed/agreed, use empty array: {{"response": "your dialogue", 
             
             # Strip quotes from response if present
             response_text = response_text.strip().strip('"')
+            
+            # Strip outcome ID tags the LLM may have leaked into dialogue
+            # e.g. "[vault_location]" or "[leave_post]"
+            response_text = re.sub(r'\s*\[[\w]+\]\s*', ' ', response_text).strip()
             
             logger.info(f"NPC response: '{response_text}' | outcomes: {outcomes}")
             return response_text, outcomes
