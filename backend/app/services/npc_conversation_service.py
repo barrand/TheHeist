@@ -489,49 +489,65 @@ Be in character. 1-2 sentences. Just the dialogue, no quotes or formatting."""
             return "I don't think I should be talking to you anymore. Please excuse me."
     
     def _get_pacing_instruction(self, turn_count: int, suspicion: int, difficulty: str, already_achieved: set, target_outcomes: set) -> str:
-        """Generate pacing instructions based on turn count and difficulty.
+        """Generate pacing instructions based on turn count, difficulty, AND suspicion.
         
         Turn budgets (total turns to get ALL target outcomes):
-        - Easy:   2-4 turns  (reveal one outcome every 1-2 turns)  
-        - Medium: 3-5 turns  (reveal one outcome every 2-3 turns)
-        - Hard:   4-6 turns  (reveal one outcome every 2-3 turns)
+        - Easy:   4-5 turns  
+        - Medium: 5-7 turns  
+        - Hard:   6-8 turns  
         
-        The difficulty should come from the RISK of failing (suspicion), 
-        not from waiting forever.
+        KEY RULE: High suspicion blocks reveals. The NPC should NOT share
+        secrets with someone they're getting suspicious of, regardless of 
+        turn count. This creates a real risk of failure.
         """
         remaining = len(target_outcomes - already_achieved)
         
         if remaining == 0:
             return "PACING: All target outcomes achieved. Just chat naturally, no more reveals needed."
         
+        # High suspicion blocks reveals regardless of turn count
+        if suspicion >= 4:
+            return f"""PACING: Turn {turn_count}. Suspicion is {suspicion}/5 -- you are very uncomfortable.
+Do NOT share any sensitive information. You're thinking about ending this conversation.
+Give short, deflective answers. {remaining} outcome(s) remaining but you're NOT sharing."""
+        
+        if suspicion >= 3:
+            return f"""PACING: Turn {turn_count}. Suspicion is {suspicion}/5 -- something feels off about this person.
+Do NOT reveal target outcomes right now. Be evasive and change the subject.
+They need to say something that puts you at ease first. {remaining} outcome(s) remaining."""
+        
         if difficulty == "easy":
-            if turn_count >= 2:
-                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. On easy, this is enough rapport.
-You MUST share one target outcome NOW if the player's message is at all relevant to your knowledge.
-Include the specific details (names, locations, times) and the outcome ID in your response."""
+            if turn_count >= 4:
+                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+You've been chatting for a while and they seem fine. Share one target outcome NOW if their message is at all relevant.
+Include specific details (names, locations, times) and the outcome ID."""
+            elif turn_count >= 2:
+                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+You're warming up to them. If they ask about something you know, you can hint at it but don't give the full details yet."""
             else:
-                return f"""PACING: Turn {turn_count}. Be friendly and open. If they ask about something you know, share it.
-{remaining} outcome(s) to go. On easy, you're happy to talk."""
+                return f"""PACING: Turn {turn_count}. Early in the conversation. Be friendly and open.
+{remaining} outcome(s) to go. Get to know them first before sharing anything sensitive."""
         
         elif difficulty == "hard":
-            if turn_count >= 4:
-                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Even on hard, a player who has kept suspicion at {suspicion}/5 for {turn_count} turns has earned trust.
-You MUST share one target outcome NOW if the message is relevant. Don't stonewall -- reward good play."""
-            elif turn_count >= 2:
-                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. You're warming up.
-If they ask a well-crafted question related to your knowledge, share one target outcome."""
+            if turn_count >= 6:
+                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+They've earned your trust over {turn_count} turns with low suspicion. Share one target outcome NOW if relevant.
+Include specific details and the outcome ID."""
+            elif turn_count >= 3:
+                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+You're getting more comfortable. If they ask a well-crafted question that fits their cover, consider sharing."""
             else:
                 return f"""PACING: Turn {turn_count}. Early in the conversation. Be friendly but guarded.
-They need to prove they belong before you share sensitive info. {remaining} outcome(s) to go."""
+They need to prove they belong before you share anything sensitive. {remaining} outcome(s) to go."""
         
         else:  # medium
-            if turn_count >= 3:
-                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. On medium, this is enough conversation.
-You MUST share one target outcome NOW if the player's message relates to your knowledge at all.
+            if turn_count >= 5:
+                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+You've had a good conversation and trust them. Share one target outcome NOW if relevant.
 Include specific details and the outcome ID."""
-            elif turn_count >= 1:
-                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Getting to know them.
-If they ask something relevant, you can share -- especially if their cover fits well."""
+            elif turn_count >= 2:
+                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+Getting to know them. If they ask something relevant and their cover makes sense, you can start to open up."""
             else:
                 return f"""PACING: Turn {turn_count}. Friendly but not giving away secrets to strangers yet. {remaining} outcome(s) to go."""
     
