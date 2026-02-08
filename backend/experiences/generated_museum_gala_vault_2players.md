@@ -49,34 +49,15 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
   - **Name**: Radio Earpiece Set
   - **Description**: Two-way radio earpieces for team communication
   - **Visual**: Pair of sleek black wireless earpieces with curved design, small cyan LED indicator lights, flexible black cables, compact communication devices, modern spy tech aesthetic, glossy black finish with purple accent trim, professional covert operations equipment
-  - **Required For**: MM3 (Share Vault Intel) - makes communication easier
-  - **Hidden**: false
-
-- **ID**: `gala_invitation`
-  - **Name**: Forged Gala Invitation
-  - **Description**: Fake invitation to blend in at the museum gala
-  - **Visual**: Elegant cream-colored invitation card with gold foil embossed museum logo, fancy calligraphy font reading "Museum Gala Evening", ornate border design, guest name line, sophisticated paper texture, high-quality forgery, slightly worn edges suggesting it's been handled, purple wax seal with museum insignia
-  - **Required For**: None (flavor item, already "inside")
+  - **Required For**: MM3 (Share Vault Intel)
   - **Hidden**: false
 
 ### Grand Hall
-- **ID**: `guest_list`
-  - **Name**: Guest List
-  - **Description**: Tonight's VIP guest list with names and table assignments
-  - **Required For**: None (red herring)
-  - **Hidden**: false
-
-- **ID**: `event_program`
-  - **Name**: Event Program
-  - **Description**: Program listing tonight's gala schedule and speeches
-  - **Required For**: None (might mention timing, minor hint)
-  - **Hidden**: false
-
-### Museum Basement
-- **ID**: `maintenance_keycard`
-  - **Name**: Maintenance Keycard
-  - **Description**: Lost keycard from maintenance staff - might open service doors
-  - **Required For**: None (alternative path, not required)
+- **ID**: `patrol_schedule`
+  - **Name**: Guard Patrol Schedule
+  - **Description**: A folded printout left on a side table near the security station - lists guard rotation times and break windows
+  - **Visual**: Crumpled white paper with printed grid showing guard names, times, and zones, coffee ring stain in corner, handwritten notes in margins, highlighted 9 PM break window, official museum security letterhead, folded twice
+  - **Required For**: MM4 (knowing the break window helps convince Marcus)
   - **Hidden**: false
 
 ### Vault Room
@@ -87,6 +68,28 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
   - **Hidden**: false (visible after vault opens)
 
 ## NPCs
+
+### Museum Curator - Dr. Elena Vasquez
+- **ID**: `museum_curator`
+- **Role**: Senior Museum Curator
+- **Location**: Grand Hall
+- **Age**: 52
+- **Gender**: female
+- **Ethnicity**: Latina
+- **Clothing**: Elegant black evening dress with pearl necklace
+- **Expression**: friendly
+- **Attitude**: proud, knowledgeable, enthusiastic about art
+- **Details**: Holding wine glass, wearing museum ID badge
+- **Personality**: Passionate about the museum's collection. Loves talking about the exhibits and their history. Very proud of the new Eye of Orion acquisition. Professional but warm at social events.
+- **Information Known**:
+  - `vault_location` HIGH: The Eye of Orion jewels are kept in the new vault in the basement, east wing
+  - LOW: The jewels were just acquired for $12 million
+  - LOW: Only three people know the vault combination
+- **Actions Available**: (none)
+- **Cover Story Options**:
+  - `art_collector`: "Private art collector, considering a major donation to the museum" -- Trust: HIGH (would love to impress a potential donor, might share insider details)
+  - `journalist`: "Arts journalist writing a feature on the museum's new acquisitions" -- Trust: MEDIUM (happy to talk about exhibits but cautious about security topics)
+  - `caterer`: "Catering staff, curious about the art on display" -- Trust: LOW (friendly but wouldn't share details about the collection's location)
 
 ### Security Guard - Marcus Romano
 - **ID**: `security_guard`
@@ -101,43 +104,14 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **Details**: Holding clipboard, wearing glasses
 - **Personality**: Bored and lonely on the night shift. Loves sports and misses the excitement of his old job. Gets chatty when someone shows interest in his stories. Genuinely believes nothing interesting ever happens at the museum.
 - **Information Known**:
-  - `vault_location` HIGH: The Eye of Orion jewels are in the new vault exhibit in the basement, east wing
-  - `guard_assignment` HIGH: He's been assigned to guard the vault exhibit all week
-  - `patrol_schedule` MEDIUM: His patrol schedule - he leaves the vault area around 9 PM for his break
-  - `vault_age` MEDIUM: The vault was installed just two weeks ago
+  - LOW: He's been assigned to guard the vault exhibit all week
   - LOW: The museum director is paranoid about security since the last incident
 - **Actions Available**:
   - `leave_post` HIGH: Can be convinced to leave his post early for a smoke break - he's bored and would welcome an excuse
 - **Cover Story Options**:
-  - `new_guard`: "New security guard, just transferred here - first night on the job" -- Trust: HIGH (fellow guard, would share tips and schedules freely)
-  - `journalist`: "Reporter from Art Weekly magazine, covering tonight's gala" -- Trust: LOW (trained to say "no comment" to press, would be guarded)
-  - `caterer`: "Catering staff working the gala event tonight" -- Trust: MEDIUM (friendly to service workers but wouldn't share security details)
-
-### Museum Curator - Dr. Elena Vasquez
-- **ID**: `museum_curator`
-- **Role**: Senior Museum Curator
-- **Location**: Grand Hall
-- **Age**: 52
-- **Gender**: female
-- **Ethnicity**: Latina
-- **Clothing**: Elegant black evening dress with pearl necklace
-- **Expression**: friendly
-- **Attitude**: proud, knowledgeable, enthusiastic about art
-- **Details**: Holding wine glass, wearing museum ID badge
-- **Personality**: Passionate about the museum's collection. Loves talking about the exhibits and their history. Very proud of the new Eye of Orion acquisition. Professional but warm at social events. Trusts that security has everything under control.
-- **Information Known**:
-  - `jewel_value` HIGH: The Eye of Orion was just acquired for $12 million
-  - `display_date` HIGH: The jewels will be on public display starting Monday
-  - `vault_lock_type` MEDIUM: The vault has a state-of-the-art combination lock system
-  - `combo_holders` MEDIUM: Only three people know the combination - herself, the director, and head of security
-  - LOW: The security system has backup power in case of outages
-  - LOW: The museum's insurance company required extra security measures
-- **Actions Available**:
-  - `distract_director` VERY HIGH: Could be convinced to pull the museum director away from the security office for a toast, but would need a very compelling reason
-- **Cover Story Options**:
-  - `art_collector`: "Private art collector, considering a major donation to the museum" -- Trust: HIGH (would love to impress a potential donor, might share insider details about acquisitions)
-  - `journalist`: "Arts journalist writing a feature on the museum's new acquisitions" -- Trust: MEDIUM (happy to talk about exhibits but cautious about security topics)
-  - `new_guard`: "New security guard, checking in about exhibit protocols" -- Trust: LOW (would redirect to head of security, wouldn't share curatorial info)
+  - `new_guard`: "New security guard, just transferred here - first night on the job" -- Trust: HIGH (fellow guard, would share tips and be friendly)
+  - `journalist`: "Reporter from Art Weekly magazine, covering tonight's gala" -- Trust: LOW (trained to say "no comment" to press)
+  - `caterer`: "Catering staff working the gala event tonight" -- Trust: MEDIUM (friendly to service workers but guarded about security)
 
 ## Task Types
 
@@ -155,26 +129,33 @@ Every task in this heist is one of these types:
 ### Mastermind
 
 **Tasks:**
-1. **MM1. 💬 NPC_LLM** - Gather Vault Intel from Security Guard
-   - *Description:* Talk to the security guard at the gala to learn the vault's location and his patrol schedule. Be careful not to raise his suspicion.
-   - *NPC:* `security_guard` (Marcus Romano)
-   - *Target Outcomes:* `vault_location`, `patrol_schedule`
+1. **MM1. 💬 NPC_LLM** - Learn Vault Location from Curator
+   - *Description:* Talk to Dr. Vasquez at the gala to learn where the Eye of Orion jewels are being kept. She's proud of the acquisition - use that.
+   - *NPC:* `museum_curator` (Dr. Elena Vasquez)
+   - *Target Outcomes:* `vault_location`
    - *Location:* Grand Hall
    - *Prerequisites:* None (starting task)
 
-2. **MM2. 💬 NPC_LLM** - Convince Guard to Leave His Post
-   - *Description:* Now that you know about the vault and Marcus's schedule, convince him to step away from his post early. He's bored - give him a reason to take a break.
+2. **MM2. 🔍 SEARCH** - Find Guard Patrol Schedule
+   - *Description:* Search the Grand Hall for any intel on guard rotations. There might be something useful near the security station.
+   - *Search Items:* patrol_schedule
+   - *Location:* Grand Hall
+   - *Prerequisites:* None (starting task)
+
+3. **MM3. 🗣️ INFO** - Share Vault Intel with Safe Cracker
+   - *Description:* Radio the Safe Cracker with the vault's location (basement, east wing) and the guard's break window you found.
+   - *Location:* Any (radio communication)
+   - *Prerequisites:*
+     - Task `MM1` (learned vault location from Elena)
+     - Task `MM2` (found the patrol schedule)
+
+4. **MM4. 💬 NPC_LLM** - Convince Guard to Leave His Post
+   - *Description:* You know the guard takes a break at 9 PM. Convince Marcus to step away early - he's bored, give him a reason.
    - *NPC:* `security_guard` (Marcus Romano)
    - *Target Outcomes:* `leave_post`
    - *Location:* Grand Hall
    - *Prerequisites:*
-     - Outcome `vault_location` (need to know about the vault to approach this naturally)
-
-3. **MM3. 🗣️ INFO** - Share Vault Intel with Safe Cracker
-   - *Description:* Radio the Safe Cracker with the vault's location (basement, east wing) and the security patrol details you learned.
-   - *Location:* Any (radio communication)
-   - *Prerequisites:*
-     - Task `MM1` (learned vault location and security details)
+     - Task `MM2` (knowing his break schedule helps you approach this naturally)
 
 ### Safe Cracker
 
@@ -193,23 +174,11 @@ Every task in this heist is one of these types:
      - Outcome `leave_post` (guard has left his post)
 
 3. **SC3. 🎮 dial_rotation** - Crack the Vault Lock
-   - *Description:* Use your expert skills and tools to manipulate the vault's combination dial and retrieve the Eye of Orion jewels.
+   - *Description:* Use your expert skills and tools to crack the vault's combination dial and retrieve the Eye of Orion jewels.
    - *Location:* Vault Room
    - *Prerequisites:*
      - Task `SC2` (reached the vault)
      - Item `safe_cracking_tools` (need your tools to crack the lock)
-
-## Task Summary
-
-Total tasks: 6
-Critical path tasks: 6
-Supporting tasks: 0
-
-By type:
-- NPC/LLM (💬): 2 (33%)
-- Search (🔍): 2 (33%)
-- Minigames (🎮): 1 (17%)
-- Info shares (🗣️): 1 (17%)
 
 ## Dependency Tree Diagram
 
@@ -217,14 +186,16 @@ By type:
 flowchart TD
     START([START HEIST])
 
-    START --> MM1["💬 MM1: Gather Vault Intel\n(talk to Marcus)"]
+    START --> MM1["💬 MM1: Learn Vault Location\n(talk to Elena)"]
+    START --> MM2["🔍 MM2: Find Patrol Schedule\n(search Grand Hall)"]
     START --> SC1["🔍 SC1: Gather Equipment\n(get tools)"]
 
-    MM1 -->|"vault_location"| MM2["💬 MM2: Convince Guard\nto Leave Post"]
     MM1 --> MM3["🗣️ MM3: Share Vault Intel\nwith Safe Cracker"]
+    MM2 --> MM3
+    MM2 --> MM4["💬 MM4: Convince Guard\nto Leave Post\n(talk to Marcus)"]
 
-    MM2 -->|"leave_post"| SC2
     MM3 --> SC2["🔍 SC2: Navigate to\nBasement Vault"]
+    MM4 -->|"leave_post"| SC2
 
     SC2 --> SC3["🎮 SC3: Crack the\nVault Lock"]
     SC1 -->|"safe_cracking_tools"| SC3
@@ -232,22 +203,14 @@ flowchart TD
     SC3 --> COMPLETE([HEIST COMPLETE])
 ```
 
-## Key Collaboration Points
-
-- **Intelligence Gathering**: Mastermind talks to the security guard to learn vault location and patrol schedule
-- **NPC Manipulation**: Mastermind convinces the guard to leave his post, clearing the path
-- **Information Sharing**: Mastermind radios the vault intel to Safe Cracker
-- **Preparation**: Safe Cracker gathers equipment at the hideout
-- **Execution**: Safe Cracker uses the intel and tools to navigate to vault and crack it
-
 ## Story Flow
 
 1. Both players start at the Crew Hideout
 2. Safe Cracker grabs the safe cracking tools
-3. Mastermind heads to the Grand Hall and mingles at the gala
-4. Mastermind spots the security guard and starts a conversation
-5. Through careful conversation, learns the vault is in "basement, east wing" and the guard's schedule
-6. Mastermind radios Safe Cracker: "Basement, east wing - but the guard is still at his post"
-7. Mastermind continues talking to Marcus, building rapport, and convinces him to take a smoke break
+3. Mastermind heads to the Grand Hall
+4. Mastermind chats with Dr. Vasquez and learns the jewels are in the basement, east wing
+5. Mastermind searches near the security station and finds a guard patrol schedule
+6. Mastermind radios Safe Cracker: "Basement, east wing. Guard breaks at 9 PM."
+7. Mastermind finds Marcus the guard and convinces him to take an early smoke break
 8. With the guard away, Safe Cracker navigates through the basement to the vault
-9. Safe Cracker uses the tools to crack the combination lock and retrieves the jewels
+9. Safe Cracker cracks the combination lock and retrieves the Eye of Orion jewels

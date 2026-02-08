@@ -26,6 +26,7 @@ from app.models.websocket import (
     RoleSelectedMessage,
     GameStartedMessage,
     TaskCompletedMessage,
+    TaskUnlockedMessage,
     PlayerMovedMessage,
     SearchResultsMessage,
     ItemPickedUpMessage,
@@ -340,26 +341,71 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
 
 
 async def handle_complete_task(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
-    """Handle task completion"""
+    """Handle task completion (for manual-complete types: INFO_SHARE, DISCOVERY, MINIGAME)"""
     ws_manager = get_ws_manager()
     room_manager = get_room_manager()
+    game_state_manager = get_game_state_manager()
     
     task_id = data.get("task_id")
     
-    # TODO: Validate task completion with GameStateManager
-    # For now, just broadcast
-    
     room = room_manager.get_room(room_code)
+    if not room or player_id not in room.players:
+        return
+    
     player = room.players[player_id]
+    
+    # Validate and complete via GameStateManager
+    success, newly_available, error = game_state_manager.complete_task(
+        room_code, task_id, player_id, room
+    )
+    
+    if not success:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": error or f"Cannot complete task {task_id}"
+        })
+        return
+    
+    # Broadcast task completed
+    await _broadcast_task_completed(room_code, task_id, player_id, player.name, newly_available)
+
+
+async def _broadcast_task_completed(
+    room_code: str, task_id: str, player_id: str, player_name: str, newly_available: list
+) -> None:
+    """Broadcast task completion and send newly unlocked tasks to appropriate players"""
+    ws_manager = get_ws_manager()
+    room_manager = get_room_manager()
+    game_state_manager = get_game_state_manager()
     
     task_completed = TaskCompletedMessage(
         type="task_completed",
         task_id=task_id,
         by_player_id=player_id,
-        by_player_name=player.name,
-        newly_available=[]  # Will be filled by GameStateManager
+        by_player_name=player_name,
+        newly_available=newly_available
     )
     await ws_manager.broadcast_to_room(room_code, task_completed.model_dump(mode='json'))
+    
+    # Send newly unlocked tasks to the players whose roles match
+    if newly_available:
+        room = room_manager.get_room(room_code)
+        game_state = game_state_manager.get_game_state(room_code)
+        if room and game_state:
+            for new_task_id in newly_available:
+                new_task = game_state.tasks.get(new_task_id)
+                if not new_task:
+                    continue
+                # Find player(s) with this role and send them the task
+                for pid, p in room.players.items():
+                    if p.role == new_task.assigned_role:
+                        unlocked_msg = TaskUnlockedMessage(
+                            type="task_unlocked",
+                            task=new_task.model_dump(mode='json')
+                        )
+                        await ws_manager.send_to_player(room_code, pid, unlocked_msg.model_dump(mode='json'))
+    
+    logger.info(f"✅ Task {task_id} completed by {player_name}, unlocked {len(newly_available)} tasks")
 
 
 async def handle_npc_message(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
@@ -443,6 +489,18 @@ async def handle_handoff_item(room_code: str, player_id: str, data: Dict[str, An
         item=item.model_dump(mode='json')
     )
     await ws_manager.broadcast_to_room(room_code, transfer_msg.model_dump(mode='json'))
+    
+    # Auto-complete any HANDOFF tasks for the giving player
+    game_state_manager = get_game_state_manager()
+    completable_tasks = game_state_manager.check_handoff_completions(
+        room_code, player_id, room, item_id
+    )
+    for task_id in completable_tasks:
+        success, newly_available, error = game_state_manager.auto_complete_task(
+            room_code, task_id, player_id, room
+        )
+        if success:
+            await _broadcast_task_completed(room_code, task_id, player_id, from_player.name, newly_available)
 
 
 async def handle_search_room(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
@@ -540,6 +598,15 @@ async def handle_pickup_item(room_code: str, player_id: str, data: Dict[str, Any
     await ws_manager.broadcast_to_room(room_code, pickup_msg.model_dump(mode='json'))
     
     logger.info(f"📦 {player.name} picked up {item.name} from {location}")
+    
+    # Auto-complete any SEARCH tasks that now have all their items found
+    completable_tasks = game_state_manager.check_search_completions(room_code, player_id, room)
+    for task_id in completable_tasks:
+        success, newly_available, error = game_state_manager.auto_complete_task(
+            room_code, task_id, player_id, room
+        )
+        if success:
+            await _broadcast_task_completed(room_code, task_id, player_id, player.name, newly_available)
 
 
 async def handle_use_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:

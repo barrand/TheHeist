@@ -23,12 +23,13 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 
 # Suspicion change table: fit_score -> {difficulty -> delta}
+# Tuned so bad choices are punishing but good choices reward you
 SUSPICION_TABLE = {
-    5: {"easy": -1, "medium": -1, "hard": 0},
-    4: {"easy": 0, "medium": 0, "hard": 0},
-    3: {"easy": 0, "medium": 0, "hard": 1},
-    2: {"easy": 0, "medium": 1, "hard": 2},
-    1: {"easy": 1, "medium": 2, "hard": 3},
+    5: {"easy": -1, "medium": 0, "hard": 0},
+    4: {"easy": 0, "medium": 0, "hard": 1},
+    3: {"easy": 0, "medium": 1, "hard": 1},
+    2: {"easy": 1, "medium": 2, "hard": 2},
+    1: {"easy": 2, "medium": 2, "hard": 3},
 }
 
 COOLDOWN_DURATION_SECONDS = 60  # Same for all difficulties
@@ -47,11 +48,12 @@ SUSPICION_LABELS = {
 class ConversationSession:
     """Tracks the state of an active NPC conversation"""
     
-    def __init__(self, npc_id: str, player_id: str, cover_id: str, difficulty: str):
+    def __init__(self, npc_id: str, player_id: str, cover_id: str, difficulty: str, target_outcomes: List[str] = None):
         self.npc_id = npc_id
         self.player_id = player_id
         self.cover_id = cover_id
         self.difficulty = difficulty
+        self.target_outcomes: List[str] = target_outcomes or []
         self.conversation_history: List[Dict] = []
         self.current_responses: List[QuickResponseOption] = []
         self.suspicion: int = 0
@@ -96,6 +98,7 @@ class NPCConversationService:
         player_id: str,
         difficulty: str,
         game_state: GameState,
+        target_outcomes: List[str] = None,
     ) -> Tuple[str, List[QuickResponseOption], int]:
         """
         Start a new conversation with an NPC.
@@ -121,8 +124,8 @@ class NPCConversationService:
                 trust_level="low", trust_description="An unknown person"
             )
         
-        # Create session
-        session = ConversationSession(npc.id, player_id, cover_id, difficulty)
+        # Create session with target outcomes
+        session = ConversationSession(npc.id, player_id, cover_id, difficulty, target_outcomes=target_outcomes or [])
         self.sessions[(player_id, npc.id)] = session
         
         # Store chosen cover in game state
@@ -209,7 +212,8 @@ class NPCConversationService:
         
         # Get NPC response with outcome detection
         cover = next((c for c in npc.cover_options if c.cover_id == session.cover_id), None)
-        npc_response, outcomes = self._get_npc_response(npc, cover, session, player_text, difficulty)
+        already_achieved = set(game_state.achieved_outcomes.get(player_id, []))
+        npc_response, outcomes = self._get_npc_response(npc, cover, session, player_text, difficulty, already_achieved)
         session.add_message(npc_response, is_player=False)
         
         # Track achieved outcomes
@@ -221,15 +225,8 @@ class NPCConversationService:
                 if outcome_id not in game_state.achieved_outcomes[player_id]:
                     game_state.achieved_outcomes[player_id].append(outcome_id)
             
-            # Check for auto-completed tasks
-            all_outcomes = set(game_state.achieved_outcomes[player_id])
-            for task in game_state.tasks.values():
-                if (task.target_outcomes and 
-                    task.status.value != "completed" and
-                    all(o in all_outcomes for o in task.target_outcomes)):
-                    task.status = "completed"
-                    completed_tasks.append(task.id)
-                    logger.info(f"Task auto-completed: {task.id} (all target outcomes achieved)")
+            # NPC task auto-completion is now handled by the API layer
+            # via GameStateManager.check_npc_completions() after this returns
         
         # Generate next quick responses
         next_responses = self._generate_quick_responses(npc, cover, session, difficulty)
@@ -310,9 +307,9 @@ Generate responses at these cover fit levels: {fit_targets}
 {chr(10).join(fit_descriptions)}
 
 Rules:
-- Each response: 1-2 sentences, conversational
-- Higher-fit responses can still seek info -- they just do it naturally for the cover
-- Lower-fit responses should seem plausible at first glance but feel wrong for THIS cover with THIS NPC
+- Keep each response SHORT: 5-15 words max. Like real dialogue, not paragraphs.
+- Higher-fit responses seek info naturally for the cover
+- Lower-fit responses feel wrong for THIS cover with THIS NPC
 - Fit 1 responses can be funny or absurd
 - All should relate to the conversation context
 
@@ -352,29 +349,61 @@ Return ONLY a JSON array (no markdown, no wrapping):
     
     def _get_npc_response(
         self, npc: NPCData, cover: Optional[NPCCoverOption],
-        session: ConversationSession, player_text: str, difficulty: str
+        session: ConversationSession, player_text: str, difficulty: str,
+        already_achieved: set = None,
     ) -> Tuple[str, List[str]]:
         """Get NPC response and detect outcomes via structured JSON"""
         
         cover_desc = cover.description if cover else "Someone at the event"
         trust_desc = cover.trust_description if cover else "An unknown person"
+        already_achieved = already_achieved or set()
+        target_outcomes = set(session.target_outcomes) if session.target_outcomes else set()
         
-        # Build info items for prompt
-        info_lines = []
+        # Separate target outcomes (what player needs) from other NPC knowledge
+        target_info_lines = []
+        other_info_lines = []
         for item in npc.information_known:
             if item.info_id:
-                info_lines.append(f"- [{item.info_id}] {item.description} (confidence: {item.confidence})")
+                if item.info_id in already_achieved:
+                    continue  # skip already achieved
+                elif item.info_id in target_outcomes:
+                    target_info_lines.append(f"- [{item.info_id}] {item.description}")
+                else:
+                    other_info_lines.append(f"- {item.description} (background knowledge, share freely as flavor)")
             else:
-                info_lines.append(f"- {item.description} (flavor - share freely)")
+                other_info_lines.append(f"- {item.description} (flavor)")
         
-        # Build action items for prompt
-        action_lines = []
+        target_action_lines = []
+        other_action_lines = []
         for action in npc.actions_available:
-            action_lines.append(f"- [{action.action_id}] {action.description} (difficulty to convince: {action.confidence})")
+            if action.action_id in already_achieved:
+                continue
+            elif action.action_id in target_outcomes:
+                target_action_lines.append(f"- [{action.action_id}] {action.description}")
+            else:
+                other_action_lines.append(f"- {action.description} (background)")
         
         # Build conversation context
-        recent = session.conversation_history[-8:]
+        recent = session.conversation_history[-10:]
         context = "\n".join([f"{'Player' if m['role'] == 'player' else npc.name}: {m['text']}" for m in recent])
+        
+        # Turn count for pacing
+        turn_count = len([m for m in session.conversation_history if m['role'] == 'player'])
+        pacing = self._get_pacing_instruction(turn_count, session.suspicion, difficulty, already_achieved, target_outcomes)
+        
+        # Build the prompt with clear separation of target vs background
+        target_section = ""
+        if target_info_lines or target_action_lines:
+            target_section = "=== PLAYER IS TRYING TO LEARN/ACHIEVE (these are the OUTCOME IDs) ===\n"
+            if target_info_lines:
+                target_section += "Info to share:\n" + "\n".join(target_info_lines) + "\n"
+            if target_action_lines:
+                target_section += "Actions to agree to:\n" + "\n".join(target_action_lines) + "\n"
+        
+        background_section = ""
+        if other_info_lines or other_action_lines:
+            background_section = "=== Other things you know (share freely as flavor, no IDs needed) ===\n"
+            background_section += "\n".join(other_info_lines + other_action_lines) + "\n"
         
         prompt = f"""You are {npc.name}, a {npc.role}.
 Personality: {npc.personality}
@@ -383,15 +412,14 @@ Location: {npc.location}
 The person talking to you claims to be: {cover_desc}
 Your instinct: {trust_desc}
 
-Information you know (share naturally when earned through good conversation):
-{chr(10).join(info_lines) if info_lines else "Nothing specific."}
-
-Actions you can be convinced to perform:
-{chr(10).join(action_lines) if action_lines else "Nothing specific."}
-
+{target_section}
+{background_section}
 Current suspicion level: {session.suspicion} out of 5
+Conversation turn: {turn_count}
 
 {self._get_difficulty_prompt(difficulty)}
+
+{pacing}
 
 Conversation so far:
 {context}
@@ -400,15 +428,14 @@ Player just said: "{player_text}"
 
 Rules:
 - Stay in character. Be natural and conversational.
-- Share tagged info only when genuinely earned through good rapport.
-- Agree to tagged actions only when genuinely persuaded -- say so naturally.
 - Keep response under 3 sentences.
-- IMPORTANT: It must always be POSSIBLE to achieve outcomes. Never stonewall completely.
+- When you share target info, include the SPECIFIC details (locations, times, names) in your dialogue.
+- When you agree to a target action, say so clearly in your dialogue.
 
 RESPOND AS JSON (no markdown, no wrapping):
 {{"response": "your dialogue", "outcomes": ["id1"]}}
 
-Only include IDs of info you EXPLICITLY shared or actions you AGREED to in this response.
+Include outcome IDs ONLY for target info/actions you EXPLICITLY shared or agreed to in THIS response.
 If nothing was revealed/agreed, use empty array: {{"response": "your dialogue", "outcomes": []}}"""
         
         try:
@@ -461,24 +488,72 @@ Be in character. 1-2 sentences. Just the dialogue, no quotes or formatting."""
             logger.error(f"Error generating failure dismissal: {e}")
             return "I don't think I should be talking to you anymore. Please excuse me."
     
+    def _get_pacing_instruction(self, turn_count: int, suspicion: int, difficulty: str, already_achieved: set, target_outcomes: set) -> str:
+        """Generate pacing instructions based on turn count and difficulty.
+        
+        Turn budgets (total turns to get ALL target outcomes):
+        - Easy:   2-4 turns  (reveal one outcome every 1-2 turns)  
+        - Medium: 3-5 turns  (reveal one outcome every 2-3 turns)
+        - Hard:   4-6 turns  (reveal one outcome every 2-3 turns)
+        
+        The difficulty should come from the RISK of failing (suspicion), 
+        not from waiting forever.
+        """
+        remaining = len(target_outcomes - already_achieved)
+        
+        if remaining == 0:
+            return "PACING: All target outcomes achieved. Just chat naturally, no more reveals needed."
+        
+        if difficulty == "easy":
+            if turn_count >= 2:
+                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. On easy, this is enough rapport.
+You MUST share one target outcome NOW if the player's message is at all relevant to your knowledge.
+Include the specific details (names, locations, times) and the outcome ID in your response."""
+            else:
+                return f"""PACING: Turn {turn_count}. Be friendly and open. If they ask about something you know, share it.
+{remaining} outcome(s) to go. On easy, you're happy to talk."""
+        
+        elif difficulty == "hard":
+            if turn_count >= 4:
+                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Even on hard, a player who has kept suspicion at {suspicion}/5 for {turn_count} turns has earned trust.
+You MUST share one target outcome NOW if the message is relevant. Don't stonewall -- reward good play."""
+            elif turn_count >= 2:
+                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. You're warming up.
+If they ask a well-crafted question related to your knowledge, share one target outcome."""
+            else:
+                return f"""PACING: Turn {turn_count}. Early in the conversation. Be friendly but guarded.
+They need to prove they belong before you share sensitive info. {remaining} outcome(s) to go."""
+        
+        else:  # medium
+            if turn_count >= 3:
+                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. On medium, this is enough conversation.
+You MUST share one target outcome NOW if the player's message relates to your knowledge at all.
+Include specific details and the outcome ID."""
+            elif turn_count >= 1:
+                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Getting to know them.
+If they ask something relevant, you can share -- especially if their cover fits well."""
+            else:
+                return f"""PACING: Turn {turn_count}. Friendly but not giving away secrets to strangers yet. {remaining} outcome(s) to go."""
+    
     def _get_difficulty_prompt(self, difficulty: str) -> str:
         """Get difficulty-specific instructions for the NPC"""
         if difficulty == "easy":
             return """Player difficulty: easy
 - Accept their cover story at face value.
-- Be friendly and forthcoming. Share info after a few good exchanges.
-- Give clear hints if they're on the right track."""
+- Be friendly and forthcoming. You like talking to people.
+- If they ask about something you know, share it willingly.
+- Share one tagged item per response when the topic is relevant."""
         elif difficulty == "hard":
             return """Player difficulty: hard
 - Be observant and skeptical of their cover. Notice if questions don't fit.
-- Require significant rapport before sharing sensitive information.
+- Require real rapport before sharing sensitive info.
 - A well-crafted question that fits the cover naturally still gets an answer.
-- IMPORTANT: It must always be POSSIBLE to extract info. Never stonewall."""
+- NEVER completely stonewall -- always leave an opening for clever players."""
         else:  # medium
             return """Player difficulty: medium
-- Be realistic -- friendly but not too forthcoming.
-- Share information after building some rapport.
-- Give subtle hints if they're getting warm."""
+- Be realistic -- friendly but not giving away secrets to strangers.
+- After a few turns of good conversation, share info when asked.
+- If they ask about something related to your knowledge, give them something useful."""
     
     def _pick_fit_targets(self) -> List[int]:
         """Pick 3 random fit targets, ensuring at least one is 4 or 5"""
@@ -499,9 +574,9 @@ Be in character. 1-2 sentences. Just the dialogue, no quotes or formatting."""
     def _fallback_quick_responses(self, fit_targets: List[int]) -> List[QuickResponseOption]:
         """Fallback responses if LLM fails"""
         fallbacks = [
-            QuickResponseOption(text="Tell me more about your work here.", fit_score=max(fit_targets)),
-            QuickResponseOption(text="Have you noticed anything unusual tonight?", fit_score=3),
-            QuickResponseOption(text="So... what's the deal with the security around here?", fit_score=min(fit_targets)),
+            QuickResponseOption(text="So what's your role here?", fit_score=max(fit_targets)),
+            QuickResponseOption(text="Anything interesting happen tonight?", fit_score=3),
+            QuickResponseOption(text="Where do they keep the good stuff?", fit_score=min(fit_targets)),
         ]
         random.shuffle(fallbacks)
         return fallbacks

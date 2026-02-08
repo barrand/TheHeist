@@ -55,6 +55,7 @@ class StartConversationRequest(BaseModel):
     cover_id: str = Field(..., description="Chosen cover story ID")
     room_code: str = Field(..., description="Game room code")
     player_id: str = Field(..., description="Player starting the conversation")
+    target_outcomes: List[str] = Field(default_factory=list, description="Specific outcome IDs the player needs from this conversation")
 
 
 class StartConversationResponse(BaseModel):

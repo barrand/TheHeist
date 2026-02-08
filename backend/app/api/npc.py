@@ -76,18 +76,23 @@ async def start_conversation(request: StartConversationRequest) -> StartConversa
             player_id=request.player_id,
             difficulty=difficulty,
             game_state=game_state,
+            target_outcomes=request.target_outcomes,
         )
         
-        # Build objectives for frontend
+        # Build objectives for frontend - only the outcomes the player's task needs
+        # If no target_outcomes, this is a "flavor" conversation with no tracked objectives
         cover = next((c for c in npc.cover_options if c.cover_id == request.cover_id), None)
+        needed = set(request.target_outcomes) if request.target_outcomes else set()
         
         info_objectives = [
             {"id": i.info_id, "description": i.description}
-            for i in npc.information_known if i.info_id
+            for i in npc.information_known
+            if i.info_id and i.info_id in needed
         ]
         action_objectives = [
             {"id": a.action_id, "description": a.description}
             for a in npc.actions_available
+            if a.action_id in needed
         ]
         
         logger.info(f"💬 Conversation started: {request.player_id} -> {npc.name} as '{request.cover_id}'")
@@ -150,6 +155,40 @@ async def conversation_chat(request: ConversationChatRequest) -> ConversationCha
         )
         
         logger.info(f"💬 Chat turn: suspicion={suspicion} (delta={suspicion_delta:+d}) | outcomes={outcomes} | failed={conversation_failed}")
+        
+        # Check for NPC task auto-completions via GameStateManager
+        if outcomes:
+            completable = game_state_mgr.check_npc_completions(request.room_code, request.player_id, room)
+            for task_id in completable:
+                success, newly_available, error = game_state_mgr.auto_complete_task(
+                    request.room_code, task_id, request.player_id, room
+                )
+                if success:
+                    completed_tasks.append(task_id)
+                    # Broadcast via websocket so all clients update
+                    from app.services.websocket_manager import get_ws_manager
+                    ws_manager = get_ws_manager()
+                    from app.models.websocket import TaskCompletedMessage, TaskUnlockedMessage
+                    task_completed_msg = TaskCompletedMessage(
+                        type="task_completed",
+                        task_id=task_id,
+                        by_player_id=request.player_id,
+                        by_player_name=player.name if player else "Unknown",
+                        newly_available=newly_available,
+                    )
+                    await ws_manager.broadcast_to_room(request.room_code, task_completed_msg.model_dump(mode='json'))
+                    
+                    # Send newly unlocked tasks to appropriate players
+                    for new_task_id in newly_available:
+                        new_task = game_state.tasks.get(new_task_id)
+                        if new_task:
+                            for pid, p in room.players.items():
+                                if p.role == new_task.assigned_role:
+                                    unlocked_msg = TaskUnlockedMessage(
+                                        type="task_unlocked",
+                                        task=new_task.model_dump(mode='json')
+                                    )
+                                    await ws_manager.send_to_player(request.room_code, pid, unlocked_msg.model_dump(mode='json'))
         
         return ConversationChatResponse(
             npc_response=npc_response,

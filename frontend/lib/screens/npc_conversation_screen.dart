@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/app_config.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_dimensions.dart';
 import '../models/npc.dart';
@@ -19,6 +20,8 @@ class NPCConversationScreen extends StatefulWidget {
   final String? scenarioId;
   final String? roomCode;
   final String? playerId;
+  final List<String> targetOutcomes;
+  final String missionBrief;
 
   const NPCConversationScreen({
     Key? key,
@@ -29,6 +32,8 @@ class NPCConversationScreen extends StatefulWidget {
     this.scenarioId,
     this.roomCode,
     this.playerId,
+    this.targetOutcomes = const [],
+    this.missionBrief = '',
   }) : super(key: key);
 
   @override
@@ -84,6 +89,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         coverId: cover.coverId,
         roomCode: widget.roomCode!,
         playerId: widget.playerId!,
+        targetOutcomes: widget.targetOutcomes,
       );
 
       if (!mounted) return;
@@ -349,49 +355,46 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         // Suspicion meter
         _buildSuspicionMeter(),
         
-        // Scrollable content
+        // Mission brief + objectives (pinned at top, not scrollable)
+        _buildMissionHeader(),
+        
+        // Scrollable chat area
         Expanded(
           child: SingleChildScrollView(
             controller: _scrollController,
-            padding: EdgeInsets.all(AppDimensions.containerPadding),
+            padding: EdgeInsets.symmetric(horizontal: AppDimensions.containerPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Cover story label
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.bgTertiary,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
-                  ),
-                  child: Text(
-                    'Cover: "$_coverLabel"',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
-                  ),
-                ),
-                SizedBox(height: AppDimensions.spaceSM),
-
-                // Objectives
-                if (_infoObjectives.isNotEmpty || _actionObjectives.isNotEmpty)
-                  _buildObjectivesCard(),
-                
                 SizedBox(height: AppDimensions.spaceSM),
                 
-                // NPC portrait (smaller in conversation)
-                Center(
-                  child: SizedBox(
-                    width: 120, height: 120,
-                    child: _buildNpcPortrait(small: true),
-                  ),
+                // NPC portrait (smaller in conversation) + name
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 56, height: 56,
+                      child: _buildNpcPortrait(small: true),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.npc.name.toUpperCase(),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary, letterSpacing: 0.5),
+                          ),
+                          Text(
+                            'Cover: "$_coverLabel"',
+                            style: TextStyle(fontSize: 11, color: AppColors.textTertiary, fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 4),
-                Text(
-                  widget.npc.name.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary, letterSpacing: 1),
-                ),
-                SizedBox(height: AppDimensions.spaceSM),
                 
+                SizedBox(height: AppDimensions.spaceSM),
                 Divider(color: AppColors.borderSubtle, height: 1),
                 SizedBox(height: AppDimensions.spaceSM),
                 
@@ -418,109 +421,188 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     );
   }
 
-  Widget _buildSuspicionMeter() {
-    final labels = ['Relaxed', 'Comfortable', 'Curious', 'Cautious', 'Suspicious', 'Done'];
-    final colors = [
-      AppColors.success,
-      AppColors.success,
-      AppColors.warning,
-      AppColors.warning,
-      AppColors.danger,
-      AppColors.danger,
+  Widget _buildMissionHeader() {
+    final allObjectives = [
+      ..._infoObjectives.map((o) => {'id': o['id'], 'desc': o['description'], 'type': 'info'}),
+      ..._actionObjectives.map((o) => {'id': o['id'], 'desc': o['description'], 'type': 'action'}),
     ];
     
-    final label = _suspicion < labels.length ? labels[_suspicion] : 'Unknown';
-    final color = _suspicion < colors.length ? colors[_suspicion] : AppColors.danger;
-    
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: AppDimensions.containerPadding, vertical: 8),
+      padding: EdgeInsets.fromLTRB(AppDimensions.containerPadding, 8, AppDimensions.containerPadding, 8),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
         border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.visibility, size: 16, color: color),
-          SizedBox(width: 8),
-          Text('SUSPICION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 1)),
-          SizedBox(width: 12),
-          // Meter dots
-          for (int i = 0; i < 5; i++) ...[
-            Container(
-              width: 24, height: 8,
-              decoration: BoxDecoration(
-                color: i < _suspicion ? color : AppColors.bgTertiary,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: i < _suspicion ? color : AppColors.borderSubtle, width: 1),
-              ),
+          // Mission brief text
+          if (widget.missionBrief.isNotEmpty) ...[
+            Text(
+              widget.missionBrief,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary, height: 1.3),
             ),
-            if (i < 4) SizedBox(width: 4),
+            SizedBox(height: 8),
           ],
-          SizedBox(width: 12),
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+          // Outcome checklist
+          if (allObjectives.isNotEmpty)
+            for (final obj in allObjectives)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Icon(
+                      _achievedOutcomes.contains(obj['id'])
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 15,
+                      color: _achievedOutcomes.contains(obj['id'])
+                          ? AppColors.success
+                          : AppColors.textTertiary,
+                    ),
+                    SizedBox(width: 6),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      margin: EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: obj['type'] == 'action'
+                            ? AppColors.warning.withValues(alpha: 0.15)
+                            : AppColors.info.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        obj['type'] == 'action' ? 'DO' : 'LEARN',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: obj['type'] == 'action' ? AppColors.warning : AppColors.info,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        obj['desc'] as String,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _achievedOutcomes.contains(obj['id'])
+                              ? AppColors.textTertiary
+                              : AppColors.textSecondary,
+                          decoration: _achievedOutcomes.contains(obj['id'])
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
         ],
       ),
     );
   }
 
-  Widget _buildObjectivesCard() {
-    final allObjectives = [
-      ..._infoObjectives.map((o) => {'id': o['id'], 'desc': o['description'], 'type': 'info'}),
-      ..._actionObjectives.map((o) => {'id': o['id'], 'desc': o['description'], 'type': 'action'}),
-    ];
-
+  Widget _buildSuspicionMeter() {
+    // Suspicion 0-5 maps to 0.0-1.0 position on the bar
+    final position = (_suspicion / 5.0).clamp(0.0, 1.0);
+    // Color interpolates from green -> yellow -> red
+    final color = _suspicion <= 1
+        ? AppColors.success
+        : _suspicion <= 3
+            ? AppColors.warning
+            : AppColors.danger;
+    
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: EdgeInsets.symmetric(horizontal: AppDimensions.containerPadding, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.bgTertiary,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        border: Border.all(color: AppColors.borderSubtle),
+        color: AppColors.bgSecondary,
+        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'OBJECTIVES',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentPrimary, letterSpacing: 1),
+          // Labels row: Relaxed ... difficulty badge ... Suspicious
+          Row(
+            children: [
+              Text('Relaxed', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.success)),
+              Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.bgTertiary,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  widget.difficulty.toUpperCase(),
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5),
+                ),
+              ),
+              Spacer(),
+              Text('Suspicious', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.danger)),
+            ],
           ),
           SizedBox(height: 6),
-          for (final obj in allObjectives)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 2),
-              child: Row(
+          // Gradient bar with indicator
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final barWidth = constraints.maxWidth;
+              final indicatorOffset = position * (barWidth - 12); // 12 = indicator width
+              
+              return Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  Icon(
-                    _achievedOutcomes.contains(obj['id'])
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    size: 16,
-                    color: _achievedOutcomes.contains(obj['id'])
-                        ? AppColors.success
-                        : AppColors.textTertiary,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      obj['desc'] as String,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: _achievedOutcomes.contains(obj['id'])
-                            ? AppColors.textSecondary
-                            : AppColors.textPrimary,
-                        decoration: _achievedOutcomes.contains(obj['id'])
-                            ? TextDecoration.lineThrough
-                            : null,
+                  // Track background with gradient
+                  Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(3),
+                      gradient: LinearGradient(
+                        colors: [AppColors.success, Color(0xFFFFB800), AppColors.danger],
+                        stops: [0.0, 0.5, 1.0],
                       ),
                     ),
                   ),
-                  if (obj['type'] == 'action')
-                    Padding(
-                      padding: EdgeInsets.only(left: 4),
-                      child: Icon(Icons.flash_on, size: 14, color: AppColors.warning),
+                  // Dark overlay for unfilled portion
+                  Positioned(
+                    left: position * barWidth,
+                    right: 0,
+                    child: Container(
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: AppColors.bgPrimary.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.horizontal(
+                          left: position > 0 ? Radius.zero : Radius.circular(3),
+                          right: Radius.circular(3),
+                        ),
+                      ),
                     ),
+                  ),
+                  // Triangle indicator
+                  Positioned(
+                    left: indicatorOffset,
+                    top: -6,
+                    child: CustomPaint(
+                      size: Size(12, 6),
+                      painter: _TrianglePainter(color: color),
+                    ),
+                  ),
+                  // Dot indicator on the bar
+                  Positioned(
+                    left: indicatorOffset + 3,
+                    top: 0,
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color,
+                        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4)],
+                      ),
+                    ),
+                  ),
                 ],
-              ),
-            ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -565,22 +647,23 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         ),
         child: Row(
           children: [
-            // Debug fit score
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              margin: EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(
-                color: _fitScoreColor(option.fitScore).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'fit:${option.fitScore}',
-                style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w700,
-                  color: _fitScoreColor(option.fitScore),
+            // Debug fit score (only visible in debug mode)
+            if (AppConfig.debugMode)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                margin: EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: _fitScoreColor(option.fitScore).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'fit:${option.fitScore}',
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: _fitScoreColor(option.fitScore),
+                  ),
                 ),
               ),
-            ),
             Expanded(
               child: Text(
                 option.text,
@@ -769,4 +852,24 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       ),
     );
   }
+}
+
+/// Paints a small downward-pointing triangle for the suspicion meter indicator
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  _TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_TrianglePainter oldDelegate) => oldDelegate.color != color;
 }

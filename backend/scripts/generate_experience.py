@@ -241,11 +241,12 @@ Each NPC MUST include structured data for the conversation system:
 - **Details**: props/visual details
 - **Personality**: Detailed personality for LLM conversations (2-3 sentences)
 - **Information Known**:
-  - `info_id` HIGH: Description of what they know (tagged info that players need)
-  - `another_id` MEDIUM: Another piece of information
-  - LOW: Flavor text they might share (no ID = flavor only)
+  - `info_id` HIGH: The ONE piece of info this NPC provides (tagged with ID)
+  - LOW: Flavor text they might share (no ID = not tracked, just conversation filler)
+  - LOW: More flavor to make the NPC feel real
 - **Actions Available**:
-  - `action_id` HIGH: Something NPC can be convinced to do
+  - (none, if this NPC provides info instead of an action)
+  - OR: `action_id` HIGH: The ONE action this NPC can perform (if action-type NPC)
 - **Cover Story Options**:
   - `cover_id`: "What the player claims to be" -- Trust: HIGH (why NPC trusts this cover)
   - `another_cover`: "Another cover story" -- Trust: LOW (why NPC distrusts this cover)
@@ -253,18 +254,19 @@ Each NPC MUST include structured data for the conversation system:
 ```
 
 Rules for NPCs:
-- Each NPC needs 3-6 tagged info items and 0-2 actions
+- ONE outcome per NPC: each NPC has exactly ONE tagged info item OR ONE action (not both, not multiple). This is their sole purpose in the story.
+- Additional LOW items (no ID) can be added as flavor to make conversation natural, but only ONE item has an ID.
 - Each NPC needs exactly 3 cover story options (one HIGH, one MEDIUM, one LOW trust)
-- Info IDs must be snake_case and unique across the experience
-- Action IDs must be snake_case and unique across the experience
-- HIGH confidence info = shared relatively easily, LOW = only through great rapport
+- Info/Action IDs must be snake_case and unique across the experience
+- Every NPC must be targeted by exactly one task with a matching Target Outcome
+- If you need more outcomes, add more NPCs -- don't overload one NPC
 
 ### Task Prerequisite Format:
 ```markdown
 1. **MM1. 💬 NPC_LLM** - Task Description
    - *Description:* Detailed description
    - *NPC:* `npc_id` (NPC Name)
-   - *Target Outcomes:* `info_id_1`, `info_id_2`
+   - *Target Outcomes:* `single_outcome_id`
    - *Location:* Location Name
    - *Prerequisites:* None (starting task)
 
@@ -279,9 +281,10 @@ Rules for NPCs:
 
 Rules for Tasks:
 - Use typed prerequisites: `Task`, `Outcome`, `Item` (not plain dependency IDs)
-- NPC tasks MUST have `*Target Outcomes:*` listing the info/action IDs needed
+- NPC tasks MUST have `*Target Outcomes:*` with exactly ONE outcome ID (matches the NPC's single tagged item/action)
 - `*NPC:*` field must reference NPC by backtick ID: `*NPC:* \`npc_id\` (Name)`
 - Search tasks use `*Search Items:*` instead of `*Find:*`
+- Any player role can do search/social tasks; role-locked tasks are minigames requiring specific skills
 
 ## Standard Requirements
 

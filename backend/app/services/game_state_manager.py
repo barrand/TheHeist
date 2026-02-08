@@ -4,7 +4,7 @@ Manages game state, task dependencies, and state updates for active games
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 from datetime import datetime
 
 from app.models.game_state import GameState, Task, TaskStatus, TaskType
@@ -79,8 +79,8 @@ class GameStateManager:
         if task.status != TaskStatus.AVAILABLE and task.status != TaskStatus.IN_PROGRESS:
             return False, f"Task {task_id} is not available (status: {task.status})"
         
-        # Check if player is at correct location
-        if player.location != task.location:
+        # Check if player is at correct location (discovery/info_share can be done anywhere)
+        if task.type not in (TaskType.DISCOVERY, TaskType.INFO_SHARE) and player.location != task.location:
             return False, f"You must be at {task.location} to complete this task"
         
         # Specific validation by task type
@@ -142,6 +142,136 @@ class GameStateManager:
         newly_available = game_state.complete_task(task_id)
         
         logger.info(f"✅ Task {task_id} completed by player {player_id}, unlocked {len(newly_available)} new tasks")
+        
+        return True, newly_available, None
+    
+    def check_search_completions(self, room_code: str, player_id: str, room: GameRoom) -> List[str]:
+        """
+        Check if any SEARCH tasks for this player are now completable
+        based on items in their inventory.
+        
+        Returns list of task IDs that should be auto-completed.
+        """
+        game_state = self.get_game_state(room_code)
+        if not game_state:
+            return []
+        
+        player = room.players.get(player_id)
+        if not player or not player.role:
+            return []
+        
+        player_item_ids: Set[str] = {item.id for item in player.inventory}
+        completable = []
+        
+        for task in game_state.tasks.values():
+            if task.assigned_role != player.role:
+                continue
+            if task.type != TaskType.SEARCH:
+                continue
+            if task.status != TaskStatus.AVAILABLE and task.status != TaskStatus.IN_PROGRESS:
+                continue
+            if not task.search_items:
+                continue
+            
+            # Check if all search_items are in the player's inventory
+            if all(item_id in player_item_ids for item_id in task.search_items):
+                completable.append(task.id)
+        
+        return completable
+    
+    def check_npc_completions(self, room_code: str, player_id: str, room: GameRoom) -> List[str]:
+        """
+        Check if any NPC_LLM tasks for this player are now completable
+        based on achieved outcomes.
+        
+        Returns list of task IDs that should be auto-completed.
+        """
+        game_state = self.get_game_state(room_code)
+        if not game_state:
+            return []
+        
+        player = room.players.get(player_id)
+        if not player or not player.role:
+            return []
+        
+        # Get all outcomes achieved by this player
+        player_outcomes: Set[str] = set(game_state.achieved_outcomes.get(player_id, []))
+        completable = []
+        
+        for task in game_state.tasks.values():
+            if task.assigned_role != player.role:
+                continue
+            if task.type != TaskType.NPC_LLM:
+                continue
+            if task.status != TaskStatus.AVAILABLE and task.status != TaskStatus.IN_PROGRESS:
+                continue
+            if not task.target_outcomes:
+                continue
+            
+            # Check if all target_outcomes are achieved
+            if all(outcome_id in player_outcomes for outcome_id in task.target_outcomes):
+                completable.append(task.id)
+        
+        return completable
+    
+    def check_handoff_completions(self, room_code: str, player_id: str, room: GameRoom, transferred_item_id: str) -> List[str]:
+        """
+        Check if any HANDOFF tasks for this player are now completable
+        because they just transferred the required item.
+        
+        Returns list of task IDs that should be auto-completed.
+        """
+        game_state = self.get_game_state(room_code)
+        if not game_state:
+            return []
+        
+        player = room.players.get(player_id)
+        if not player or not player.role:
+            return []
+        
+        completable = []
+        
+        for task in game_state.tasks.values():
+            if task.assigned_role != player.role:
+                continue
+            if task.type != TaskType.HANDOFF:
+                continue
+            if task.status != TaskStatus.AVAILABLE and task.status != TaskStatus.IN_PROGRESS:
+                continue
+            if task.handoff_item != transferred_item_id:
+                continue
+            
+            completable.append(task.id)
+        
+        return completable
+    
+    def auto_complete_task(self, room_code: str, task_id: str, player_id: str, room: GameRoom) -> Tuple[bool, List[str], Optional[str]]:
+        """
+        Auto-complete a task (no location check -- the triggering event already verified context).
+        Skips the SEARCH item-adding side effect since items were already picked up.
+        
+        Returns (success, newly_available_task_ids, error_message)
+        """
+        game_state = self.get_game_state(room_code)
+        if not game_state:
+            return False, [], "Game not started"
+        
+        if task_id not in game_state.tasks:
+            return False, [], f"Task {task_id} not found"
+        
+        task = game_state.tasks[task_id]
+        
+        if task.status == TaskStatus.COMPLETED:
+            return False, [], f"Task {task_id} already completed"
+        
+        # Mark as completed
+        task.status = TaskStatus.COMPLETED
+        task.assigned_player_id = player_id
+        
+        # Unlock dependent tasks
+        newly_available = game_state.complete_task(task_id)
+        
+        logger.info(f"✅ Task {task_id} auto-completed by player {player_id}, unlocked {len(newly_available)} new tasks")
         
         return True, newly_available, None
     

@@ -29,8 +29,9 @@ class BackendService {
     required String coverId,
     required String roomCode,
     required String playerId,
+    List<String> targetOutcomes = const [],
   }) async {
-    print('💬 BackendService: Starting conversation with $npcId as $coverId');
+    print('💬 BackendService: Starting conversation with $npcId as $coverId (outcomes: $targetOutcomes)');
     
     try {
       final url = Uri.parse('$_baseUrl/api/npc/start-conversation');
@@ -43,6 +44,7 @@ class BackendService {
           'cover_id': coverId,
           'room_code': roomCode,
           'player_id': playerId,
+          'target_outcomes': targetOutcomes,
         }),
       );
       

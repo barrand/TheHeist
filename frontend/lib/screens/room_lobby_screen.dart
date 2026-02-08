@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:the_heist/core/app_config.dart';
 import 'package:the_heist/core/theme/app_colors.dart';
 import 'package:the_heist/core/theme/app_dimensions.dart';
 import 'package:the_heist/models/role.dart';
@@ -220,40 +221,25 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       );
       _myRole = myPlayer['role'];
       debugPrint('🏠 LOBBY: My initial role: $_myRole');
-      
-      // AUTO-ASSIGN ROLES FOR FAST TESTING
-      // Host gets Mastermind, first joiner gets Safe Cracker
-      if (_myRole == null || _myRole == '') {
+
+      // Debug auto-assign: host → Mastermind (medium), joiner → Safe Cracker (hard)
+      if (AppConfig.debugMode && (_myRole == null || _myRole == '')) {
         if (_isHost && _players.length == 1) {
-          // Host with no role - auto-select Mastermind
-          debugPrint('🎯 AUTO: Selecting Mastermind for host');
+          debugPrint('🎯 DEBUG: Auto-selecting Mastermind (medium) for host');
           Future.delayed(Duration(milliseconds: 500), () {
-            _selectRole('mastermind');
+            if (mounted) {
+              _myDifficulty = 'medium';
+              _selectRole('mastermind');
+            }
           });
         } else if (!_isHost && _players.length == 2) {
-          // First joiner with no role - auto-select Safe Cracker
-          final hostHasMastermind = _players.any((p) => p['role'] == 'mastermind');
-          if (hostHasMastermind) {
-            debugPrint('🎯 AUTO: Selecting Safe Cracker for first joiner');
+          final hostHasRole = _players.any((p) => p['role'] == 'mastermind');
+          if (hostHasRole) {
+            debugPrint('🎯 DEBUG: Auto-selecting Safe Cracker (hard) for joiner');
             Future.delayed(Duration(milliseconds: 500), () {
-              _selectRole('safe_cracker');
-            });
-          }
-        }
-      }
-      
-      // AUTO-START for test rooms (when both players have MM and SC)
-      if (_players.length == 2) {
-        final roles = _players.map((p) => p['role']).toSet();
-        if (roles.contains('mastermind') && roles.contains('safe_cracker')) {
-          // Both test roles are assigned
-          final bothReady = _players.every((p) => p['role'] != null && p['role'] != '');
-          if (bothReady && _isHost) {
-            debugPrint('⚡ AUTO-START: Both test roles ready, starting game in 2 seconds');
-            Future.delayed(Duration(seconds: 2), () {
-              if (_isHost && mounted) {
-                debugPrint('⚡ AUTO-START: Triggering game start');
-                _startGame();
+              if (mounted) {
+                _myDifficulty = 'hard';
+                _selectRole('safe_cracker');
               }
             });
           }

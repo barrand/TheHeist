@@ -240,7 +240,24 @@ class _GameScreenState extends State<GameScreen> {
       coverOptions: coverOptions,
     );
     
-    // Build objectives from player's relevant incomplete tasks
+    // Collect target outcomes and task description for tasks targeting this NPC
+    final npcId = npcData['id'] ?? '';
+    final targetOutcomes = <String>[];
+    String missionBrief = '';
+    for (final task in _myTasks) {
+      if (task['status'] == 'completed') continue;
+      final taskNpcId = task['npc_id'] as String?;
+      if (taskNpcId == npcId) {
+        final outcomes = task['target_outcomes'] as List<dynamic>? ?? [];
+        targetOutcomes.addAll(outcomes.cast<String>());
+        // Use the first matching task's description as the mission brief
+        if (missionBrief.isEmpty) {
+          missionBrief = task['description'] as String? ?? '';
+        }
+      }
+    }
+    
+    // Build objectives from player's relevant incomplete tasks (legacy, passed but not displayed)
     final relevantTypes = {'discovery', 'npc_llm', 'search', 'explore'};
     final npcObjectives = _myTasks
         .where((task) => 
@@ -253,6 +270,13 @@ class _GameScreenState extends State<GameScreen> {
             ))
         .toList();
     
+    // Get player's difficulty setting
+    final myPlayer = _allPlayers.firstWhere(
+      (p) => p['id'] == _myPlayerId,
+      orElse: () => {},
+    );
+    final difficulty = (myPlayer['difficulty'] as String?) ?? 'easy';
+    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -260,25 +284,44 @@ class _GameScreenState extends State<GameScreen> {
           npc: npc,
           objectives: npcObjectives,
           apiKey: '',
+          difficulty: difficulty,
           scenarioId: widget.scenario,
           roomCode: widget.roomCode,
           playerId: _myPlayerId,
+          targetOutcomes: targetOutcomes,
+          missionBrief: missionBrief,
         ),
       ),
     );
   }
   
-  void _completeTask(String taskId, String taskType) {
-    // For now, all tasks complete immediately
-    // Later we'll add minigames, NPC conversations, etc.
+  void _manualCompleteTask(String taskId) {
+    // For manual-complete types only (INFO_SHARE, DISCOVERY, MINIGAME placeholder)
     widget.wsService.completeTask(taskId);
     
     setState(() {
       final taskIndex = _myTasks.indexWhere((t) => t['id'] == taskId);
       if (taskIndex != -1) {
-        _myTasks[taskIndex]['status'] = 'in_progress';
+        _myTasks[taskIndex]['status'] = 'completed';
       }
     });
+  }
+  
+  void _openNpcConversationForTask(Map<String, dynamic> task) {
+    final npcId = task['npc_id'] as String?;
+    if (npcId == null) return;
+    
+    // Find the NPC data
+    final npcData = _npcs.firstWhere(
+      (n) => n['id'] == npcId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (npcData.isEmpty) {
+      _showSnackBar('NPC not found', color: AppColors.danger);
+      return;
+    }
+    
+    _startNpcConversation(npcData);
   }
   
   String _getTaskTypeLabel(String type) {
@@ -985,7 +1028,6 @@ class _GameScreenState extends State<GameScreen> {
   }
   
   Widget _buildTaskCard(Map<String, dynamic> task, {required bool isAtCurrentLocation}) {
-    final String taskId = task['id'] ?? '';
     final String description = task['description'] ?? 'Unknown task';
     final String location = task['location'] ?? 'Unknown';
     final String status = task['status'] ?? 'locked';
@@ -995,8 +1037,9 @@ class _GameScreenState extends State<GameScreen> {
     final bool isAvailable = status == 'available';
     final bool isCompleted = status == 'completed';
     
-    // Gray out if not at current location
-    final bool isGrayedOut = !isAtCurrentLocation && !isCompleted;
+    // Gray out if not at current location (except discovery/info_share which are location-agnostic)
+    final bool isLocationAgnostic = type == 'discovery' || type == 'info_share';
+    final bool isGrayedOut = !isAtCurrentLocation && !isCompleted && !isLocationAgnostic;
     
     return InkWell(
       onTap: isGrayedOut ? _showMapDialog : null,
@@ -1011,12 +1054,12 @@ class _GameScreenState extends State<GameScreen> {
                   : AppColors.bgSecondary,
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
           border: Border.all(
-            color: isAvailable && isAtCurrentLocation
+            color: isAvailable && (isAtCurrentLocation || isLocationAgnostic)
                 ? AppColors.accentPrimary
                 : isCompleted
                     ? AppColors.success
                     : AppColors.borderSubtle,
-            width: isAvailable && isAtCurrentLocation ? 2 : 1,
+            width: isAvailable && (isAtCurrentLocation || isLocationAgnostic) ? 2 : 1,
           ),
         ),
         child: Column(
@@ -1059,7 +1102,7 @@ class _GameScreenState extends State<GameScreen> {
             ),
             
             // Location indicator (only for location-specific tasks)
-            if (type != 'discovery' && type != 'info_share') ...[
+            if (!isLocationAgnostic) ...[
               SizedBox(height: AppDimensions.spaceXS),
               Row(
                 children: [
@@ -1076,19 +1119,10 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ],
             
-            // Action indicator
-            if (isAvailable && isAtCurrentLocation) ...[
-              SizedBox(height: AppDimensions.spaceXS),
-              Text(
-                '⚡ Tap to start',
-                style: TextStyle(
-                  color: AppColors.accentPrimary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+            // Type-specific content
+            _buildTaskTypeContent(task, isAvailable: isAvailable, isAtCurrentLocation: isAtCurrentLocation, isGrayedOut: isGrayedOut),
             
+            // Travel hint for grayed out tasks
             if (isGrayedOut) ...[
               SizedBox(height: AppDimensions.spaceXS),
               Row(
@@ -1106,6 +1140,7 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ],
             
+            // Completed indicator
             if (isCompleted)
               Padding(
                 padding: EdgeInsets.only(top: AppDimensions.spaceXS),
@@ -1124,32 +1159,334 @@ class _GameScreenState extends State<GameScreen> {
                   ],
                 ),
               ),
-            
-            // Action button for available tasks at current location
-            if (isAvailable && isAtCurrentLocation) ...[
-              SizedBox(height: AppDimensions.spaceMD),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _completeTask(taskId, type),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentPrimary,
-                    padding: EdgeInsets.symmetric(vertical: 12),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  /// Build type-specific content for a task card
+  Widget _buildTaskTypeContent(Map<String, dynamic> task, {
+    required bool isAvailable,
+    required bool isAtCurrentLocation,
+    required bool isGrayedOut,
+  }) {
+    final String type = task['type'] ?? 'minigame';
+    final bool isCompleted = (task['status'] ?? 'locked') == 'completed';
+    final bool isLocationAgnostic = type == 'discovery' || type == 'info_share';
+    final bool canAct = isAvailable && (isAtCurrentLocation || isLocationAgnostic) && !isCompleted;
+    
+    switch (type) {
+      case 'search':
+        return _buildSearchTaskContent(task, canAct: canAct);
+      case 'npc_llm':
+        return _buildNpcTaskContent(task, canAct: canAct);
+      case 'minigame':
+        return _buildMinigameTaskContent(task, canAct: canAct);
+      case 'info_share':
+        return _buildInfoShareTaskContent(task, canAct: canAct);
+      case 'handoff':
+        return _buildHandoffTaskContent(task, canAct: canAct);
+      case 'discovery':
+        return _buildDiscoveryTaskContent(task, canAct: canAct);
+      default:
+        return SizedBox.shrink();
+    }
+  }
+  
+  /// SEARCH task: checklist of required items
+  Widget _buildSearchTaskContent(Map<String, dynamic> task, {required bool canAct}) {
+    final searchItems = (task['search_items'] as List<dynamic>?)?.cast<String>() ?? [];
+    if (searchItems.isEmpty) return SizedBox.shrink();
+    
+    final inventoryItemIds = _myInventory.map((i) => i.id).toSet();
+    
+    return Padding(
+      padding: EdgeInsets.only(top: AppDimensions.spaceXS),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Items needed:',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4),
+          ...searchItems.map((itemId) {
+            final found = inventoryItemIds.contains(itemId);
+            final displayName = itemId.replaceAll('_', ' ');
+            return Padding(
+              padding: EdgeInsets.only(bottom: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    found ? Icons.check_circle : Icons.radio_button_unchecked,
+                    color: found ? AppColors.success : AppColors.textTertiary,
+                    size: 14,
                   ),
-                  child: Text(
-                    'Start Task',
+                  SizedBox(width: 6),
+                  Text(
+                    displayName,
                     style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      color: found ? AppColors.success : AppColors.textSecondary,
+                      fontSize: 12,
+                      decoration: found ? TextDecoration.lineThrough : null,
                     ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (canAct) ...[
+            SizedBox(height: 4),
+            Text(
+              '🔍 Search the room to find these items',
+              style: TextStyle(
+                color: AppColors.accentPrimary,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  /// NPC_LLM task: talk button
+  Widget _buildNpcTaskContent(Map<String, dynamic> task, {required bool canAct}) {
+    final npcName = task['npc_name'] as String? ?? 'NPC';
+    final targetOutcomes = (task['target_outcomes'] as List<dynamic>?)?.cast<String>() ?? [];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (targetOutcomes.isNotEmpty) ...[
+          SizedBox(height: AppDimensions.spaceXS),
+          ...targetOutcomes.map((outcome) {
+            final displayName = outcome.replaceAll('_', ' ');
+            return Padding(
+              padding: EdgeInsets.only(bottom: 2),
+              child: Row(
+                children: [
+                  Icon(Icons.chat_bubble_outline, color: AppColors.textTertiary, size: 12),
+                  SizedBox(width: 6),
+                  Text(
+                    displayName,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+        if (canAct) ...[
+          SizedBox(height: AppDimensions.spaceMD),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _openNpcConversationForTask(task),
+              icon: Icon(Icons.chat_bubble_outline, size: 16),
+              label: Text(
+                'Talk to $npcName',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentPrimary,
+                padding: EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+  
+  /// MINIGAME task: start button (placeholder)
+  Widget _buildMinigameTaskContent(Map<String, dynamic> task, {required bool canAct}) {
+    final minigameId = task['minigame_id'] as String? ?? 'minigame';
+    final taskId = task['id'] ?? '';
+    final displayName = minigameId.replaceAll('_', ' ');
+    
+    if (!canAct) return SizedBox.shrink();
+    
+    return Column(
+      children: [
+        SizedBox(height: AppDimensions.spaceMD),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _manualCompleteTask(taskId),
+            icon: Icon(Icons.gamepad, size: 16),
+            label: Text(
+              'Start $displayName',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPrimary,
+              padding: EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  /// INFO_SHARE task: confirm shared button
+  Widget _buildInfoShareTaskContent(Map<String, dynamic> task, {required bool canAct}) {
+    final infoDesc = task['info_description'] as String? ?? task['description'] as String? ?? '';
+    final taskId = task['id'] ?? '';
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (infoDesc.isNotEmpty) ...[
+          SizedBox(height: AppDimensions.spaceXS),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, color: AppColors.textTertiary, size: 12),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Tell your teammate in person, then confirm below',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
                   ),
                 ),
               ),
             ],
+          ),
+        ],
+        if (canAct) ...[
+          SizedBox(height: AppDimensions.spaceMD),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _manualCompleteTask(taskId),
+              icon: Icon(Icons.check, size: 16),
+              label: Text(
+                'Confirm Shared',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                padding: EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+  
+  /// HANDOFF task: item + recipient info (auto-completes on transfer)
+  Widget _buildHandoffTaskContent(Map<String, dynamic> task, {required bool canAct}) {
+    final handoffItem = task['handoff_item'] as String? ?? '';
+    final handoffToRole = task['handoff_to_role'] as String? ?? '';
+    final hasItem = _myInventory.any((i) => i.id == handoffItem);
+    final itemDisplayName = handoffItem.replaceAll('_', ' ');
+    final roleDisplayName = handoffToRole.isNotEmpty ? _formatRoleName(handoffToRole) : 'teammate';
+    
+    return Padding(
+      padding: EdgeInsets.only(top: AppDimensions.spaceXS),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasItem ? Icons.inventory_2 : Icons.radio_button_unchecked,
+                color: hasItem ? AppColors.accentPrimary : AppColors.textTertiary,
+                size: 14,
+              ),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Give $itemDisplayName to $roleDisplayName',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (canAct && hasItem) ...[
+            SizedBox(height: 4),
+            Text(
+              '🤝 Open your Bag and transfer the item',
+              style: TextStyle(
+                color: AppColors.accentPrimary,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
-        ),
+          if (canAct && !hasItem) ...[
+            SizedBox(height: 4),
+            Text(
+              'You need $itemDisplayName first',
+              style: TextStyle(
+                color: AppColors.textTertiary,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ],
       ),
+    );
+  }
+  
+  /// DISCOVERY task: mark complete button
+  Widget _buildDiscoveryTaskContent(Map<String, dynamic> task, {required bool canAct}) {
+    final taskId = task['id'] ?? '';
+    
+    if (!canAct) return SizedBox.shrink();
+    
+    return Column(
+      children: [
+        SizedBox(height: AppDimensions.spaceMD),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _manualCompleteTask(taskId),
+            icon: Icon(Icons.check, size: 16),
+            label: Text(
+              'Mark Complete',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPrimary,
+              padding: EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
     );
   }
   
