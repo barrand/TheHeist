@@ -1069,10 +1069,81 @@ class _GameScreenState extends State<GameScreen> {
               ],
             ),
             
-            // Type-specific action content (buttons, hints -- only when useful)
+            // Prerequisites (shown for locked tasks)
+            if (!isAvailable && !isCompleted)
+              _buildPrerequisites(task),
+            
+            // Type-specific action content (buttons -- only when useful)
             _buildTaskTypeContent(task, isAvailable: isAvailable, isAtCurrentLocation: isAtCurrentLocation, isGrayedOut: isGrayedOut),
           ],
         ),
+    );
+  }
+  
+  /// Show prerequisites for locked tasks
+  Widget _buildPrerequisites(Map<String, dynamic> task) {
+    final prereqs = (task['prerequisites'] as List<dynamic>?) ?? [];
+    if (prereqs.isEmpty) return SizedBox.shrink();
+    
+    return Padding(
+      padding: EdgeInsets.only(top: AppDimensions.spaceXS),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: prereqs.map<Widget>((prereq) {
+          final map = prereq is Map<String, dynamic> ? prereq : <String, dynamic>{};
+          final prereqId = (map['id'] as String?) ?? '';
+          final prereqDesc = map['description'] as String?;
+          final prereqType = (map['type'] as String?) ?? 'task';
+          
+          // Check if this prereq is already met
+          final isMet = _completedTaskIds.contains(prereqId) ||
+              _myInventory.any((i) => i.id == prereqId);
+          
+          // Build display text
+          String label;
+          if (prereqDesc != null && prereqDesc.isNotEmpty) {
+            label = prereqDesc;
+          } else {
+            label = prereqId.replaceAll('_', ' ');
+          }
+          
+          // Pick icon based on type
+          IconData icon;
+          switch (prereqType) {
+            case 'item':
+              icon = Icons.inventory_2;
+              break;
+            case 'outcome':
+              icon = Icons.chat_bubble_outline;
+              break;
+            default:
+              icon = Icons.task_alt;
+          }
+          
+          return Padding(
+            padding: EdgeInsets.only(bottom: 2),
+            child: Row(
+              children: [
+                Icon(
+                  isMet ? Icons.check_circle : icon,
+                  color: isMet ? AppColors.success : AppColors.textTertiary,
+                  size: 12,
+                ),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isMet ? label : 'Requires: $label',
+                    style: TextStyle(
+                      color: isMet ? AppColors.success : AppColors.textTertiary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
   

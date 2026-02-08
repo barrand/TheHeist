@@ -422,82 +422,24 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   }
 
   Widget _buildMissionHeader() {
-    final allObjectives = [
-      ..._infoObjectives.map((o) => {'id': o['id'], 'desc': o['description'], 'type': 'info'}),
-      ..._actionObjectives.map((o) => {'id': o['id'], 'desc': o['description'], 'type': 'action'}),
-    ];
+    // Don't render anything if there's no mission brief
+    if (widget.missionBrief.isEmpty) return SizedBox.shrink();
     
     return Container(
-      padding: EdgeInsets.fromLTRB(AppDimensions.containerPadding, 8, AppDimensions.containerPadding, 8),
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: AppDimensions.containerPadding, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
         border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Mission brief text
-          if (widget.missionBrief.isNotEmpty) ...[
-            Text(
-              widget.missionBrief,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary, height: 1.3),
-            ),
-            SizedBox(height: 8),
-          ],
-          // Outcome checklist
-          if (allObjectives.isNotEmpty)
-            for (final obj in allObjectives)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  children: [
-                    Icon(
-                      _achievedOutcomes.contains(obj['id'])
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      size: 15,
-                      color: _achievedOutcomes.contains(obj['id'])
-                          ? AppColors.success
-                          : AppColors.textTertiary,
-                    ),
-                    SizedBox(width: 6),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      margin: EdgeInsets.only(right: 6),
-                      decoration: BoxDecoration(
-                        color: obj['type'] == 'action'
-                            ? AppColors.warning.withValues(alpha: 0.15)
-                            : AppColors.info.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: Text(
-                        obj['type'] == 'action' ? 'DO' : 'LEARN',
-                        style: TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          color: obj['type'] == 'action' ? AppColors.warning : AppColors.info,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        obj['desc'] as String,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _achievedOutcomes.contains(obj['id'])
-                              ? AppColors.textTertiary
-                              : AppColors.textSecondary,
-                          decoration: _achievedOutcomes.contains(obj['id'])
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-        ],
+      child: Text(
+        widget.missionBrief,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.accentPrimary,
+          height: 1.3,
+        ),
       ),
     );
   }
