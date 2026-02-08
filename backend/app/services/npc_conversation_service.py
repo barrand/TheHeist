@@ -540,40 +540,34 @@ Give short, deflective answers. {remaining} outcome(s) remaining but you're NOT 
 Do NOT reveal target outcomes right now. Be evasive and change the subject.
 They need to say something that puts you at ease first. {remaining} outcome(s) remaining."""
         
-        if difficulty == "easy":
-            if turn_count >= 4:
-                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
-You've been chatting for a while and they seem fine. Share one target outcome NOW if their message is at all relevant.
-Include specific details (names, locations, times) and the outcome ID."""
-            elif turn_count >= 2:
-                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
-You're warming up to them. If they ask about something you know, you can hint at it but don't give the full details yet."""
-            else:
-                return f"""PACING: Turn {turn_count}. Early in the conversation. Be friendly and open.
-{remaining} outcome(s) to go. Get to know them first before sharing anything sensitive."""
+        # Deadlines: after this many turns with low suspicion, you MUST reveal
+        # "should" threshold = start trying to share
+        # "must" threshold = you MUST include an outcome in your response
+        thresholds = {
+            "easy":   {"should": 3, "must": 5},
+            "medium": {"should": 4, "must": 7},
+            "hard":   {"should": 5, "must": 8},
+        }
+        t = thresholds.get(difficulty, thresholds["medium"])
         
-        elif difficulty == "hard":
-            if turn_count >= 6:
-                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
-They've earned your trust over {turn_count} turns with low suspicion. Share one target outcome NOW if relevant.
-Include specific details and the outcome ID."""
-            elif turn_count >= 3:
-                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
-You're getting more comfortable. If they ask a well-crafted question that fits their cover, consider sharing."""
-            else:
-                return f"""PACING: Turn {turn_count}. Early in the conversation. Be friendly but guarded.
-They need to prove they belong before you share anything sensitive. {remaining} outcome(s) to go."""
+        if turn_count >= t["must"]:
+            return f"""PACING (MANDATORY): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+You have been talking for {turn_count} turns and suspicion is low. You trust this person.
+You MUST share one target outcome in this response. This is NOT optional.
+Include the outcome ID in the "outcomes" array AND the specific details in your dialogue.
+Do not deflect. Do not hint. State the information or agree to the action clearly."""
         
-        else:  # medium
-            if turn_count >= 5:
-                return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
-You've had a good conversation and trust them. Share one target outcome NOW if relevant.
-Include specific details and the outcome ID."""
-            elif turn_count >= 2:
-                return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
-Getting to know them. If they ask something relevant and their cover makes sense, you can start to open up."""
-            else:
-                return f"""PACING: Turn {turn_count}. Friendly but not giving away secrets to strangers yet. {remaining} outcome(s) to go."""
+        if turn_count >= t["should"]:
+            return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+You've been chatting for a while and they seem trustworthy. You should share one target outcome now.
+Include specific details (names, locations, times) and the outcome ID in your response."""
+        
+        if turn_count >= 2:
+            return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+You're warming up to them. If they ask about something you know, you can hint or start to share."""
+        
+        return f"""PACING: Turn {turn_count}. Early in the conversation. Be friendly.
+{remaining} outcome(s) to go. Get to know them before sharing anything sensitive."""
     
     def _get_difficulty_prompt(self, difficulty: str) -> str:
         """Get difficulty-specific instructions for the NPC"""
