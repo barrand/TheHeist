@@ -23,13 +23,14 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 
 # Suspicion change table: fit_score -> {difficulty -> delta}
-# Tuned so bad choices are punishing but good choices reward you
+# Good responses (4-5) reduce suspicion so players can recover.
+# Bad responses (1-2) are punishing, especially on hard.
 SUSPICION_TABLE = {
-    5: {"easy": -1, "medium": 0, "hard": 0},
-    4: {"easy": 0, "medium": 0, "hard": 1},
-    3: {"easy": 0, "medium": 1, "hard": 1},
+    5: {"easy": -2, "medium": -1, "hard": -1},
+    4: {"easy": -1, "medium": -1, "hard": 0},
+    3: {"easy": 0, "medium": 0, "hard": 1},
     2: {"easy": 1, "medium": 2, "hard": 2},
-    1: {"easy": 2, "medium": 2, "hard": 3},
+    1: {"easy": 2, "medium": 3, "hard": 3},
 }
 
 COOLDOWN_DURATION_SECONDS = 60  # Same for all difficulties
