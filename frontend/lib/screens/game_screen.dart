@@ -1041,9 +1041,7 @@ class _GameScreenState extends State<GameScreen> {
     final bool isLocationAgnostic = type == 'discovery' || type == 'info_share';
     final bool isGrayedOut = !isAtCurrentLocation && !isCompleted && !isLocationAgnostic;
     
-    return InkWell(
-      onTap: isGrayedOut ? _showMapDialog : null,
-      child: Container(
+    return Container(
         margin: EdgeInsets.only(bottom: AppDimensions.spaceSM),
         padding: EdgeInsets.all(AppDimensions.containerPadding),
         decoration: BoxDecoration(
@@ -1122,24 +1120,6 @@ class _GameScreenState extends State<GameScreen> {
             // Type-specific content
             _buildTaskTypeContent(task, isAvailable: isAvailable, isAtCurrentLocation: isAtCurrentLocation, isGrayedOut: isGrayedOut),
             
-            // Travel hint for grayed out tasks
-            if (isGrayedOut) ...[
-              SizedBox(height: AppDimensions.spaceXS),
-              Row(
-                children: [
-                  Icon(Icons.map, color: AppColors.textSecondary, size: 12),
-                  SizedBox(width: 4),
-                  Text(
-                    'Use Map to travel here',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            
             // Completed indicator
             if (isCompleted)
               Padding(
@@ -1161,7 +1141,6 @@ class _GameScreenState extends State<GameScreen> {
               ),
           ],
         ),
-      ),
     );
   }
   
