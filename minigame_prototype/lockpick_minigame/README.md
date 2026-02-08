@@ -1,177 +1,86 @@
-# Minigame Prototypes
+# Minigame Test Harness
 
-A Flutter app showcasing 8 different minigame prototypes for The Heist.
+A standalone Flutter app that imports and tests the **production minigame widgets** from the main project.
 
-## Included Minigames
+## Important
 
-### 1. 🔓 Lockpick (Safe Cracker)
-**Mechanic**: Drag pins vertically to find correct positions
-- Visual feedback via color (red → orange → yellow → green)
-- 5 pins to solve
-- Based on `lockpick_timing` from roles.json
+⚠️ This is a **test harness only** - not production code.
 
-### 2. 🎮 Simon Says (Hacker)
-**Mechanic**: Memorize and repeat button pattern
-- 4 colored buttons
-- Pattern grows by 1 each round
-- Complete 5 rounds to win
-- Based on `simon_says_sequence` from roles.json
-
-### 3. 🔐 Dial Safe (Safe Cracker)
-**Mechanic**: Rotate dial to hit target numbers
-- Drag to rotate the dial
-- Hit 3 target numbers in sequence
-- Allows ±2 tolerance for success
-- Based on `dial_rotation` from roles.json
-
-### 4. 💪 Button Mash (Muscle)
-**Mechanic**: Tap as fast as possible
-- Reach 50 taps within 10 seconds
-- Progress bar shows completion
-- Based on `button_mash_barrier` from roles.json
-
-### 5. 👆 Timing Tap (Pickpocket) ⭐ BALANCED
-**Mechanic**: Tap when shrinking circle reaches green zone
-- Circle shrinks toward center with visual feedback
-- **20% success zone** - challenging but fair
-- **Visual green zone indicator** clearly shows target
-- **Slower animation** (2.5s) for better reaction time
-- **Real-time feedback** - "PERFECT!" or "Too early/late"
-- Circle glows green when in success zone
-- Hit the zone 5 times to win
-- Based on `timing_tap` from roles.json
-
-### 6. 🔌 Wire Connect (Hacker) ⭐ DISCOVERY PUZZLE
-**Mechanic**: Figure out whether wires match by color or symbol
-- **Left wires**: Each has BOTH color and symbol (Red Star, Blue Circle, etc.)
-- **Right ports**: Each shows EITHER color OR symbol (mystery!)
-- **Discovery element**: Try connections to learn the pattern
-- Wrong attempts flash red with feedback
-- Correct connections lock in with curved wires
-- 5 wires total with trial and error
-- Must figure out which attribute (color/symbol) each port matches
-- Based on `wire_connecting` from roles.json
-
-### 7. 💳 Card Swipe (Insider) ⭐ IMPROVED
-**Mechanic**: Swipe card at the right speed in a terminal
-- **Visual card movement** - see the card slide as you swipe
-- **Terminal display** shows "READING..." status
-- **Card slot visualization** with guide lines
-- Swipe horizontally - not too fast, not too slow
-- Target speed zone: 200-600 pixels/second
-- Visual speed meter with color gradient
-- Card animates back to center after each attempt
-- Get 3 perfect swipes to win
-- Touch/swipe gestures work great on mobile
-- Based on `badge_swipe` from roles.json
-
-### 8. 🧗 Rhythm Climb (Cat Burglar) ⭐ GUITAR HERO STYLE
-**Mechanic**: Tap when the note hits the target line (like Guitar Hero!)
-- **Moving note visualization** - cyan circle travels down the highway
-- **Clear target zone** - green "TAP HERE" indicator
-- **Easy to see timing** - tap when note overlaps target
-- Visual note highway with borders
-- Tap on time to climb one step
-- Miss twice in a row and you slip down
-- Progress bar and height counter
-- Reach height 10 to win
-- Much clearer than the old pulsing beat
-- Based on `climbing_rhythm` from roles.json
+All minigame widgets are imported from `frontend/lib/widgets/minigames/`. Changes to game logic should be made in those production files, not here.
 
 ## How to Run
 
+From the project root:
+
 ```bash
 cd minigame_prototype/lockpick_minigame
+flutter pub get  # Install dependencies (including frontend package)
 flutter run
+```
+
+Or for web:
+```bash
+flutter run -d chrome
 ```
 
 Or on specific platforms:
 ```bash
-flutter run -d chrome      # Web browser
 flutter run -d macos       # macOS desktop
 flutter run -d <device>    # iOS/Android device
 ```
 
+## Features
+
+- **Difficulty Selector**: Test Easy, Medium, and Hard difficulty for each minigame
+- **All Roles**: Browse minigames organized by role (Mastermind, Hacker, Safe Cracker, etc.)
+- **Quick Access**: Instantly launch any implemented minigame
+- **Production Code**: Tests the actual widgets that will be used in the game
+
+## Included Minigames
+
+All 9 implemented minigames with full difficulty support:
+
+### Mastermind
+- **Logic Clues**: Arrange colored boxes using logical clues
+
+### Hacker
+- **Wire Connect**: Match wires by color or symbol through trial and error
+- **Simon Says**: Memorize and repeat increasingly complex color patterns
+
+### Safe Cracker
+- **Dial Safe**: Rotate the dial to the correct combination
+- **Lockpick**: Position pins precisely to unlock
+
+### Muscle
+- **Button Mash**: Tap rapidly to break through obstacles
+
+### Insider
+- **Badge Swipe**: Swipe the card at the perfect speed
+
+### Pickpocket
+- **Timing Tap**: Tap when the shrinking circle enters the target zone
+
+### Cat Burglar
+- **Rhythm Climb**: Guitar Hero-style rhythm game with moving target zones
+
 ## UI Features
 
-- **Grid Menu**: 2-column grid of minigame cards on home screen
-- **Easy Navigation**: Tap a card to play, back button to return to menu
-- **Role Labels**: Each card shows which role it belongs to
-- **Touch-Friendly**: Large tap targets, works great on mobile
-- **Consistent Theme**: Dark theme matching The Heist aesthetic
-- **Win/Fail Screens**: Clear feedback on success or failure
-- **Reset/Retry**: Easy to replay each minigame
+- **Role-based Organization**: Minigames grouped by character role
+- **Implemented Status**: Visual indicators (✓) for completed minigames, TODO badges for unimplemented ones
+- **Difficulty Toggle**: Switch between Easy, Medium, Hard at the top of the screen
+- **Compact Layout**: Scrollable list optimized for both mobile and desktop
+- **Back Navigation**: Easy return to the main menu from any minigame
 
-## Recent Improvements ✨
+## Mobile Web & Touch Support
 
-### Latest Updates (Based on Playtesting)
+All minigames are fully functional on mobile web with touchscreen support.
 
-#### Timing Tap - Balanced Difficulty
-- **20% success zone** (was 30%, then 10%) - challenging but achievable
-- Green zone clearly visible
-- Slower 2.5s animation
-- Real-time feedback with colors
+## Adding New Minigames
 
-#### Wire Connect - Fixed & Improved
-- **Two-step tap system**: Select left, then tap matching right
-- Visual selection indicators (arrows, glowing)
-- Shows selected wire name at top
-- Curved wire drawing
-- Works perfectly on touchscreens
+To test new minigames in this harness:
 
-#### Card Swipe - Visual Feedback
-- **Animated card movement** as you swipe
-- **Terminal/reader UI** with status display
-- Card shows in slot with guide lines
-- Animates back to center after each swipe
-- Speed meter visualization
-- Touch gestures fully supported
-
-#### Rhythm Climb - Guitar Hero Style
-- **Moving note system** instead of pulsing beat
-- Note travels down a "highway"
-- **Clear green target zone** - "TAP HERE"
-- Timing is immediately obvious
-- Progress bar and height counter
-- Much more intuitive than before
-
-## Mobile Web & Touch Support 📱
-
-**All minigames are fully touch-enabled and work great on mobile web!**
-
-- **Drag gestures**: Lockpick pins, Dial safe rotation, Card swipe
-- **Tap gestures**: All buttons, Wire connect, Timing tap, Rhythm climb
-- **Visual feedback**: Every interaction has clear visual response
-- **Responsive UI**: Scales to different screen sizes
-- **Touch-friendly targets**: All buttons and interactive elements are large enough
-
-Tested on iOS Safari, Android Chrome, and desktop browsers.
-
-## Notes
-
-- All minigames are self-contained and independent
-- No persistence or scoring across sessions
-- Throwaway/prototype code - feel free to experiment!
-- Difficulties can be easily adjusted by changing constants
-- Each minigame has been playtested and balanced for fun
-- Works on desktop (mouse) and mobile (touch) equally well
-
-## Difficulty Adjustments
-
-Easy tweaks you can make:
-- **Lockpick**: Change `_pinCount` or success threshold
-- **Simon Says**: Adjust rounds needed (currently 5)
-- **Dial Safe**: Change tolerance or number of steps
-- **Button Mash**: Adjust target taps or time limit
-- **Timing Tap**: Widen/narrow success zone (currently 0.35-0.65)
-- **Wire Connect**: Add more wires or timed mode
-- **Card Swipe**: Adjust speed range or successes needed
-- **Rhythm Climb**: Change target height or slip penalty
-
-## Next Steps
-
-- Test each minigame for fun factor ✅
-- Adjust difficulty curves ✅ (Timing Tap improved)
-- Add sound effects and haptic feedback
-- Consider which mechanics work best for touch screens
-- Integrate favorites into main game
+1. Create the minigame widget in `frontend/lib/widgets/minigames/`
+2. Add it to the `_implementedMinigames` map in this file's `main.dart`
+3. Update the corresponding role's minigame list to set `isImplemented: true`
+4. Run `flutter pub get` if needed
+5. Launch the test harness

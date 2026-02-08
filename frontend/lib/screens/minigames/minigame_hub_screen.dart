@@ -11,35 +11,15 @@ import 'package:the_heist/widgets/minigames/card_swipe_minigame.dart';
 import 'package:the_heist/widgets/minigames/rhythm_climb_minigame.dart';
 import 'package:the_heist/widgets/minigames/logic_clues_minigame.dart';
 
-void main() {
-  runApp(const MinigamePrototypeApp());
-}
-
-class MinigamePrototypeApp extends StatelessWidget {
-  const MinigamePrototypeApp({super.key});
+/// Hub screen showing all minigames organized by role
+class MinigameHubScreen extends StatefulWidget {
+  const MinigameHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Minigame Prototypes',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: AppColors.bgPrimary,
-        primaryColor: AppColors.bgSecondary,
-      ),
-      home: const MinigameHub(),
-    );
-  }
+  State<MinigameHubScreen> createState() => _MinigameHubScreenState();
 }
 
-class MinigameHub extends StatefulWidget {
-  const MinigameHub({super.key});
-
-  @override
-  State<MinigameHub> createState() => _MinigameHubState();
-}
-
-class _MinigameHubState extends State<MinigameHub> {
+class _MinigameHubScreenState extends State<MinigameHubScreen> {
   MinigameDifficulty _selectedDifficulty = MinigameDifficulty.medium;
   
   // Map of implemented minigames: id -> builder function
@@ -56,7 +36,7 @@ class _MinigameHubState extends State<MinigameHub> {
   };
   
   // All roles and their minigames from roles.json
-  static final List<RoleMinigames> _roles = [
+  static const List<RoleMinigames> _roles = [
     RoleMinigames(
       roleId: 'mastermind',
       name: 'Mastermind',
@@ -356,7 +336,7 @@ class _MinigameHubState extends State<MinigameHub> {
       backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
         backgroundColor: AppColors.bgSecondary,
-        title: const Text('Minigame Prototypes (Test Harness)'),
+        title: const Text('Minigame Prototypes'),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -445,7 +425,7 @@ class _MinigameHubState extends State<MinigameHub> {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           child: Text(
             role.name.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.accentPrimary,
               fontSize: 13,
               fontWeight: FontWeight.bold,
@@ -482,12 +462,12 @@ class _MinigameHubState extends State<MinigameHub> {
           decoration: BoxDecoration(
             color: isImplemented 
                 ? AppColors.bgSecondary
-                : AppColors.bgSecondary.withValues(alpha: 0.3),
+                : AppColors.bgSecondary.withOpacity(0.3),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isImplemented 
                   ? AppColors.borderSubtle
-                  : AppColors.borderSubtle.withValues(alpha: 0.3),
+                  : AppColors.borderSubtle.withOpacity(0.3),
               width: 1,
             ),
           ),
@@ -500,7 +480,7 @@ class _MinigameHubState extends State<MinigameHub> {
                     Text(
                       minigame.name,
                       style: TextStyle(
-                        color: isImplemented ? AppColors.textPrimary : AppColors.textSecondary.withValues(alpha: 0.5),
+                        color: isImplemented ? AppColors.textPrimary : AppColors.textSecondary.withOpacity(0.5),
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -509,7 +489,7 @@ class _MinigameHubState extends State<MinigameHub> {
                     Text(
                       minigame.description,
                       style: TextStyle(
-                        color: isImplemented ? AppColors.textSecondary : AppColors.textSecondary.withValues(alpha: 0.4),
+                        color: isImplemented ? AppColors.textSecondary : AppColors.textSecondary.withOpacity(0.4),
                         fontSize: 11,
                       ),
                       maxLines: 1,
@@ -523,7 +503,7 @@ class _MinigameHubState extends State<MinigameHub> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.2),
+                    color: AppColors.success.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(color: AppColors.success, width: 1),
                   ),
@@ -540,13 +520,13 @@ class _MinigameHubState extends State<MinigameHub> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: Colors.white.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     'TODO',
                     style: TextStyle(
-                      color: AppColors.textSecondary.withValues(alpha: 0.5),
+                      color: AppColors.textSecondary.withOpacity(0.5),
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
