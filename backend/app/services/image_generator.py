@@ -128,16 +128,16 @@ async def generate_all_images_for_experience(experience_id: str, experience_dict
     expected_item_count = len(items)
     expected_npc_count = len(npcs)
     
-    # Check if images already exist (ALL of them, not just some)
+    # Check if images already exist (at least all expected ones)
     exists, loc_count, item_count, npc_count = check_images_exist(experience_id)
     if (exists 
-        and loc_count == expected_loc_count 
-        and item_count == expected_item_count
-        and npc_count == expected_npc_count):
+        and loc_count >= expected_loc_count 
+        and item_count >= expected_item_count
+        and npc_count >= expected_npc_count):
         logger.info(f"✅ Images already exist for {experience_id} ({loc_count} locations, {item_count} items, {npc_count} NPCs)")
         return True
     elif exists:
-        logger.info(f"⚠️ Partial images found ({loc_count}/{expected_loc_count} locations, {item_count}/{expected_item_count} items, {npc_count}/{expected_npc_count} NPCs), regenerating missing...")
+        logger.info(f"⚠️ Missing images ({loc_count}/{expected_loc_count} locations, {item_count}/{expected_item_count} items, {npc_count}/{expected_npc_count} NPCs), generating missing...")
     
     logger.info(f"🎨 Generating images for {experience_id} at game start...")
     
