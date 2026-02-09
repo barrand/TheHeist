@@ -333,12 +333,8 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   }
 
   Widget _buildCoverButton(CoverOption cover) {
-    // Subtle left accent color based on trust level (no label)
-    final accentColor = cover.trustLevel == 'high'
-        ? AppColors.success
-        : cover.trustLevel == 'low'
-            ? AppColors.danger
-            : AppColors.warning;
+    // Neutral accent color for all covers (no trust hints)
+    final accentColor = AppColors.accentPrimary;
 
     final (identity, detail) = _splitCoverDescription(cover.description);
 

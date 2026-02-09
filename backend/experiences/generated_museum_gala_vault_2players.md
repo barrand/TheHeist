@@ -89,7 +89,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **Cover Story Options**:
   - `art_collector`: "Private art collector, considering a major donation to the museum" -- Trust: HIGH (would love to impress a potential donor, might share insider details)
   - `journalist`: "Arts journalist writing a feature on the museum's new acquisitions" -- Trust: MEDIUM (happy to talk about exhibits but cautious about security topics)
-  - `caterer`: "Catering staff, curious about the art on display" -- Trust: LOW (friendly but wouldn't share details about the collection's location)
+  - `caterer`: "Lost pizza delivery guy who wandered in looking for the loading dock" -- Trust: LOW (confused but amused, definitely not sharing anything important)
 
 ### Security Guard - Marcus Romano
 - **ID**: `security_guard`
@@ -110,7 +110,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
   - `leave_post` HIGH: Can be convinced to leave his post early for a smoke break - he's bored and would welcome an excuse
 - **Cover Story Options**:
   - `new_guard`: "New security guard, just transferred here - first night on the job" -- Trust: HIGH (fellow guard, would share tips and be friendly)
-  - `journalist`: "Reporter from Art Weekly magazine, covering tonight's gala" -- Trust: LOW (trained to say "no comment" to press)
+  - `tourist`: "Enthusiastic tourist who thinks this is a wax museum" -- Trust: LOW (bewildered by this person, not sharing anything)
   - `caterer`: "Catering staff working the gala event tonight" -- Trust: MEDIUM (friendly to service workers but guarded about security)
 
 ## Task Types
