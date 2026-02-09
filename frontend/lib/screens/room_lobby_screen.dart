@@ -222,13 +222,13 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       _myRole = myPlayer['role'];
       debugPrint('🏠 LOBBY: My initial role: $_myRole');
 
-      // Debug auto-assign: host → Mastermind (medium), joiner → Safe Cracker (hard)
+      // Debug auto-assign: host → Mastermind (hard), joiner → Safe Cracker (hard)
       if (AppConfig.debugMode && (_myRole == null || _myRole == '')) {
         if (_isHost && _players.length == 1) {
-          debugPrint('🎯 DEBUG: Auto-selecting Mastermind (medium) for host');
+          debugPrint('🎯 DEBUG: Auto-selecting Mastermind (hard) for host');
           Future.delayed(Duration(milliseconds: 500), () {
             if (mounted) {
-              _myDifficulty = 'medium';
+              _myDifficulty = 'hard';
               _selectRole('mastermind');
             }
           });
