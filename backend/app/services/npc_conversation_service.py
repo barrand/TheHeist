@@ -317,9 +317,9 @@ Be natural and in character. Just the dialogue, no quotes or formatting."""
             elif fit == 3:
                 fit_descriptions.append(f"Fit {fit}: Neutral. Generic small talk or a slightly too-direct question about the objective. Doesn't leverage the cover identity. Not suspicious, but doesn't build trust either.")
             elif fit == 2:
-                fit_descriptions.append(f"Fit {fit}: Poor. Doesn't fit the cover AND/OR asks about the objective too directly. The NPC would wonder why this person is bringing this up.")
+                fit_descriptions.append(f"Fit {fit}: Poor. Doesn't fit the cover AND/OR asks about the objective very directly. The NPC would wonder why this person is bringing this up.")
             else:
-                fit_descriptions.append(f"Fit {fit}: Terrible. Breaks character, bluntly demands info, or is absurdly off-topic for someone with this cover.")
+                fit_descriptions.append(f"Fit {fit}: Terrible. Breaks character, bluntly demands info, or is absurdly off-topic. Should be funny or ridiculous — the kind of thing that makes the player laugh before they pick it.")
         
         prompt = f"""Generate 3 response options for an NPC conversation in a heist game.
 
