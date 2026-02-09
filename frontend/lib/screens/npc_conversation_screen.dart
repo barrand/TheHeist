@@ -268,6 +268,46 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
           ),
         ),
         
+        // Task objective (helps player pick the right cover)
+        if (widget.missionBrief.isNotEmpty)
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: AppDimensions.containerPadding, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.bgSecondary,
+              border: Border(top: BorderSide(color: AppColors.borderSubtle)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'YOUR OBJECTIVE',
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w600,
+                    color: AppColors.textTertiary, letterSpacing: 1.2,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.track_changes, color: AppColors.accentPrimary, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.missionBrief,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accentPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        
         // Cover story selection (bottom)
         _buildCoverOptions(),
       ],
