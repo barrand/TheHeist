@@ -130,8 +130,7 @@ class NPCCoverOption(BaseModel):
     """A cover story a player can use when talking to this NPC"""
     cover_id: str = Field(..., description="Cover identifier (e.g., 'new_guard', 'journalist')")
     description: str = Field(..., description="What the player claims to be")
-    trust_level: str = Field(..., description="NPC's initial trust: low, medium, high")
-    trust_description: str = Field(..., description="Prose explanation of why NPC trusts/distrusts this cover")
+    npc_reaction: str = Field(default="", description="How the NPC feels about this cover (fed to LLM)")
 
 
 class NPCData(BaseModel):

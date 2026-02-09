@@ -248,15 +248,15 @@ Each NPC MUST include structured data for the conversation system:
   - (none, if this NPC provides info instead of an action)
   - OR: `action_id` HIGH: The ONE action this NPC can perform (if action-type NPC)
 - **Cover Story Options**:
-  - `cover_id`: "What the player claims to be" -- Trust: HIGH (why NPC trusts this cover)
-  - `another_cover`: "Another cover story" -- Trust: MEDIUM (why NPC is cautious)
-  - `funny_cover`: "Something silly/absurd/funny" -- Trust: LOW (why this is ridiculous)
+  - `cover_id`: "What the player claims to be" -- (how the NPC feels about this person)
+  - `another_cover`: "Another plausible cover story" -- (NPC's instinct about this person)
+  - `funny_cover`: "Something silly/absurd/funny" -- (NPC's bewildered reaction)
 ```
 
 Rules for NPCs:
 - ONE outcome per NPC: each NPC has exactly ONE tagged info item OR ONE action (not both, not multiple). This is their sole purpose in the story.
 - Additional LOW items (no ID) can be added as flavor to make conversation natural, but only ONE item has an ID.
-- Each NPC needs exactly 3 cover story options (one HIGH trust, one MEDIUM trust, one LOW trust that is silly/funny/offbeat -- something absurd that would make a player laugh)
+- Each NPC needs exactly 3 cover story options: 2 plausible covers and 1 silly/funny/offbeat option that would make a player laugh. No trust labels -- just the cover description and the NPC's natural reaction in parentheses.
 - Info/Action IDs must be snake_case and unique across the experience
 - Every NPC must be targeted by exactly one task with a matching Target Outcome
 - If you need more outcomes, add more NPCs -- don't overload one NPC
@@ -298,7 +298,7 @@ Rules for Tasks:
 8. **Add generation header** showing scenario, roles, and player count
 9. **Generate both full and simplified Mermaid diagrams**
 10. **Use typed prerequisites** on all tasks (Task, Outcome, Item)
-11. **Include cover story options** for every NPC (3 per NPC, varying trust)
+11. **Include cover story options** for every NPC (2 plausible + 1 funny, with NPC reaction)
 12. **Tag all NPC info** with snake_case IDs for outcome tracking
 
 ## CREATIVITY GUIDELINES ⭐

@@ -126,7 +126,7 @@ class NPCConversationService:
             logger.error(f"Cover {cover_id} not found for NPC {npc.id}")
             cover = npc.cover_options[0] if npc.cover_options else NPCCoverOption(
                 cover_id="unknown", description="Someone at the event",
-                trust_level="low", trust_description="An unknown person"
+                npc_reaction="An unknown person"
             )
         
         # Create session with target outcomes
@@ -266,7 +266,7 @@ Personality: {npc.personality}
 
 Someone approaches you at the event. They claim to be: {cover.description}
 
-Your instinct about this cover: {cover.trust_description}
+Your instinct about this person: {cover.npc_reaction}
 
 {self._get_difficulty_prompt(difficulty)}
 
@@ -388,7 +388,7 @@ Return ONLY a JSON array (no markdown, no wrapping):
         """Get NPC response and detect outcomes via structured JSON"""
         
         cover_desc = cover.description if cover else "Someone at the event"
-        trust_desc = cover.trust_description if cover else "An unknown person"
+        trust_desc = cover.npc_reaction if cover else "An unknown person"
         already_achieved = already_achieved or set()
         target_outcomes = set(session.target_outcomes) if session.target_outcomes else set()
         

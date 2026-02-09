@@ -396,14 +396,14 @@ class ExperienceLoader:
                 continue
             line = line.lstrip('- ').strip()
             
-            # Format: `cover_id`: "description" -- Trust: LEVEL (explanation)
-            cover_match = re.match(r'`(\w+)`:\s*"(.+?)"\s*--\s*Trust:\s*(HIGH|MEDIUM|LOW)\s*\((.+?)\)', line)
+            # New format: `cover_id`: "description" -- (npc reaction)
+            # Also supports legacy: `cover_id`: "description" -- Trust: LEVEL (npc reaction)
+            cover_match = re.match(r'`(\w+)`:\s*"(.+?)"\s*--\s*(?:Trust:\s*(?:HIGH|MEDIUM|LOW)\s*)?\((.+?)\)', line)
             if cover_match:
                 covers.append(NPCCoverOption(
                     cover_id=cover_match.group(1),
                     description=cover_match.group(2).strip(),
-                    trust_level=cover_match.group(3).lower(),
-                    trust_description=cover_match.group(4).strip()
+                    npc_reaction=cover_match.group(3).strip()
                 ))
         
         return covers

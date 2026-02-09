@@ -23,19 +23,16 @@ class NPC {
 class CoverOption {
   final String coverId;
   final String description;
-  final String trustLevel;
 
   const CoverOption({
     required this.coverId,
     required this.description,
-    required this.trustLevel,
   });
 
   factory CoverOption.fromJson(Map<String, dynamic> json) {
     return CoverOption(
       coverId: json['cover_id'] ?? '',
       description: json['description'] ?? '',
-      trustLevel: json['trust_level'] ?? 'medium',
     );
   }
 }
