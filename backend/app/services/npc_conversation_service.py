@@ -308,14 +308,16 @@ Be natural and in character. Just the dialogue, no quotes or formatting."""
         # Build fit level descriptions for the prompt
         fit_descriptions = []
         for fit in fit_targets:
-            if fit >= 4:
-                fit_descriptions.append(f"Fit {fit}: Perfect/good for the cover. Natural and trust-building.")
+            if fit == 5:
+                fit_descriptions.append(f"Fit {fit}: PERFECT for the cover. Directly references or leverages the cover identity — mentions specific topics the cover person would naturally bring up (e.g. if cover is 'art collector considering a donation', talk about collection, donation plans, museum acquisitions).")
+            elif fit == 4:
+                fit_descriptions.append(f"Fit {fit}: Good for the cover. Related to the cover identity but less direct — the kind of thing someone with this cover would plausibly say, shows familiarity with the role.")
             elif fit == 3:
-                fit_descriptions.append(f"Fit {fit}: Neutral. Slightly off but not alarming.")
+                fit_descriptions.append(f"Fit {fit}: Neutral. A reasonable conversational statement, but has NOTHING to do with the cover story. Doesn't leverage or reference the cover identity at all. Generic small talk.")
             elif fit == 2:
-                fit_descriptions.append(f"Fit {fit}: Poor fit. Awkward for this cover, a perceptive NPC would notice.")
+                fit_descriptions.append(f"Fit {fit}: Poor fit. Something that doesn't match the cover — a topic or question that someone with this cover identity would have no reason to bring up. Feels slightly off.")
             else:
-                fit_descriptions.append(f"Fit {fit}: Terrible fit. Obviously wrong for the cover. Can be funny or absurd.")
+                fit_descriptions.append(f"Fit {fit}: Terrible fit. Contradicts or undermines the cover identity. Something this person would NEVER say. Can be funny, absurd, or suspiciously out of character.")
         
         prompt = f"""Generate 3 response options for an NPC conversation in a heist game.
 
@@ -329,12 +331,17 @@ Conversation so far:
 Generate responses at these cover fit levels: {fit_targets}
 {chr(10).join(fit_descriptions)}
 
+KEY PRINCIPLE: The fit score is about how well the response LEVERAGES THE COVER STORY — not just whether it sounds polite.
+- A fit-5 response uses the cover identity to naturally steer toward useful information.
+- A fit-3 response might be perfectly friendly but doesn't use the cover at all.
+- A fit-1 response breaks character or says something the cover person would never say.
+
 Rules:
 - Keep each response SHORT: 5-15 words max. Like real dialogue, not paragraphs.
-- Higher-fit responses seek info naturally for the cover
-- Lower-fit responses feel wrong for THIS cover with THIS NPC
-- Fit 1 responses can be funny or absurd
-- All should relate to the conversation context
+- Higher-fit responses should directly reference the cover identity, its interests, or its expertise.
+- Lower-fit responses should feel disconnected from the cover — reasonable things a DIFFERENT person might say, but not this cover.
+- Fit 1 responses can be funny, absurd, or outright suspicious for someone claiming this identity.
+- All should fit the conversational context (respond to what the NPC just said).
 
 Return ONLY a JSON array (no markdown, no wrapping):
 [{{"text": "response text", "fit": {fit_targets[0]}}}, {{"text": "response text", "fit": {fit_targets[1]}}}, {{"text": "response text", "fit": {fit_targets[2]}}}]"""
@@ -456,6 +463,7 @@ Rules:
 - Only share target info when the player's message naturally fits the conversation and their cover story. A strange or pushy question should make you MORE guarded, not less.
 - When you DO share target info, include the SPECIFIC details (locations, times, names) in your dialogue.
 - When you agree to a target action, say so clearly in your dialogue.
+- IMPORTANT: If the player says something inconsistent with their claimed cover story, call it out naturally. Reference their cover and note the inconsistency. For example, if they claim to be an art collector but ask about security schedules, you might say "That's an odd question for a collector... I thought you were here about the art?" React with suspicion proportional to how jarring the inconsistency is.
 
 RESPOND AS JSON (no markdown, no wrapping):
 {{"response": "your dialogue", "outcomes": ["id1"]}}
