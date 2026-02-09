@@ -514,11 +514,15 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       ),
       child: Column(
         children: [
-          // Labels row: Relaxed ... difficulty badge ... Suspicious
+          // Labels row: Relaxed ... Cautious ... Suspicious  +  difficulty badge
           Row(
             children: [
               Text('Relaxed', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.success)),
               Spacer(),
+              Text('Cautious', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.warning)),
+              Spacer(),
+              Text('Suspicious', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.danger)),
+              SizedBox(width: 8),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
@@ -530,8 +534,6 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
                   style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5),
                 ),
               ),
-              Spacer(),
-              Text('Suspicious', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.danger)),
             ],
           ),
           SizedBox(height: 6),

@@ -61,7 +61,7 @@ class ConversationSession:
         self.target_outcomes: List[str] = target_outcomes or []
         self.conversation_history: List[Dict] = []
         self.current_responses: List[QuickResponseOption] = []
-        self.suspicion: int = 0
+        self.suspicion: int = {"easy": 0, "medium": 2, "hard": 3}.get(difficulty, 0)
     
     def add_message(self, text: str, is_player: bool):
         self.conversation_history.append({
@@ -138,10 +138,12 @@ class NPCConversationService:
             game_state.chosen_covers[player_id] = {}
         game_state.chosen_covers[player_id][npc.id] = cover_id
         
-        # Reset suspicion for this conversation
+        # Set starting suspicion based on difficulty
+        # Easy: relaxed (0), Medium: cautious (2), Hard: between cautious and suspicious (3)
+        starting_suspicion = {"easy": 0, "medium": 2, "hard": 3}.get(difficulty, 0)
         if player_id not in game_state.npc_suspicion:
             game_state.npc_suspicion[player_id] = {}
-        game_state.npc_suspicion[player_id][npc.id] = 0
+        game_state.npc_suspicion[player_id][npc.id] = starting_suspicion
         
         # Generate greeting
         greeting = self._generate_greeting(npc, cover, difficulty)
@@ -153,7 +155,7 @@ class NPCConversationService:
         
         logger.info(f"Started conversation: {player_id} -> {npc.id} as '{cover.cover_id}' (difficulty: {difficulty})")
         
-        return greeting, quick_responses, 0
+        return greeting, quick_responses, starting_suspicion
     
     def process_player_choice(
         self,
