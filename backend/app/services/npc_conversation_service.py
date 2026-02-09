@@ -311,15 +311,15 @@ Be natural and in character. Just the dialogue, no quotes or formatting."""
         fit_descriptions = []
         for fit in fit_targets:
             if fit == 5:
-                fit_descriptions.append(f"Fit {fit}: PERFECT. Leverages the cover identity AND approaches the objective indirectly. Flows naturally from who this person claims to be, steering toward useful info without ever asking for it directly.")
+                fit_descriptions.append(f"Fit {fit}: PERFECT for the cover. Something this person would naturally say — builds rapport, reacts to the NPC, or shows knowledge fitting the identity. May occasionally steer toward the objective indirectly, but doesn't have to. Most of the time it's just good, natural conversation.")
             elif fit == 4:
-                fit_descriptions.append(f"Fit {fit}: Good. Uses the cover identity naturally but is a bit more pointed toward the objective. Still plausible, but a perceptive NPC might notice the steering.")
+                fit_descriptions.append(f"Fit {fit}: Good for the cover. Plausible and natural, shows familiarity with the role. Might touch on a topic adjacent to the objective, or just be solid rapport-building.")
             elif fit == 3:
-                fit_descriptions.append(f"Fit {fit}: Neutral. Asks about the objective more directly, or makes generic small talk that doesn't leverage the cover. Not suspicious on its own, but doesn't build trust either.")
+                fit_descriptions.append(f"Fit {fit}: Neutral. Generic small talk or a slightly too-direct question about the objective. Doesn't leverage the cover identity. Not suspicious, but doesn't build trust either.")
             elif fit == 2:
-                fit_descriptions.append(f"Fit {fit}: Poor. Doesn't fit the cover AND/OR is too direct about the objective. The kind of question that makes the NPC wonder why this person is asking.")
+                fit_descriptions.append(f"Fit {fit}: Poor. Doesn't fit the cover AND/OR asks about the objective too directly. The NPC would wonder why this person is bringing this up.")
             else:
-                fit_descriptions.append(f"Fit {fit}: Terrible. Breaks character or bluntly asks for exactly what they want. Obvious, suspicious, or absurdly off-topic for someone with this cover.")
+                fit_descriptions.append(f"Fit {fit}: Terrible. Breaks character, bluntly demands info, or is absurdly off-topic for someone with this cover.")
         
         prompt = f"""Generate 3 response options for an NPC conversation in a heist game.
 
@@ -333,10 +333,11 @@ Conversation so far:
 Generate responses at these cover fit levels: {fit_targets}
 {chr(10).join(fit_descriptions)}
 
-KEY PRINCIPLE: Fit score = cover story leverage + subtlety of approach to the objective.
-- A fit-5 uses the cover to naturally steer toward info (never asks directly).
-- A fit-3 might ask about the objective outright, or make small talk unrelated to the cover.
-- A fit-1 breaks character or bluntly demands what they want.
+KEY PRINCIPLE: Fit score = how natural and in-character the response sounds.
+- A fit-5 sounds exactly like something this cover person would say. It builds rapport, reacts naturally, or shows expertise. It does NOT need to mention the objective every time.
+- A fit-3 is generic or slightly too direct about the objective. Doesn't use the cover.
+- A fit-1 breaks character or bluntly demands info.
+- NOT every response should steer toward the objective. Most should just be natural conversation that fits the cover. The objective comes up organically over the course of the conversation.
 
 Rules:
 - Keep each response SHORT: 5-15 words max. Like real dialogue, not paragraphs.
