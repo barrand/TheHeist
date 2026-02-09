@@ -17,6 +17,7 @@ class HeistTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final bool enabled;
   final TextCapitalization textCapitalization;
+  final TextInputAction? textInputAction;
 
   const HeistTextField({
     Key? key,
@@ -33,6 +34,7 @@ class HeistTextField extends StatelessWidget {
     this.suffixIcon,
     this.enabled = true,
     this.textCapitalization = TextCapitalization.none,
+    this.textInputAction,
   }) : super(key: key);
 
   @override
@@ -47,6 +49,7 @@ class HeistTextField extends StatelessWidget {
       onFieldSubmitted: onSubmitted,
       enabled: enabled,
       textCapitalization: textCapitalization,
+      textInputAction: textInputAction,
       style: TextStyle(
         fontSize: 14,
         color: AppColors.textPrimary,

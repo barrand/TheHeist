@@ -187,50 +187,56 @@ class _LandingPageState extends State<LandingPage> {
     
     return showDialog<Map<String, String>>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.bgSecondary,
-        title: Text(
-          'Join Room',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            HeistTextField(
-              controller: roomCodeController,
-              hintText: 'Room Code (e.g., APPLE)',
-              maxLines: 1,
-              textCapitalization: TextCapitalization.characters,
+      builder: (dialogContext) {
+        void submitJoin() {
+          final roomCode = roomCodeController.text.trim().toUpperCase();
+          final name = nameController.text.trim();
+          if (roomCode.length >= 4 && roomCode.length <= 6 && name.isNotEmpty) {
+            Navigator.pop(dialogContext, {'roomCode': roomCode, 'name': name});
+          }
+        }
+
+        return AlertDialog(
+          backgroundColor: AppColors.bgSecondary,
+          title: Text(
+            'Join Room',
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              HeistTextField(
+                controller: roomCodeController,
+                hintText: 'Room Code (e.g., APPLE)',
+                maxLines: 1,
+                textCapitalization: TextCapitalization.characters,
+                textInputAction: TextInputAction.next,
+              ),
+              SizedBox(height: AppDimensions.spaceMD),
+              HeistTextField(
+                controller: nameController,
+                hintText: 'Your Name',
+                maxLines: 1,
+                textInputAction: TextInputAction.go,
+                onSubmitted: (_) => submitJoin(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
             ),
-            SizedBox(height: AppDimensions.spaceMD),
-            HeistTextField(
-              controller: nameController,
-              hintText: 'Your Name',
-              maxLines: 1,
+            ElevatedButton(
+              onPressed: submitJoin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentPrimary,
+              ),
+              child: Text('Join', style: TextStyle(color: AppColors.textPrimary)),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final roomCode = roomCodeController.text.trim().toUpperCase();
-              final name = nameController.text.trim();
-              // Accept 4-5 letter codes
-              if (roomCode.length >= 4 && roomCode.length <= 6 && name.isNotEmpty) {
-                Navigator.pop(context, {'roomCode': roomCode, 'name': name});
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentPrimary,
-            ),
-            child: Text('Join', style: TextStyle(color: AppColors.textPrimary)),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
