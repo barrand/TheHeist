@@ -311,6 +311,27 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     );
   }
 
+  /// Split cover description into bold identity + lighter detail.
+  /// Splits on first comma, dash, or "who" / "writing" / "considering" etc.
+  (String, String) _splitCoverDescription(String desc) {
+    // Try splitting on common separator patterns
+    final separators = [', ', ' - ', ' — ', ' – '];
+    for (final sep in separators) {
+      final idx = desc.indexOf(sep);
+      if (idx > 0 && idx < desc.length - 1) {
+        return (desc.substring(0, idx), desc.substring(idx));
+      }
+    }
+    // Try splitting on connecting words (with a space before)
+    final wordPattern = RegExp(r' (?:who |considering |writing |looking |interested |wanting |hoping |trying )');
+    final match = wordPattern.firstMatch(desc);
+    if (match != null) {
+      return (desc.substring(0, match.start), desc.substring(match.start));
+    }
+    // No split found -- everything is the identity
+    return (desc, '');
+  }
+
   Widget _buildCoverButton(CoverOption cover) {
     // Subtle left accent color based on trust level (no label)
     final accentColor = cover.trustLevel == 'high'
@@ -318,6 +339,8 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         : cover.trustLevel == 'low'
             ? AppColors.danger
             : AppColors.warning;
+
+    final (identity, detail) = _splitCoverDescription(cover.description);
 
     return GestureDetector(
       onTap: () => _selectCover(cover),
@@ -333,26 +356,40 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
             children: [
               // Colored left accent bar
               Container(width: 4, color: accentColor),
-              // Mask icon
-              Padding(
-                padding: EdgeInsets.only(left: 12, right: 8),
-                child: Icon(Icons.masks, color: AppColors.textSecondary, size: 20),
-              ),
-              // Cover description
+              // Cover description with bold identity
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 4),
-                  child: Text(
-                    '"${cover.description}"',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                      color: AppColors.textPrimary,
+                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  child: Text.rich(
+                    TextSpan(
+                      text: '"',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.textSecondary,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: identity,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        if (detail.isNotEmpty)
+                          TextSpan(
+                            text: detail,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        TextSpan(text: '"'),
+                      ],
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: 12),
             ],
           ),
         ),
