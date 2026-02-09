@@ -252,6 +252,10 @@ class ExperienceLoader:
             personality_match = re.search(r'-\s*\*\*Personality\*\*:\s*(.+)', block)
             personality = personality_match.group(1).strip() if personality_match else "Friendly and helpful"
             
+            # Extract relationships (optional)
+            relationships_match = re.search(r'-\s*\*\*Relationships\*\*:\s*(.+)', block)
+            relationships = relationships_match.group(1).strip() if relationships_match else ""
+            
             # Extract visual fields for image generation
             gender_match = re.search(r'-\s*\*\*Gender\*\*:\s*(.+)', block)
             gender = gender_match.group(1).strip() if gender_match else "person"
@@ -286,6 +290,7 @@ class ExperienceLoader:
                 role=role,
                 personality=personality,
                 location=location,
+                relationships=relationships,
                 gender=gender,
                 ethnicity=ethnicity,
                 clothing=clothing,

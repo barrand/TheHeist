@@ -438,12 +438,14 @@ Return ONLY a JSON array (no markdown, no wrapping):
             background_section = "=== Other things you know (share freely as flavor, no IDs needed) ===\n"
             background_section += "\n".join(other_info_lines + other_action_lines) + "\n"
         
+        relationships = f"\nPeople you know: {npc.relationships}" if npc.relationships else ""
+        
         prompt = f"""You are {npc.name}, a {npc.role}.
 Personality: {npc.personality}
-Location: {npc.location}
+Location: {npc.location}{relationships}
 
 The person talking to you claims to be: {cover_desc}
-Your instinct: {trust_desc}
+Your instinct about this person: {trust_desc}
 
 {target_section}
 {background_section}

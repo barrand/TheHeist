@@ -240,6 +240,7 @@ Each NPC MUST include structured data for the conversation system:
 - **Attitude**: personality vibe
 - **Details**: props/visual details
 - **Personality**: Detailed personality for LLM conversations (2-3 sentences)
+- **Relationships**: How this NPC relates to other NPCs in the scenario (who they know, what they think of them). This adds natural conversational depth — they might mention other NPCs organically.
 - **Information Known**:
   - `info_id` HIGH: The ONE piece of info this NPC provides (tagged with ID)
   - LOW: Flavor text they might share (no ID = not tracked, just conversation filler)

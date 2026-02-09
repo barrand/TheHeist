@@ -81,6 +81,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **Attitude**: proud, knowledgeable, enthusiastic about art
 - **Details**: Holding wine glass, wearing museum ID badge
 - **Personality**: Passionate about the museum's collection. Loves talking about the exhibits and their history. Very proud of the new Eye of Orion acquisition. Professional but warm at social events.
+- **Relationships**: Knows Marcus Romano (the security guard) — thinks he's reliable but a bit bored on night shifts. Respects the museum director but finds him overly paranoid about security lately.
 - **Information Known**:
   - `vault_location` HIGH: The Eye of Orion jewels are kept in the new vault in the basement, east wing
   - LOW: The jewels were just acquired for $12 million
@@ -103,6 +104,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **Attitude**: lonely, chatty
 - **Details**: Holding clipboard, wearing glasses
 - **Personality**: Bored and lonely on the night shift. Loves sports and misses the excitement of his old job. Gets chatty when someone shows interest in his stories. Genuinely believes nothing interesting ever happens at the museum.
+- **Relationships**: Works under Dr. Elena Vasquez's department — respects her but finds the gala crowd stuffy. Friendly with the other guards but prefers working alone.
 - **Information Known**:
   - LOW: He's been assigned to guard the vault exhibit all week
   - LOW: The museum director is paranoid about security since the last incident

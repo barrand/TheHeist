@@ -147,6 +147,9 @@ class NPCData(BaseModel):
     attitude: str = Field(default="approachable", description="Personality vibe for image generation")
     details: str = Field(default="", description="Visual details/props for image generation")
     
+    # Relationships with other NPCs (injected into LLM as background flavor)
+    relationships: str = Field(default="", description="Who else this NPC knows and how they relate to them")
+    
     # Structured conversation data
     information_known: List[NPCInfoItem] = Field(default_factory=list, description="Info items this NPC knows")
     actions_available: List[NPCAction] = Field(default_factory=list, description="Actions this NPC can be convinced to perform")
