@@ -285,12 +285,18 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'CHOOSE YOUR APPROACH',
-            style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600,
-              color: AppColors.accentPrimary, letterSpacing: 1.5,
-            ),
+          Row(
+            children: [
+              Icon(Icons.theater_comedy, color: AppColors.accentPrimary, size: 16),
+              SizedBox(width: 6),
+              Text(
+                'WHAT IS YOUR COVER STORY?',
+                style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w600,
+                  color: AppColors.accentPrimary, letterSpacing: 1.5,
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 10),
           if (_isLoading)
@@ -306,41 +312,50 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   }
 
   Widget _buildCoverButton(CoverOption cover) {
-    final trustColor = cover.trustLevel == 'high'
+    // Subtle left accent color based on trust level (no label)
+    final accentColor = cover.trustLevel == 'high'
         ? AppColors.success
         : cover.trustLevel == 'low'
             ? AppColors.danger
             : AppColors.warning;
 
-    return OutlinedButton(
-      onPressed: () => _selectCover(cover),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.textPrimary,
-        side: BorderSide(color: AppColors.borderSubtle),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusMD)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '"${cover.description}"',
-              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-            ),
+    return GestureDetector(
+      onTap: () => _selectCover(cover),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.bgTertiary,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // Colored left accent bar
+              Container(width: 4, color: accentColor),
+              // Mask icon
+              Padding(
+                padding: EdgeInsets.only(left: 12, right: 8),
+                child: Icon(Icons.masks, color: AppColors.textSecondary, size: 20),
+              ),
+              // Cover description
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+                  child: Text(
+                    '"${cover.description}"',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+            ],
           ),
-          SizedBox(width: 8),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: trustColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              cover.trustLevel.toUpperCase(),
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: trustColor, letterSpacing: 0.5),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
