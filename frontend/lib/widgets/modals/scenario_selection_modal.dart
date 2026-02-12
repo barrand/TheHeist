@@ -102,7 +102,7 @@ class ScenarioSelectionModal extends StatelessWidget {
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
                                     child: Image.asset(
-                                      'assets/scenarios/${scenario.scenarioId}.png',
+                                      'assets/static/${scenario.scenarioId}.png',
                                       width: 200,
                                       height: 200,
                                       fit: BoxFit.cover,

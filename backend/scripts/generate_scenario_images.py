@@ -105,7 +105,7 @@ def generate_scenario_image(scenario_id):
     print("="*60 + "\n")
     
     # Determine output path
-    output_path = Path('output/scenario_images') / f"{scenario_id}.png"
+    output_path = Path('output/static_images') / f"{scenario_id}.png"
     
     # Generate using Imagen 4.0 (premium tier) with scene-optimized prompts
     generate_scene_image(
@@ -157,7 +157,7 @@ def generate_all_scenarios():
         print(f"\n❌ Failed: {len(failed)}/11 scenarios")
         print(f"   {', '.join(failed)}")
     
-    print(f"\n💾 Images saved to: output/scenario_images/")
+    print(f"\n💾 Images saved to: output/static_images/")
     print(f"📱 Ready to use in scenario selection modal!\n")
 
 

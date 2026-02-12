@@ -89,7 +89,7 @@ class GameEndScreen extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Image.asset(
-        'assets/roles/$imageName',
+        'assets/static/$imageName',
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           // Fallback to placeholder if image not found

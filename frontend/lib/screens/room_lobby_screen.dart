@@ -934,7 +934,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
                       child: Image.asset(
-                        'assets/roles/${_myRole}_female.png',
+                        'assets/static/${_myRole}_female.png',
                         width: 80,
                         height: 80,
                         fit: BoxFit.cover,

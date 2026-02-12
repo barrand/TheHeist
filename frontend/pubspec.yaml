@@ -74,9 +74,7 @@ flutter:
 
   # Assets
   assets:
-    - assets/images/npcs/
-    - assets/roles/
-    - assets/scenarios/
+    - assets/static/
     - assets/data/
     - .env
 

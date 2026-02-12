@@ -117,9 +117,9 @@ Group composition, dynamic poses, stylized illustration style, bold comic book a
     
     # Save the image
     if not output_file:
-        # Save to role images directory (same location as role portraits)
-        role_images_dir = Path(__file__).parent / 'output' / 'role_images'
-        output_file = role_images_dir / f'crew_celebration_{scene_type}.png'
+        # Save to static images directory (same location as role portraits and scenarios)
+        static_images_dir = Path(__file__).parent / 'output' / 'static_images'
+        output_file = static_images_dir / f'crew_celebration_{scene_type}.png'
     else:
         output_file = Path(output_file)
     

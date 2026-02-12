@@ -221,7 +221,7 @@ def generate_role_image(role_id, gender="both"):
         print(f"📝 {design['description']}\n")
         
         # Determine output path
-        output_path = Path('output/role_images') / f"{role_id}_{gen}.png"
+        output_path = Path('output/static_images') / f"{role_id}_{gen}.png"
         
         # Get gendered ethnicity
         ethnicity_gendered = get_ethnicity_for_gender(design['ethnicity'], gen)
@@ -292,7 +292,7 @@ def generate_all_roles(gender="both"):
         print(f"\n❌ Failed: {len(failed)}/{total_images} images")
         print(f"   {', '.join(failed)}")
     
-    print(f"\n💾 Images saved to: output/role_images/")
+    print(f"\n💾 Images saved to: output/static_images/")
     print(f"📱 Ready to use in role selection modal!\n")
 
 

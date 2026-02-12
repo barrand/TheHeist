@@ -207,7 +207,7 @@ class _RoleSelectionModalState extends State<RoleSelectionModal> {
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
                                     child: Image.asset(
-                                      'assets/roles/${roleId}_$_selectedGender.png',
+                                      'assets/static/${roleId}_$_selectedGender.png',
                                       width: 200,
                                       height: 200,
                                       fit: BoxFit.cover,

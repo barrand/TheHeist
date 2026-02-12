@@ -224,7 +224,7 @@ def generate_role_image(role_id):
     print(f"📝 {design['description']}\n")
     
     # Determine output path
-    output_path = Path('output/role_images') / f"{role_id}.png"
+    output_path = Path('output/static_images') / f"{role_id}.png"
     
     # Generate using the NPC image script with premium model (Imagen 4.0)
     # Player role images are shared across all experiences, so use highest quality
@@ -285,7 +285,7 @@ def generate_all_roles():
         print(f"\n❌ Failed: {len(failed)}/12 roles")
         print(f"   {', '.join(failed)}")
     
-    print(f"\n💾 Images saved to: output/role_images/")
+    print(f"\n💾 Images saved to: output/static_images/")
     print(f"📱 Ready to use in role selection modal!\n")
 
 

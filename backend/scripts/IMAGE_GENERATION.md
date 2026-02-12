@@ -240,8 +240,8 @@ Image.network(
 - **Format**: PNG
 - **Model**: Imagen 4.0 (nano-banana) - highest quality
 - **Naming**: `{role_id}_{gender}.png` (e.g., `hacker_female.png`)
-- **Storage**: `scripts/output/role_images/`
-- **Note**: Generated once, reused for all experiences
+- **Storage**: `scripts/output/static_images/` (deployed to `frontend/assets/static/`)
+- **Note**: Static images - generated once, reused for all experiences
 
 ## Cost Estimation
 

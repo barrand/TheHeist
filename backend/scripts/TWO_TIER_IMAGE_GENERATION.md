@@ -111,8 +111,7 @@ scripts/
 ├── generate_npc_image_fast.py         ← ECONOMY (Gemini Flash) for NPCs/objects
 ├── generate_role_images_gendered.py   ← Orchestrator for 24 role avatars
 └── output/
-    ├── role_images/                   ← PREMIUM: 24 player avatars
-    ├── npc_images/                    ← ECONOMY: NPC characters
+    └── static_images/                 ← PREMIUM: Static images (roles, scenarios, crew celebration)
     └── object_images/                 ← ECONOMY: Inventory/objects
 ```
 
@@ -172,8 +171,8 @@ python3 generate_npc_image_fast.py --name "Background Guard" --role "Security" .
 
 ### Premium Tier (Imagen 4.0)
 ✅ **24 role avatars generated**
-- All in `scripts/output/role_images/`
-- Copied to `app/assets/roles/`
+- All in `scripts/output/static_images/`
+- Deployed to `frontend/assets/static/`
 - Male and female versions
 - Ages: 15 (teens) to 40 (experienced)
 - Diverse ethnicities
@@ -192,7 +191,7 @@ python3 generate_npc_image_fast.py --name "Background Guard" --role "Security" .
 ```bash
 cd scripts
 python3 generate_role_images_gendered.py
-cp output/role_images/*_*.png ../app/assets/roles/
+cp output/static_images/*_*.png ../../frontend/assets/static/
 ```
 
 ### Phase 2: Scenario NPCs (Future)
