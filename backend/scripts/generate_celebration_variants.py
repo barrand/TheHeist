@@ -2,13 +2,13 @@
 """
 Generate 8 different crew celebration image variants for review.
 Each with unique setting, composition, and mood.
+Uses specific character descriptions from role designs.
 """
 
 from pathlib import Path
 from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY
-import json
 
 # Art style EXACTLY matching individual role images
 HEIST_ART_STYLE = """2D illustration, comic book art style,
@@ -18,42 +18,51 @@ vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details, NOT photorealistic,
 set in year 2020, contemporary setting (not futuristic)"""
 
+# Character descriptions from generate_role_images_gendered.py
+ROLE_DESIGNS = {
+    "mastermind": {
+        "ethnicity": "distinguished 40-year-old Indian",
+        "clothing": "tailored suit with rolled-up sleeves, tactical vest over dress shirt",
+        "details": "holding tablet showing heist blueprints, wearing smart glasses",
+    },
+    "safe_cracker": {
+        "ethnicity": "Middle Eastern",
+        "clothing": "worn leather jacket, tool belt with precision instruments, magnifying headset",
+        "details": "lockpicking tools visible in belt",
+    },
+    "hacker": {
+        "ethnicity": "young Korean",
+        "clothing": "tech hoodie with cyberpunk patches, fingerless gloves, AR glasses",
+        "details": "neon underglow on equipment, laptop visible",
+    }
+}
 
-def load_role_descriptions():
-    """Load role descriptions from roles.json"""
-    roles_path = Path(__file__).parent.parent.parent / 'shared_data' / 'roles.json'
-    
-    with open(roles_path, 'r') as f:
-        data = json.load(f)
-    
-    return {role['role_id']: role['description'] for role in data['roles']}
 
-
-# 8 different celebration scenarios
+# 8 different celebration scenarios (NO alcohol or smoking)
 CELEBRATION_VARIANTS = [
     {
         "num": 1,
         "name": "Rooftop Victory",
         "setting": "urban rooftop at night, city lights twinkling below",
-        "action": "toasting champagne glasses together, arms raised in triumph, big smiles and laughter",
-        "mood": "vibrant purple neon city lights, golden champagne glow, cyan skyline reflections",
+        "action": "throwing arms up in triumph, high-fiving each other, big smiles and laughter, celebrating against skyline",
+        "mood": "vibrant purple neon city lights, golden victory glow, cyan skyline reflections",
         "composition": "group huddle, slight low angle, celebrating against dramatic cityscape"
     },
     {
         "num": 2,
         "name": "Getaway Car Celebration",
         "setting": "inside vintage getaway car speeding away, motion blur background",
-        "action": "high-fiving and fist-bumping, throwing stolen cash in air playfully, ecstatic expressions",
+        "action": "high-fiving and fist-bumping enthusiastically, throwing stolen cash in air playfully, ecstatic expressions",
         "mood": "golden hour lighting through car windows, purple shadows, warm triumphant glow",
         "composition": "tight interior shot, characters packed together celebrating, money floating"
     },
     {
         "num": 3,
-        "name": "Hideout Victory Toast",
-        "setting": "cozy underground hideout with dim mood lighting, brick walls",
-        "action": "clinking beer bottles together in victory toast, relaxed triumphant poses, genuine smiles",
-        "mood": "warm amber lighting, purple accent lights, cozy victorious atmosphere, subtle smoke effects",
-        "composition": "medium group shot around table, intimate celebration mood"
+        "name": "Hideout Victory",
+        "setting": "cozy underground hideout with dim mood lighting, brick walls, scattered heist equipment",
+        "action": "group fist bump in center, relaxed triumphant poses, genuine smiles and relief, celebrating success",
+        "mood": "warm amber lighting, purple accent lights, cozy victorious atmosphere",
+        "composition": "medium group shot around table with heist plans, intimate celebration mood"
     },
     {
         "num": 4,
@@ -67,7 +76,7 @@ CELEBRATION_VARIANTS = [
         "num": 5,
         "name": "Safe House Party",
         "setting": "modern safe house apartment with floor-to-ceiling windows, night city view",
-        "action": "dancing and celebrating wildly, arms up in victory, genuine joy and relief",
+        "action": "dancing and celebrating wildly, arms up in victory, genuine joy and relief, jumping with excitement",
         "mood": "vibrant neon city glow through windows, purple and cyan party lighting, energetic atmosphere",
         "composition": "dynamic action shot, mid-dance celebration, pure excitement"
     },
@@ -75,7 +84,7 @@ CELEBRATION_VARIANTS = [
         "num": 6,
         "name": "Warehouse Victory Huddle",
         "setting": "industrial warehouse with dramatic overhead lighting, urban grit",
-        "action": "group huddle with hands stacked together, looking up at camera, fierce triumphant expressions",
+        "action": "group huddle with hands stacked together in center, looking up at camera, fierce triumphant expressions",
         "mood": "dramatic spotlight from above, purple shadows, golden rim lighting, heroic composition",
         "composition": "low angle looking up, powerful team unity pose, dramatic lighting"
     },
@@ -83,16 +92,16 @@ CELEBRATION_VARIANTS = [
         "num": 7,
         "name": "Sunset Escape",
         "setting": "elevated escape route at golden hour, urban skyline silhouetted against sunset",
-        "action": "silhouetted victory poses against sunset, raising arms, celebrating freedom",
+        "action": "silhouetted victory poses against sunset, raising arms high, celebrating freedom and success",
         "mood": "brilliant golden sunset, purple and orange sky, cyan city lights just turning on, epic scale",
         "composition": "wide cinematic shot, characters in triumphant silhouette, breathtaking backdrop"
     },
     {
         "num": 8,
-        "name": "Underground Club Victory",
-        "setting": "exclusive underground club with neon lights and urban edge",
-        "action": "celebrating at VIP table, popping champagne with sparklers, victorious and flashy",
-        "mood": "vibrant purple and cyan neon club lights, golden champagne sparkle, luxurious victory vibes",
+        "name": "Victory Celebration",
+        "setting": "modern penthouse safe house with city skyline view, sleek urban interior",
+        "action": "group celebration with sparklers and confetti, victorious poses, arms raised in triumph, genuine joy",
+        "mood": "vibrant purple and cyan city lights through windows, golden sparkler light, luxurious victory vibes",
         "composition": "glamorous celebration shot, wealth and success on display, vibrant energy"
     }
 ]
@@ -101,22 +110,25 @@ CELEBRATION_VARIANTS = [
 def generate_celebration_variant(variant_info, role_ids=['mastermind', 'safe_cracker', 'hacker']):
     """Generate a celebration image variant."""
     
-    role_descriptions = load_role_descriptions()
-    
-    # Build character descriptions
+    # Build detailed character descriptions using role designs
     crew_members = []
     for role_id in role_ids[:4]:
-        if role_id in role_descriptions:
+        if role_id in ROLE_DESIGNS:
+            design = ROLE_DESIGNS[role_id]
             role_name = role_id.replace('_', ' ').title()
-            description = role_descriptions[role_id]
-            crew_members.append(f"{role_name} ({description})")
+            # Mix male and female for variety
+            gender = "man" if role_id == "mastermind" else ("woman" if role_id == "hacker" else "person")
+            ethnicity_with_gender = f"{design['ethnicity']} {gender}"
+            char_desc = f"{role_name} - {ethnicity_with_gender}, wearing {design['clothing']}, {design['details']}"
+            crew_members.append(char_desc)
     
-    crew_description = ", ".join(crew_members)
+    crew_description = ". ".join(crew_members)
     
-    # Build the prompt
+    # Build the prompt - NO ALCOHOL OR SMOKING
     prompt = f"""{HEIST_ART_STYLE}.
 
-Group shot of heist crew celebrating successful heist: {crew_description}.
+Group shot of heist crew celebrating successful heist with these specific characters:
+{crew_description}.
 
 Setting: {variant_info['setting']}.
 
@@ -126,8 +138,8 @@ Lighting and mood: {variant_info['mood']}.
 
 Camera composition: {variant_info['composition']}.
 
-All characters visible, facing toward camera, NO text or words visible anywhere in image,
-stylized illustration style, bold comic book aesthetic, vibrant heist game art."""
+IMPORTANT: NO alcohol (no wine, beer, champagne, cocktails), NO smoking (no cigarettes, cigars, vaping), NO text or words visible anywhere in image.
+All characters visible, facing toward camera, stylized illustration style, bold comic book aesthetic, vibrant heist game art."""
     
     print(f"\n{'='*60}")
     print(f"VARIANT {variant_info['num']}: {variant_info['name']}")
