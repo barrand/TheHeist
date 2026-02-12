@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:the_heist/core/theme/app_colors.dart';
 import 'package:the_heist/core/theme/app_dimensions.dart';
@@ -13,6 +14,9 @@ class GameEndScreen extends StatelessWidget {
   final List<Map<String, dynamic>>? players;
   final VoidCallback onReturnToMenu;
   final VoidCallback? onPlayAgain;
+  
+  // Random image selection - pick one of 9 celebration images
+  static final int _randomImageNumber = Random().nextInt(9) + 1; // 1-9
   
   const GameEndScreen({
     super.key,
@@ -112,6 +116,9 @@ class GameEndScreen extends StatelessWidget {
       );
     }
     
+    // Randomly select one of the 9 celebration images
+    final imagePath = 'assets/static/crew_celebration_success_$_randomImageNumber.png';
+    
     return Container(
       height: 200,
       decoration: BoxDecoration(
@@ -124,7 +131,7 @@ class GameEndScreen extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Image.asset(
-        'assets/static/crew_celebration_success.png',
+        imagePath,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           // Fallback to placeholder if image not found
