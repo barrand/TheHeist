@@ -44,8 +44,8 @@ def get_role_details(role_ids, roles_data):
     return role_details
 
 
-def build_prompt(scenario, roles, design_guide, npc_guide, discovery_guide, example):
-    """Build the prompt for Gemini to generate dependency tree with discovery system."""
+def build_prompt(scenario, roles, design_guide, npc_guide, example):
+    """Build the prompt for Gemini to generate a heist experience file."""
     
     role_names = [role['name'] for role in roles]
     role_list = ', '.join(role_names)
@@ -61,11 +61,11 @@ def build_prompt(scenario, roles, design_guide, npc_guide, discovery_guide, exam
     
     minigames_section = '\n\n'.join(role_minigames)
     
-    prompt = f"""You are an expert game designer creating an experience file for a discovery-based collaborative heist game.
+    prompt = f"""You are an expert game designer creating an experience file for a collaborative heist game.
 
 ## Your Task
 
-Generate a complete experience file with a **discovery-based task system** for this heist scenario.
+Generate a complete experience file with a **task dependency system** for this heist scenario.
 
 **Scenario**: {scenario['name']} (ID: {scenario['scenario_id']})
 **Objective**: {scenario['objective']}
@@ -76,10 +76,6 @@ Generate a complete experience file with a **discovery-based task system** for t
 ## Available Minigames by Role
 
 {minigames_section}
-
-## Discovery System Guide
-
-{discovery_guide}
 
 ## Design Guidelines
 
@@ -95,7 +91,7 @@ Here's an example of the format and quality expected:
 
 {example}
 
-## CRITICAL: Discovery System Requirements
+## CRITICAL: Task System Requirements
 
 ### 1. Team Objectives (1-3 high-level goals)
 Start with clear objectives visible to ALL players:
@@ -104,123 +100,48 @@ Start with clear objectives visible to ALL players:
 - ✅ Example: "🚪 Escape the Building"
 - Keep them action-oriented and clear
 
-### 2. Discovery Tasks (Create 4-8 unique discovery moments)
-Tasks that REVEAL information and SPAWN new tasks or options:
-- 🔍 **Examine** tasks (inspect objects, locations, systems)
-- 🔍 **Search** tasks (find items, clues, hidden things)
-- 💬 **Investigate** tasks (talk to NPCs, observe behavior, eavesdrop)
-- 🤝 **Coordinate** tasks (combine what multiple players learned)
+### 2. Task Types
+Every task MUST be one of these types (using the matching emoji):
+- 🎮 **Minigame**: Player-controlled action (e.g., dial_rotation, wire_connecting)
+- 💬 **NPC_LLM**: Dialogue or interaction with AI-controlled character
+- 🔍 **Search**: Player searches a location for items
+- 🤝 **Handoff**: Physical item transfer between players (tracked in inventory)
+- 🗣️ **Info Share**: Verbal information exchange between players (real-life conversation)
 
-**Discovery tasks should include:**
-- `[DISCOVERY]` tag in the task description
-- `Spawns:` field listing what tasks/options appear after completion
-- `Discovery:` field describing what players learn
-- Be creative! Not all discoveries are codes - they can reveal locations, people, timing, methods, weaknesses
+**No other task types are allowed.** Every task a player sees must have a clear way to complete it:
+- Minigame → play the minigame
+- NPC_LLM → talk to the NPC and achieve the outcome
+- Search → go to the location and search for items
+- Handoff → transfer an item to another player
+- Info Share → tell another player the information, then confirm shared
 
-### 3. Organic Discovery Design (MOST IMPORTANT!)
-Create diverse, creative discovery moments that feel natural to the scenario:
+**Do NOT create tasks that are just "go to a location."** If a player needs to be somewhere, make it a prerequisite on the task they'll do there.
+
+### 3. Task Design Principles
 
 **PRINCIPLES:**
-1. **Variety is key** - Don't repeat patterns. Each discovery should feel unique
-2. **Context matters** - Discoveries should fit the location and scenario
-3. **Natural revelation** - Information emerges through exploration, not handed over
-4. **Multiple steps** - Chain 2-4 small discoveries together
-5. **Player agency** - Give choices that lead to different information
-
-**DIVERSE DISCOVERY TYPES:**
-
-**A) Object Examination**
-- Examine painting → Notice it's slightly crooked → Behind it is a hidden panel
-- Inspect vehicle → Find tracking device → Must disable or leave it
-- Check security system → See unusual wiring → Someone modified it recently
-
-**B) NPC Information Exchange**
-- NPC needs favor → You help → They share what they know
-- NPC has problem → You solve it → They become ally and provide access
-- NPC is chatty → Let them ramble → Accidentally reveals useful detail
-- NPC is suspicious → Build trust over multiple conversations → Finally opens up
-
-**C) Environmental Storytelling**
-- Search desk → Find multiple items that together reveal a pattern
-- Notice schedule → Cross-reference with another clue → Discover timing window
-- Observe NPC behavior → They keep checking their watch → Follow them at that time
-- Find torn note → Another player finds other half → Combine to read full message
-
-**D) Team Coordination Discoveries**
-- Player A overhears conversation → Player B finds related document → Together they understand
-- Player A gets partial code → Player B gets other half → Must communicate to assemble
-- Player A distracts NPC → Player B can then access their office
-- Player A creates opportunity → Player B must be ready to exploit it
-
-**E) Unexpected Consequences**
-- Search too loudly → Guard becomes suspicious → New challenge appears
-- Take item without permission → NPC notices later → Must make amends
-- Complete task too quickly → Raises alarm → Team must adapt plan
-
-**VARIETY IN MECHANISMS:**
-- **NOT JUST CODES**: Discoveries can reveal locations, people, timing, methods, weaknesses
-- **NOT JUST NPCs**: Examine objects, search rooms, observe patterns, connect clues
-- **NOT JUST LINEAR**: Create branching paths where different discoveries lead to different solutions
-
-### 4. Multiple Discovery Paths (When Appropriate)
-Sometimes offer 2-3 ways to discover information or solve problems:
-- Create paths that suit different roles (technical vs social vs physical)
-- Each path should feel valid and interesting (not one "correct" path)
-- Paths can converge later or lead to same goal through different means
-- Don't force branching everywhere - linear is fine for some tasks
-
-### 5. Team vs Player-Specific Tasks
-
-**Team Tasks (👥)** - Multiple players can see and complete:
-- "Find Vault Combination" (anyone can search for it)
-- "Distract Guard" (anyone can attempt)
-- Mark these with `[TEAM TASK]` in description
-
-**Player-Specific Tasks** - Only one role can do:
-- "Crack Safe" (Safe Cracker only)
-- "Hack Terminal" (Hacker only)
-- Specify `Role: Safe Cracker` in task
-
-### 6. Task Spawning Chains
-Show clear progression where discoveries lead to new options:
-```
-Initial: 🔍 Eavesdrop on Guards [DISCOVERY]
-  Spawns → Team: Check Roof Access [TEAM TASK]
-  
-After checking: 🔍 Check Roof Access [DISCOVERY]  
-  Discovery: "Door unlocked but camera watches it"
-  Spawns → Hacker: Disable Camera
-  Spawns → Team: Create Distraction [TEAM TASK]
-  
-After both complete: New Location Unlocked: Roof
-  New tasks available at Roof location
-```
-Mix linear chains (A→B→C) with parallel options (A→B OR A→C) for variety
-
-### 7. Make Discoveries Feel Organic
-
-**Discoveries should emerge naturally from:**
-- Exploring the environment (searching, examining, noticing details)
-- Interacting with NPCs (conversations, observations, building relationships)  
-- Coordinating with team (combining information, timing actions)
-- Attempting tasks (failures reveal new information too!)
-- Following logical chains (A leads to B leads to C)
-
-**Vary what discoveries reveal:**
-- Locations (hidden passages, alternative routes)
-- People (who knows what, who has access, who can help)
-- Timing (when guards change, when deliveries arrive)
-- Methods (how to bypass security, how to distract NPCs)
-- Items (what tools are needed, where to find them)
-- Weaknesses (security gaps, NPC vulnerabilities)
-- Backstory (motivations, relationships, history)
+1. **Every task needs a clear player action** - The player must DO something to complete it
+2. **Use prerequisites for gating** - Don't create placeholder tasks just to block progress; use Task/Outcome/Item prerequisites
+3. **NPC interactions should feel natural** - NPCs have personality, not just info to dump
+4. **Vary the task types** - Mix NPC conversations, searches, minigames, and coordination
+5. **Player agency** - Give players choices in how they approach objectives
 
 **Make NPCs feel real, not just info dispensers:**
 - Give them wants, needs, problems, quirks
 - Let conversations flow naturally, not just Q&A
 - Have them reveal info through personality, not exposition dumps
 - Make players work to get information (build trust, solve problems, trade favors)
-- Add red herrings and misdirection (NPCs don't know they're giving clues!)
+
+### 4. Team vs Player-Specific Tasks
+
+**Player-Specific Tasks** - Only one role can do:
+- "Crack Safe" (Safe Cracker only)
+- "Hack Terminal" (Hacker only)
+
+**Cross-role coordination** happens through:
+- 🗣️ Info Share tasks (one player tells another what they learned)
+- 🤝 Handoff tasks (one player gives another an item they need)
+- Outcome prerequisites (one player's NPC success unlocks another player's task)
 
 ## NPC Conversation System Format (CRITICAL!)
 
@@ -241,6 +162,7 @@ Each NPC MUST include structured data for the conversation system:
 - **Details**: props/visual details
 - **Personality**: Detailed personality for LLM conversations (2-3 sentences)
 - **Relationships**: How this NPC relates to other NPCs in the scenario (who they know, what they think of them). This adds natural conversational depth — they might mention other NPCs organically.
+- **Story Context**: Ground-truth facts about the world this NPC knows. Prevents the AI from improvising contradictions. Include: where key objects actually are, what the NPC would/wouldn't do, what is and isn't public knowledge. (2-4 sentences)
 - **Information Known**:
   - `info_id` HIGH: The ONE piece of info this NPC provides (tagged with ID)
   - LOW: Flavor text they might share (no ID = not tracked, just conversation filler)
@@ -261,6 +183,7 @@ Rules for NPCs:
 - Info/Action IDs must be snake_case and unique across the experience
 - Every NPC must be targeted by exactly one task with a matching Target Outcome
 - If you need more outcomes, add more NPCs -- don't overload one NPC
+- NARRATIVE CONSISTENCY (Story Context): Every NPC MUST have a Story Context field with immutable world facts. This prevents the AI playing the NPC from improvising contradictions (e.g., saying stolen items are "on display" when they're in a locked vault). Think carefully about: where key objects physically are and why, what is public vs secret knowledge, what this NPC would and would NOT volunteer to do, and how the scenario's setup constrains the NPC's behavior.
 
 ### Task Prerequisite Format:
 ```markdown
@@ -287,6 +210,26 @@ Rules for Tasks:
 - Search tasks use `*Search Items:*` instead of `*Find:*`
 - Any player role can do search/social tasks; role-locked tasks are minigames requiring specific skills
 
+### Item Format:
+```markdown
+### Location Name
+- **ID**: `snake_case_id`
+  - **Name**: Display Name
+  - **Description**: What the item is
+  - **Visual**: Detailed visual description for image generation
+  - **Required For**: Task ID or objective description
+  - **Hidden**: false
+  - **Unlock**:
+    - Task `SC2` (vault must be cracked first)
+```
+
+Rules for Items:
+- Every item needs an ID, Name, Description, and Visual field
+- Use `**Unlock**` to gate items behind prerequisites (same format as task prerequisites: Task, Outcome, Item)
+- Items without `**Unlock**` are always visible when a player searches that location
+- Use Unlock when an item should only appear AFTER something happens (e.g., jewels appear after vault is cracked, a key appears after a guard leaves)
+- The `**Hidden**` field is for items that require a thorough search to find (separate from unlock gating)
+
 ## Standard Requirements
 
 1. **Follow the markdown format** shown in the example (structure, not content!)
@@ -301,17 +244,16 @@ Rules for Tasks:
 10. **Use typed prerequisites** on all tasks (Task, Outcome, Item)
 11. **Include cover story options** for every NPC (2 plausible + 1 funny, with NPC reaction)
 12. **Tag all NPC info** with snake_case IDs for outcome tracking
+13. **Include Story Context** for every NPC — ground-truth facts that prevent narrative contradictions
 
 ## CREATIVITY GUIDELINES ⭐
 
 **BE CREATIVE! Don't copy the examples directly:**
-- Create unique discovery moments that fit YOUR scenario
-- Vary the types of discoveries (not all codes/combinations!)
 - Make each NPC distinct with different problems and personalities
 - Think about what would be fun and surprising for players
-- Create organic chains where discoveries feel natural
+- Create organic task chains that feel natural to the scenario
 - Allow multiple valid approaches when it makes sense
-- Not every task needs to be a discovery - straightforward tasks are good too!
+- Vary task types: mix NPC conversations, searches, minigames, info shares, and handoffs
 
 **Think about the scenario:**
 - Museum heist? Think about art, security systems, gala events, curators, collectors
@@ -324,29 +266,21 @@ Rules for Tasks:
 
 Generate a complete markdown file with:
 - Generation header with scenario/role info
-- **TEAM OBJECTIVES section (NEW!)** - List 1-3 high-level goals
 - Scenario overview
 - Locations list (organized by category)
-- Task types legend
-- **Discovery Tasks section (NEW!)** - List discovery moments
-- Roles & Dependencies (detailed task list for each role)
-  - Mark discovery tasks with [DISCOVERY] and Spawns: field
-  - Mark team tasks with [TEAM TASK]
-  - Show task visibility (team vs role-specific)
-- Task summary with statistics
-- Dependency tree diagrams (full + simplified)
-- Key collaboration points
-- NPC personality highlights with **clue design notes**
+- Task types legend (only: Minigame, NPC_LLM, Search, Handoff, Info Share)
+- Items by Location
+- NPCs section with full personality data
+- Roles & Tasks (detailed task list for each role with typed prerequisites)
+- Dependency tree diagrams (Mermaid)
+- Story Flow summary
 
 **Important**: 
 - Every task must have a *Location:* field
-- Every NPC must have a personality trait and sample dialogue
-- **NPCs with clues must show how clues are woven into conversation**
-- Search tasks must specify what's found
-- Discovery tasks must specify what they spawn
+- Every NPC must have structured personality data (see NPC Format above)
+- Search tasks must specify `*Search Items:*`
+- NPC tasks must specify `*NPC:*` and `*Target Outcomes:*`
 - Follow dependencies logically (can't crack safe before examining it)
-- Make clues subtle but discoverable (players should feel clever!)
-- Create multiple paths to same discovery
 - Make it fun and replayable with quirky NPCs!
 
 **CRITICAL - Mermaid Diagram Rules**:
@@ -360,126 +294,61 @@ Generate a complete markdown file with:
 - Example WRONG: `START --> MM1_C{{💬 MM: Brief Crew}}` (underscore breaks parser!)
 - Study the example Mermaid diagrams carefully and copy that exact style
 
-## CONCRETE EXAMPLES: Diverse Discovery Patterns
+## CONCRETE EXAMPLES: Task Chain Patterns
 
-Show variety! Here are different discovery patterns to inspire you (don't copy exactly, create your own):
+Show variety! Here are different patterns to inspire you (don't copy exactly, create your own):
 
-### EXAMPLE 1: Environmental Discovery Chain
+### EXAMPLE 1: NPC → Info Share → Minigame Chain
 ```markdown
-1. 🔍 **Search Loading Dock** [DISCOVERY] [TEAM TASK]
-   - *Location:* Loading Dock
-   - *Description:* Check for entry points and useful equipment
-   - *Discovery:* "Loading schedule on clipboard. Next delivery: 8:30 PM tonight. Driver: Carlos"
-   - *Spawns:* "Wait for Delivery" (team), "Talk to Carlos" (team)
+1. **MM1. 💬 NPC_LLM** - Learn Vault Location from Curator
+   - *Description:* Chat with the curator to learn where the jewels are kept.
+   - *NPC:* `curator` (Dr. Elena Vasquez)
+   - *Target Outcomes:* `vault_location`
+   - *Location:* Grand Hall
+   - *Prerequisites:* None (starting task)
 
-2. 💬 **Intercept Delivery Driver** [TEAM TASK] [DISCOVERY]
-   - *Location:* Loading Dock
-   - *Description:* Meet Carlos when he arrives at 8:30 PM
-   - *Timing:* Only available after 8:30 PM game time
-   - *NPC:* Carlos (overworked, chatty, hates his boss)
-   - *Discovery:* "Carlos complains his boss makes him use the side entrance because the main loading bay is 'being fumigated' - suspicious!"
-   - *Spawns:* "Investigate Main Loading Bay" (team)
+2. **MM2. 🗣️ INFO** - Share Intel with Safe Cracker
+   - *Description:* Radio the Safe Cracker with the vault's location and guard schedule.
+   - *Location:* Any (radio communication)
+   - *Prerequisites:*
+     - Task `MM1` (learned vault location)
 
-3. 🔍 **Investigate Suspicious Area** [DISCOVERY]
-   - *Location:* Main Loading Bay
-   - *Description:* Check why this area is supposedly "fumigated"
-   - *Discovery:* "No fumigation. But there IS a hidden security door you wouldn't have found otherwise!"
-   - *Spawns:* "Find Way Through Security Door" (Hacker)
+3. **SC1. 🎮 dial_rotation** - Crack the Vault Lock
+   - *Description:* Use your tools to crack the vault combination.
+   - *Location:* Vault Room
+   - *Prerequisites:*
+     - Task `MM2` (received intel from Mastermind)
+     - Item `safe_cracking_tools` (need tools)
 ```
 
-### EXAMPLE 2: Split Team Discovery
+### EXAMPLE 2: Search → NPC → Handoff Chain
 ```markdown
-1. 💬 **Eavesdrop on Guards** [DISCOVERY]
-   - *Location:* Hallway
-   - *Role:* Insider (has legitimate reason to be nearby)
-   - *Description:* Stand near guards and listen to their conversation
-   - *Discovery:* "Guard mentions: 'Did you lock the roof access after the maintenance crew left?'"
-   - *Spawns:* "Check Roof Access" (team)
-
-2. 🔍 **Check Roof Access** [TEAM TASK] [DISCOVERY]
-   - *Location:* Stairwell
-   - *Description:* Try the roof access door
-   - *Discovery:* "Door is unlocked! But there's a camera pointing at it."
-   - *Spawns:* "Disable Camera" (Hacker), "Create Distraction" (team)
-
-3. 🤝 **Coordinate Roof Entry** [TEAM COORDINATION]
-   - *Description:* Hacker disables camera, team uses roof access simultaneously
-   - *Dependencies:* Both "Disable Camera" AND "Create Distraction" complete
-   - *Spawns:* New location unlocked: Roof
-```
-
-### EXAMPLE 3: Item Assembly Discovery
-```markdown
-1. 🔍 **Search Janitor's Closet** [DISCOVERY]
-   - *Location:* Janitor's Closet
-   - *Discovery:* "Find a master key ring, but it's missing the key for the exhibit hall"
-   - *Spawns:* "Find Missing Key" (team)
-
-2. 💬 **Ask Janitor About Key** [TEAM TASK]
+1. **H1. 🔍 SEARCH** - Find Security Badge
+   - *Description:* Search the break room for a security badge.
+   - *Search Items:* security_badge
    - *Location:* Break Room
-   - *NPC:* Janitor (grumpy, territorial)
-   - *Discovery:* "Janitor says security confiscated the exhibit key last week after 'an incident'"
-   - *Spawns:* "Get Key from Security" (team)
+   - *Prerequisites:* None (starting task)
 
-3. 🔍 **Search Security Office** [DISCOVERY]
-   - *Location:* Security Office  
-   - *Dependencies:* Distract or bypass security guard
-   - *Discovery:* "Key is in evidence locker. Locker requires signature from 'Assistant Director'"
-   - *Spawns:* "Forge Signature" (team) OR "Get Real Signature" (Insider)
+2. **H2. 💬 NPC_LLM** - Convince Guard to Take a Break
+   - *Description:* Get the guard to step away from his post.
+   - *NPC:* `guard` (Officer Mike)
+   - *Target Outcomes:* `leave_post`
+   - *Location:* Hallway
+   - *Prerequisites:*
+     - Item `security_badge` (need badge to look official)
+
+3. **H3. 🤝 HANDOFF** - Give Badge to Insider
+   - *Description:* Hand the security badge to the Insider who needs it to access the server room.
+   - *Handoff Item:* security_badge
+   - *Handoff To:* Insider
+   - *Prerequisites:*
+     - Outcome `leave_post` (guard is gone, safe to exchange)
 ```
-
-### EXAMPLE 4: Observation-Based Discovery
-```markdown
-1. 🔍 **Observe Gallery Patterns** [DISCOVERY]
-   - *Location:* Gallery
-   - *Description:* Watch guard patrol routes for 10 minutes
-   - *Discovery:* "Guard checks this room every 15 minutes. Takes 3 minutes to complete circuit. But every hour on the hour, two guards check together."
-   - *Spawns:* "Plan Heist Timing" (Mastermind)
-
-2. 📋 **Calculate Time Window** [TEAM COORDINATION]
-   - *Description:* Use patrol information to determine safe windows
-   - *Dependencies:* "Observe Gallery Patterns" complete
-   - *Discovery:* "Best window: 12 minutes after each hour. Team has 10 minute window before next patrol."
-   - *Spawns:* Timed challenges become available
-```
-
-### EXAMPLE 5: Branching Discovery (Multiple Solutions)
-```markdown
-### TEAM OBJECTIVE: Get Access to Server Room
-
-**Path A: Social Engineering**
-1. 💬 Talk to IT Admin → Learn they love retro video games
-2. 🔍 Find Rare Game Cartridge → Search office
-3. 🤝 Trade Game for Access → IT Admin gives temporary badge
-
-**Path B: Technical**  
-1. 🎮 Hack Badge System → Clone existing badge
-2. 🔍 Steal Someone's Badge → Pickpocket during event
-3. 🤝 Return Badge → Give back before noticed (optional, affects difficulty)
-
-**Path C: Physical**
-1. 🔍 Find Air Duct → Search blueprints
-2. 🎮 Navigate Ducts → Cat Burglar minigame
-3. 💪 Remove Vent Cover → Muscle helps from inside
-
-All three paths lead to same objective but require different roles and create different stories!
-```
-
-**FORMATTING RULES:**
-- Use `[DISCOVERY]` for tasks that reveal new information or spawn tasks
-- Use `[TEAM TASK]` for tasks any role can attempt
-- Use `[TEAM COORDINATION]` for tasks requiring multiple players
-- Include *Spawns:* field listing what tasks/options appear after completion
-- Include *Discovery:* field describing what players learn
-- Show *Dependencies:* for tasks that require previous completion
-- Add *Multiple Paths:* when there are different ways to achieve same goal
-- Make NPCs unique with distinct personalities (not just information vendors!)
 
 **IMPORTANT REMINDERS:**
 - Be creative! Don't copy these examples directly
-- Vary the discovery types throughout the experience
-- Not every task needs to be a discovery - mix in straightforward tasks too
-- Create organic chains where discoveries lead naturally to next steps
+- Every task must have a clear player action (search, talk, play minigame, share info, hand off item)
+- Create organic chains where tasks lead naturally to next steps
 - Make players feel clever for connecting information
 - Allow multiple valid approaches when possible
 
@@ -504,7 +373,6 @@ def generate_experience(scenario_id, role_ids, output_file=None):
     roles = load_json(DATA_DIR / 'roles.json')
     design_guide = load_text(DESIGN_DIR / 'dependency_tree_design_guide.md')
     npc_guide = load_text(DESIGN_DIR / 'npc_personalities_guide.md')
-    discovery_guide = load_text(DESIGN_DIR / 'discovery_system_design.md')
     example = load_text(EXAMPLES_DIR / 'museum_gala_dependency_tree.md')
     
     # Get scenario and role details
@@ -522,12 +390,11 @@ def generate_experience(scenario_id, role_ids, output_file=None):
     
     print(f"✓ Loaded scenario: {scenario['name']}")
     print(f"✓ Loaded {len(selected_roles)} roles")
-    print(f"✓ Loaded discovery system guide")
     print()
     
     # Build prompt
-    print("🤖 Building prompt with discovery system...")
-    prompt = build_prompt(scenario, selected_roles, design_guide, npc_guide, discovery_guide, example)
+    print("🤖 Building prompt...")
+    prompt = build_prompt(scenario, selected_roles, design_guide, npc_guide, example)
     
     # Estimate token count (rough)
     estimated_tokens = len(prompt.split()) * 1.3  # rough estimate

@@ -24,14 +24,17 @@ NPCs are defined in a structured section of experience files with all informatio
 - **Attitude**: [Overall demeanor]
 - **Details**: [Additional visual details]
 - **Personality**: [Full personality description for AI conversations]
+- **Relationships**: [How this NPC relates to other NPCs — who they know, what they think of them]
+- **Story Context**: [Ground-truth world facts this NPC must never contradict — where key objects are, what's public vs secret, what the NPC would/wouldn't do]
 - **Information Known**:
-  - HIGH: [Critical information they definitely know]
-  - MEDIUM: [Information they might know]
-  - LOW: [Background information]
-- **Conversation Hints**: 
-  - [How to build rapport]
-  - [What topics to bring up]
-  - [What to avoid]
+  - `info_id` HIGH: [The ONE tagged info item this NPC provides]
+  - LOW: [Flavor text, no ID]
+- **Actions Available**:
+  - (none) OR `action_id` HIGH: [The ONE tagged action this NPC can perform]
+- **Cover Story Options**:
+  - `cover_id`: "Cover description" -- (NPC's instinct about this person)
+  - `another_cover`: "Another cover" -- (NPC's reaction)
+  - `funny_cover`: "Silly/funny cover" -- (NPC's bewildered reaction)
 ```
 
 ## Example
@@ -94,7 +97,11 @@ Used by `npc_conversation_service.py`:
 - role
 - personality
 - location
-- Information Known (converted to Objectives)
+- relationships
+- story_context (injected as immutable world facts to prevent LLM contradictions)
+- Information Known (target outcomes + background flavor)
+- Actions Available (target actions)
+- Cover Story Options (player cover choices)
 
 ### Game Display Fields
 Used by frontend:

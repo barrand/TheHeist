@@ -150,7 +150,7 @@ async def conversation_chat(request: ConversationChatRequest) -> ConversationCha
         # Process the player's choice
         (npc_response, outcomes, suspicion, suspicion_delta, 
          quick_responses, conversation_failed, cooldown_until, 
-         completed_tasks) = npc_service.process_player_choice(
+         completed_tasks, opening_given) = npc_service.process_player_choice(
             response_index=request.response_index,
             player_id=request.player_id,
             npc=npc,
@@ -221,6 +221,7 @@ async def conversation_chat(request: ConversationChatRequest) -> ConversationCha
             conversation_failed=conversation_failed,
             cooldown_until=cooldown_until,
             completed_tasks=completed_tasks,
+            opening_given=opening_given,
         )
         
     except HTTPException:

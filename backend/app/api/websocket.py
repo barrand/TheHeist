@@ -253,7 +253,8 @@ async def handle_select_role(room_code: str, player_id: str, data: Dict[str, Any
         type="role_selected",
         player_id=player_id,
         player_name=player.name,
-        role=role
+        role=role,
+        difficulty=difficulty
     )
     
     role_dict = role_selected.model_dump(mode='json')
@@ -341,7 +342,7 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
 
 
 async def handle_complete_task(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
-    """Handle task completion (for manual-complete types: INFO_SHARE, DISCOVERY, MINIGAME)"""
+    """Handle task completion (for manual-complete types: INFO_SHARE, MINIGAME)"""
     ws_manager = get_ws_manager()
     room_manager = get_room_manager()
     game_state_manager = get_game_state_manager()
@@ -545,18 +546,19 @@ async def handle_search_room(room_code: str, player_id: str, data: Dict[str, Any
         })
         return
     
-    # Get items at this location
-    items_here = game_state.items_by_location.get(location, [])
+    # Get items at this location, filtered by unlock prerequisites
+    all_items_here = game_state.items_by_location.get(location, [])
+    visible_items = [item for item in all_items_here if game_state.check_item_visible(item)]
     
     # Send search results
     search_results = SearchResultsMessage(
         type="search_results",
         location=location,
-        items=[item.model_dump(mode='json') for item in items_here]
+        items=[item.model_dump(mode='json') for item in visible_items]
     )
     await ws_manager.send_to_player(room_code, player_id, search_results.model_dump(mode='json'))
     
-    logger.info(f"🔍 {player.name} searched {location} - found {len(items_here)} items")
+    logger.info(f"🔍 {player.name} searched {location} - found {len(visible_items)}/{len(all_items_here)} items")
 
 
 async def handle_pickup_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:

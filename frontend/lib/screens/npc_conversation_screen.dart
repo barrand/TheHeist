@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/app_config.dart';
 import '../core/theme/app_colors.dart';
@@ -57,11 +58,55 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   bool _isLoading = false;
   bool _conversationFailed = false;
   bool _allOutcomesAchieved = false;
+  
+  // Cooldown state
+  bool _inCooldown = false;
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkCooldownOnOpen();
+  }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+  
+  Future<void> _checkCooldownOnOpen() async {
+    if (widget.roomCode == null || widget.playerId == null) return;
+    try {
+      final status = await _backendService.checkCooldown(
+        npcId: widget.npc.id,
+        roomCode: widget.roomCode!,
+        playerId: widget.playerId!,
+      );
+      if (status.inCooldown && status.remainingSeconds != null && status.remainingSeconds! > 0) {
+        _startCooldownTimer(status.remainingSeconds!);
+      }
+    } catch (_) {}
+  }
+  
+  void _startCooldownTimer(int seconds) {
+    setState(() {
+      _inCooldown = true;
+      _cooldownSeconds = seconds;
+    });
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() {
+        _cooldownSeconds--;
+        if (_cooldownSeconds <= 0) {
+          _inCooldown = false;
+          timer.cancel();
+        }
+      });
+    });
   }
 
   String? _getNpcImageUrl() {
@@ -69,6 +114,71 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       return 'http://localhost:8000/api/images/${widget.scenarioId}/npc/${widget.npc.id}';
     }
     return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cooldown Screen
+  // ---------------------------------------------------------------------------
+
+  Widget _buildCooldownScreen() {
+    final minutes = _cooldownSeconds ~/ 60;
+    final seconds = _cooldownSeconds % 60;
+    final timeText = minutes > 0 
+        ? '${minutes}m ${seconds.toString().padLeft(2, '0')}s'
+        : '${seconds}s';
+    
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(AppDimensions.containerPadding),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildNpcPortrait(small: true),
+            SizedBox(height: AppDimensions.spaceLG),
+            Text(
+              widget.npc.name,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            SizedBox(height: 4),
+            Text(
+              widget.npc.role,
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+            SizedBox(height: AppDimensions.spaceLG * 2),
+            Icon(Icons.timer_outlined, color: AppColors.warning, size: 48),
+            SizedBox(height: AppDimensions.spaceMD),
+            Text(
+              'Resetting Conversation',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.warning),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '${widget.npc.name} needs a moment before talking again.',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppDimensions.spaceLG),
+            Text(
+              timeText,
+              style: TextStyle(fontSize: 48, fontWeight: FontWeight.w300, color: AppColors.textPrimary, letterSpacing: 2),
+            ),
+            SizedBox(height: AppDimensions.spaceLG * 2),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: BorderSide(color: AppColors.borderSubtle),
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: Text('BACK TO GAME', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -109,6 +219,13 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         ));
         _isLoading = false;
       });
+    } on CooldownException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      // Parse remaining seconds from error message
+      final match = RegExp(r'(\d+) seconds').firstMatch(e.toString());
+      final remaining = match != null ? int.tryParse(match.group(1)!) ?? 60 : 60;
+      _startCooldownTimer(remaining);
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -153,6 +270,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
           text: result.npcResponse,
           isPlayer: false,
           timestamp: DateTime.now(),
+          isOpening: result.openingGiven,
         ));
         _suspicion = result.suspicion;
         _quickResponses = result.quickResponses;
@@ -217,7 +335,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         title: Text('Back', style: TextStyle(fontSize: 16, color: AppColors.textPrimary)),
         titleSpacing: -8,
       ),
-      body: _isCoverSelection ? _buildCoverSelection() : _buildConversation(),
+      body: _inCooldown ? _buildCooldownScreen() : (_isCoverSelection ? _buildCoverSelection() : _buildConversation()),
     );
   }
 
@@ -720,6 +838,8 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
 
   Widget _buildChatBubble(ChatMessage message) {
     final isPlayer = message.isPlayer;
+    final showOpeningBadge = AppConfig.debugMode && message.isOpening && !isPlayer;
+    
     return Align(
       alignment: isPlayer ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -730,12 +850,35 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
           color: isPlayer ? AppColors.accentPrimary.withValues(alpha: 0.2) : AppColors.bgTertiary,
           borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
           border: Border.all(
-            color: isPlayer ? AppColors.accentPrimary.withValues(alpha: 0.4) : AppColors.borderSubtle,
+            color: showOpeningBadge 
+                ? AppColors.warning.withValues(alpha: 0.6)
+                : isPlayer ? AppColors.accentPrimary.withValues(alpha: 0.4) : AppColors.borderSubtle,
           ),
         ),
-        child: Text(
-          message.text,
-          style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showOpeningBadge)
+              Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'OPENING',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.warning, letterSpacing: 0.5),
+                  ),
+                ),
+              ),
+            Text(
+              message.text,
+              style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            ),
+          ],
         ),
       ),
     );

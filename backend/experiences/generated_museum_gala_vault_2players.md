@@ -42,7 +42,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
   - **Name**: Safe Cracking Tools
   - **Description**: Professional lockpick set, dial manipulation tools, and stethoscope for listening to tumblers
   - **Visual**: Open black leather case containing shiny metallic lockpicks, tension wrenches, dial manipulation tools, and professional stethoscope with chrome ear pieces, tools arranged neatly in foam cutouts, reflective metal surfaces, professional safe-cracking kit, heist movie prop aesthetic, purple velvet lining visible
-  - **Required For**: SC3 (Crack the Vault Lock)
+  - **Required For**: SC2 (Crack the Vault Lock)
   - **Hidden**: false
 
 - **ID**: `earpiece_set`
@@ -65,7 +65,9 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
   - **Name**: Eye of Orion Jewels
   - **Description**: Stunning collection of rare sapphire and diamond jewels - the target!
   - **Required For**: Win condition (must be picked up to complete heist)
-  - **Hidden**: false (visible after vault opens)
+  - **Hidden**: false
+  - **Unlock**:
+    - Task `SC2` (vault must be cracked open first)
 
 ## NPCs
 
@@ -82,6 +84,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **Details**: Holding wine glass, wearing museum ID badge
 - **Personality**: Passionate about the museum's collection. Loves talking about the exhibits and their history. Very proud of the new Eye of Orion acquisition. Professional but warm at social events.
 - **Relationships**: Knows Marcus Romano (the security guard) — thinks he's reliable but a bit bored on night shifts. Respects the museum director but finds him overly paranoid about security lately.
+- **Story Context**: The Eye of Orion jewels are NOT on public display — they are locked in a high-security vault in the museum basement (east wing). The museum director insisted on vault storage due to their extreme value ($12M). Elena wishes they were on display but understands the security concern. She would never casually offer to show someone the vault or take them there. The vault location is not common knowledge among gala guests.
 - **Information Known**:
   - `vault_location` HIGH: The Eye of Orion jewels are kept in the new vault in the basement, east wing
   - LOW: The jewels were just acquired for $12 million
@@ -105,6 +108,7 @@ Steal the Eye of Orion jewels from the museum vault during the gala and escape.
 - **Details**: Holding clipboard, wearing glasses
 - **Personality**: Bored and lonely on the night shift. Loves sports and misses the excitement of his old job. Gets chatty when someone shows interest in his stories. Genuinely believes nothing interesting ever happens at the museum.
 - **Relationships**: Works under Dr. Elena Vasquez's department — respects her but finds the gala crowd stuffy. Friendly with the other guards but prefers working alone.
+- **Story Context**: Marcus is assigned to patrol near the basement vault area tonight but is currently stationed in the Grand Hall during the gala. He takes a regular smoke break at 9 PM — this is his routine and he'd welcome an excuse to step away early. He doesn't think anyone would actually try to rob the museum, so he's not particularly vigilant. He knows the vault is in the basement but considers it "not his problem" — his job is just to walk the rounds.
 - **Information Known**:
   - LOW: He's been assigned to guard the vault exhibit all week
   - LOW: The museum director is paranoid about security since the last incident
@@ -124,7 +128,6 @@ Every task in this heist is one of these types:
 - **🔍 Search/Hunt**: Player searches a location for items
 - **🤝 Item Handoff**: Physical item transfer between players (tracked in inventory)
 - **🗣️ Info Share**: Verbal information exchange between players (real-life conversation)
-- **🎯 Discovery**: Open-ended exploration task
 
 ## Roles & Tasks
 
@@ -168,18 +171,12 @@ Every task in this heist is one of these types:
    - *Location:* Crew Hideout
    - *Prerequisites:* None (starting task)
 
-2. **SC2. 🔍 SEARCH** - Navigate to Basement Vault
-   - *Description:* Using the intel from Mastermind, make your way to the basement vault in the east wing. The guard needs to be away from his post first.
-   - *Location:* Museum Basement
-   - *Prerequisites:*
-     - Task `MM3` (received vault location from Mastermind)
-     - Outcome `leave_post` (guard has left his post)
-
-3. **SC3. 🎮 dial_rotation** - Crack the Vault Lock
+2. **SC2. 🎮 dial_rotation** - Crack the Vault Lock
    - *Description:* Use your expert skills and tools to crack the vault's combination dial and retrieve the Eye of Orion jewels.
    - *Location:* Vault Room
    - *Prerequisites:*
-     - Task `SC2` (reached the vault)
+     - Task `MM3` (received vault location and guard patrol info from Mastermind)
+     - Outcome `leave_post` (guard has left his post)
      - Item `safe_cracking_tools` (need your tools to crack the lock)
 
 ## Dependency Tree Diagram
@@ -196,13 +193,11 @@ flowchart TD
     MM2 --> MM3
     MM2 --> MM4["💬 MM4: Convince Guard\nto Leave Post\n(talk to Marcus)"]
 
-    MM3 --> SC2["🔍 SC2: Navigate to\nBasement Vault"]
+    MM3 --> SC2["🎮 SC2: Crack the\nVault Lock"]
     MM4 -->|"leave_post"| SC2
+    SC1 -->|"safe_cracking_tools"| SC2
 
-    SC2 --> SC3["🎮 SC3: Crack the\nVault Lock"]
-    SC1 -->|"safe_cracking_tools"| SC3
-
-    SC3 --> COMPLETE([HEIST COMPLETE])
+    SC2 --> COMPLETE([HEIST COMPLETE])
 ```
 
 ## Story Flow
@@ -214,5 +209,5 @@ flowchart TD
 5. Mastermind searches near the security station and finds a guard patrol schedule
 6. Mastermind radios Safe Cracker: "Basement, east wing. Guard breaks at 9 PM."
 7. Mastermind finds Marcus the guard and convinces him to take an early smoke break
-8. With the guard away, Safe Cracker navigates through the basement to the vault
-9. Safe Cracker cracks the combination lock and retrieves the Eye of Orion jewels
+8. With the guard away and intel received, Safe Cracker heads to the vault and cracks the combination lock
+9. Safe Cracker retrieves the Eye of Orion jewels — heist complete!

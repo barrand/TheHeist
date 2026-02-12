@@ -36,8 +36,18 @@ SUSPICION_TABLE = {
 
 COOLDOWN_DURATION_SECONDS = 60  # Same for all difficulties
 
-# Max turns before the NPC ends the conversation (escape valve)
-MAX_TURNS = {"easy": 10, "medium": 15, "hard": 20}
+# Max turns before the NPC ends the conversation (tighter = more tension)
+MAX_TURNS = {"easy": 8, "medium": 10, "hard": 10}
+
+# Opening mechanic thresholds per difficulty:
+# "min"           = minimum turns before any opening can happen
+# "high_fits"     = how many fit 4-5 choices needed to earn an opening
+# "auto_reveal"   = turn at which NPC auto-reveals (safety net; None = no safety net)
+OPENING_THRESHOLDS = {
+    "easy":   {"min": 2, "high_fits": 1, "auto_reveal": 7},
+    "medium": {"min": 3, "high_fits": 2, "auto_reveal": 9},
+    "hard":   {"min": 4, "high_fits": 3, "auto_reveal": None},
+}
 
 # Suspicion mood labels for the visible meter
 SUSPICION_LABELS = {
@@ -62,6 +72,11 @@ class ConversationSession:
         self.conversation_history: List[Dict] = []
         self.current_responses: List[QuickResponseOption] = []
         self.suspicion: int = {"easy": 0, "medium": 2, "hard": 3}.get(difficulty, 0)
+        
+        # Opening mechanic state
+        self.high_fit_count: int = 0       # times player chose fit 4-5
+        self.opening_given: bool = False    # NPC has hinted at adjacent topic
+        self.opening_topic: str = ""        # what the NPC hinted about (for quick response context)
     
     def add_message(self, text: str, is_player: bool):
         self.conversation_history.append({
@@ -164,16 +179,16 @@ class NPCConversationService:
         npc: NPCData,
         difficulty: str,
         game_state: GameState,
-    ) -> Tuple[str, List[str], int, int, List[QuickResponseOption], bool, Optional[float], List[str]]:
+    ) -> Tuple[str, List[str], int, int, List[QuickResponseOption], bool, Optional[float], List[str], bool]:
         """
         Process a player's quick response choice.
         
         Returns: (npc_response, outcomes, suspicion, suspicion_delta, 
-                  next_quick_responses, conversation_failed, cooldown_until, completed_tasks)
+                  next_quick_responses, conversation_failed, cooldown_until, completed_tasks, opening_given)
         """
         session = self.get_session(player_id, npc.id)
         if not session:
-            return ("I don't think we've met.", [], 0, 0, [], False, None, [])
+            return ("I don't think we've met.", [], 0, 0, [], False, None, [], False)
         
         # Get the chosen response and its fit score
         if response_index < 0 or response_index >= len(session.current_responses):
@@ -182,6 +197,10 @@ class NPCConversationService:
         chosen = session.current_responses[response_index]
         player_text = chosen.text
         fit_score = chosen.fit_score
+        
+        # Track high-fit choices for opening mechanic
+        if fit_score >= 4:
+            session.high_fit_count += 1
         
         # Add player message to history
         session.add_message(player_text, is_player=True)
@@ -196,7 +215,7 @@ class NPCConversationService:
             game_state.npc_suspicion[player_id] = {}
         game_state.npc_suspicion[player_id][npc.id] = new_suspicion
         
-        logger.info(f"Player chose response (fit={fit_score}): '{player_text}' | suspicion: {session.suspicion - delta} + {delta} = {new_suspicion}")
+        logger.info(f"Player chose response (fit={fit_score}): '{player_text}' | suspicion: {session.suspicion - delta} + {delta} = {new_suspicion} | high_fits: {session.high_fit_count} | opening_given: {session.opening_given}")
         
         # Check for failure BEFORE getting NPC response
         if new_suspicion >= 5:
@@ -215,7 +234,7 @@ class NPCConversationService:
             
             logger.info(f"Conversation FAILED: {player_id} -> {npc.id} (suspicion reached 5)")
             
-            return (dismissal, [], 5, delta, [], True, cooldown_until, [])
+            return (dismissal, [], 5, delta, [], True, cooldown_until, [], False)
         
         # 2) Turn limit reached -- NPC ends the conversation naturally
         turn_count = len([m for m in session.conversation_history if m['role'] == 'player'])
@@ -232,12 +251,30 @@ class NPCConversationService:
             del self.sessions[(player_id, npc.id)]
             
             logger.info(f"Conversation timed out after {turn_count} turns (max {max_turns} for {difficulty})")
-            return (dismissal, [], new_suspicion, delta, [], True, cooldown_until, [])
+            return (dismissal, [], new_suspicion, delta, [], True, cooldown_until, [], False)
         
-        # Get NPC response with outcome detection
+        # Get NPC response with outcome detection + opening flag
         cover = next((c for c in npc.cover_options if c.cover_id == session.cover_id), None)
         already_achieved = set(game_state.achieved_outcomes.get(player_id, []))
-        npc_response, outcomes = self._get_npc_response(npc, cover, session, player_text, difficulty, already_achieved)
+        npc_response, outcomes, npc_gave_opening = self._get_npc_response(npc, cover, session, player_text, difficulty, already_achieved)
+        
+        # Opening mechanic tracking
+        was_opening = session.opening_given
+        if npc_gave_opening and not outcomes:
+            # NPC gave an opening but didn't reveal yet -- mark it
+            session.opening_given = True
+            session.opening_topic = npc_response  # store the NPC text for context
+            logger.info(f"🔓 NPC gave an OPENING (high_fits={session.high_fit_count})")
+        elif was_opening and not outcomes:
+            # Opening was active but player didn't follow up -- close it
+            session.opening_given = False
+            session.opening_topic = ""
+            logger.info(f"❌ Player MISSED the opening (didn't follow up)")
+        elif outcomes:
+            # Outcome revealed -- opening mechanic complete
+            session.opening_given = False
+            session.opening_topic = ""
+            logger.info(f"✅ Outcome revealed after opening! outcomes={outcomes}")
         
         session.add_message(npc_response, is_player=False)
         
@@ -253,17 +290,18 @@ class NPCConversationService:
             # NPC task auto-completion is now handled by the API layer
             # via GameStateManager.check_npc_completions() after this returns
         
-        # Generate next quick responses
+        # Generate next quick responses (with opening context if active)
         next_responses = self._generate_quick_responses(npc, cover, session, difficulty)
         session.current_responses = next_responses
         
-        return (npc_response, outcomes, new_suspicion, delta, next_responses, False, None, completed_tasks)
+        return (npc_response, outcomes, new_suspicion, delta, next_responses, False, None, completed_tasks, session.opening_given)
     
     def _generate_greeting(self, npc: NPCData, cover: NPCCoverOption, difficulty: str) -> str:
         """Generate NPC's opening line based on cover story and trust level"""
+        story_facts = f"\n=== WORLD FACTS (never contradict these) ===\n{npc.story_context}\n" if npc.story_context else ""
         prompt = f"""You are {npc.name}, a {npc.role}.
 Personality: {npc.personality}
-
+{story_facts}
 Someone approaches you at the event. They claim to be: {cover.description}
 
 Your instinct about this person: {cover.npc_reaction}
@@ -321,6 +359,18 @@ Be natural and in character. Just the dialogue, no quotes or formatting."""
             else:
                 fit_descriptions.append(f"Fit {fit}: Terrible. Breaks character, bluntly demands info, or is absurdly off-topic. Should be funny or ridiculous — the kind of thing that makes the player laugh before they pick it.")
         
+        # If an opening is active, add context so the generator can create a follow-up option
+        opening_context = ""
+        if session.opening_given and session.opening_topic:
+            # Get just the last NPC message (the opening)
+            last_npc_msg = session.opening_topic[:200]
+            opening_context = f"""
+IMPORTANT - OPENING ACTIVE: The NPC just hinted at something related to their secret knowledge.
+Their last message: "{last_npc_msg}"
+The HIGHEST-FIT response should naturally follow up on what the NPC just hinted at — ask about the topic they mentioned, show curiosity about their hint.
+The other responses should be on different topics or miss the hint entirely.
+The player needs to recognize which response follows up on the NPC's hint."""
+        
         prompt = f"""Generate 3 response options for an NPC conversation in a heist game.
 
 Player's cover: {cover_desc}
@@ -329,6 +379,7 @@ Conversation so far:
 {context if context else "(conversation just started)"}
 
 {outcomes_text}
+{opening_context}
 
 Generate responses at these cover fit levels: {fit_targets}
 {chr(10).join(fit_descriptions)}
@@ -384,8 +435,11 @@ Return ONLY a JSON array (no markdown, no wrapping):
         self, npc: NPCData, cover: Optional[NPCCoverOption],
         session: ConversationSession, player_text: str, difficulty: str,
         already_achieved: set = None,
-    ) -> Tuple[str, List[str]]:
-        """Get NPC response and detect outcomes via structured JSON"""
+    ) -> Tuple[str, List[str], bool]:
+        """Get NPC response and detect outcomes via structured JSON.
+        
+        Returns: (response_text, outcome_ids, opening_given)
+        """
         
         cover_desc = cover.description if cover else "Someone at the event"
         trust_desc = cover.npc_reaction if cover else "An unknown person"
@@ -422,7 +476,7 @@ Return ONLY a JSON array (no markdown, no wrapping):
         
         # Turn count for pacing
         turn_count = len([m for m in session.conversation_history if m['role'] == 'player'])
-        pacing = self._get_pacing_instruction(turn_count, session.suspicion, difficulty, already_achieved, target_outcomes)
+        pacing = self._get_pacing_instruction(turn_count, session.suspicion, difficulty, already_achieved, target_outcomes, session=session)
         
         # Build the prompt with clear separation of target vs background
         target_section = ""
@@ -439,10 +493,12 @@ Return ONLY a JSON array (no markdown, no wrapping):
             background_section += "\n".join(other_info_lines + other_action_lines) + "\n"
         
         relationships = f"\nPeople you know: {npc.relationships}" if npc.relationships else ""
+        story_facts = f"\n=== WORLD FACTS (never contradict these) ===\n{npc.story_context}\n" if npc.story_context else ""
         
         prompt = f"""You are {npc.name}, a {npc.role}.
 Personality: {npc.personality}
 Location: {npc.location}{relationships}
+{story_facts}
 
 The person talking to you claims to be: {cover_desc}
 Your instinct about this person: {trust_desc}
@@ -471,10 +527,12 @@ Rules:
 - IMPORTANT: If the player says something inconsistent with their claimed cover story, call it out naturally. Reference their cover and note the inconsistency. For example, if they claim to be an art collector but ask about security schedules, you might say "That's an odd question for a collector... I thought you were here about the art?" React with suspicion proportional to how jarring the inconsistency is.
 
 RESPOND AS JSON (no markdown, no wrapping):
-{{"response": "your dialogue", "outcomes": ["id1"]}}
+{{"response": "your dialogue", "outcomes": ["id1"], "opening": false}}
 
-Include outcome IDs ONLY for target info/actions you EXPLICITLY shared or agreed to in THIS response.
-If nothing was revealed/agreed, use empty array: {{"response": "your dialogue", "outcomes": []}}
+- "outcomes": Include outcome IDs ONLY for target info/actions you EXPLICITLY shared or agreed to in THIS response. Empty array if nothing revealed.
+- "opening": Set to true ONLY when the PACING instruction tells you to give an opening (hint at adjacent topic). Otherwise false.
+
+If nothing was revealed and no opening given: {{"response": "your dialogue", "outcomes": [], "opening": false}}
 IMPORTANT: Do NOT include outcome IDs like [vault_location] in the dialogue text. Outcome IDs go ONLY in the "outcomes" array."""
         
         try:
@@ -491,6 +549,7 @@ IMPORTANT: Do NOT include outcome IDs like [vault_location] in the dialogue text
             parsed = json.loads(raw)
             response_text = parsed.get("response", "...")
             outcomes = parsed.get("outcomes", [])
+            opening_flag = parsed.get("opening", False)
             
             # Strip quotes from response if present
             response_text = response_text.strip().strip('"')
@@ -499,16 +558,16 @@ IMPORTANT: Do NOT include outcome IDs like [vault_location] in the dialogue text
             # e.g. "[vault_location]" or "[leave_post]"
             response_text = re.sub(r'\s*\[[\w]+\]\s*', ' ', response_text).strip()
             
-            logger.info(f"NPC response: '{response_text}' | outcomes: {outcomes}")
-            return response_text, outcomes
+            logger.info(f"NPC response: '{response_text}' | outcomes: {outcomes} | opening: {opening_flag}")
+            return response_text, outcomes, bool(opening_flag)
             
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse NPC JSON response: {e}. Raw: {raw[:200]}")
             # Try to extract just the text
-            return raw.strip().strip('"'), []
+            return raw.strip().strip('"'), [], False
         except Exception as e:
             logger.error(f"Error getting NPC response: {e}", exc_info=True)
-            return "Hmm, let me think about that.", []
+            return "Hmm, let me think about that.", [], False
     
     def _generate_failure_dismissal(
         self, npc: NPCData, session: ConversationSession,
@@ -516,9 +575,10 @@ IMPORTANT: Do NOT include outcome IDs like [vault_location] in the dialogue text
     ) -> str:
         """Generate a contextual dismissal when suspicion hits 5"""
         
+        story_facts = f"\n=== WORLD FACTS (never contradict these) ===\n{npc.story_context}\n" if npc.story_context else ""
         prompt = f"""You are {npc.name}, a {npc.role}.
 Personality: {npc.personality}
-
+{story_facts}
 You've been talking to someone who has made you very suspicious. Your suspicion is now at maximum.
 The last thing they said was: "{last_player_text}"
 
@@ -531,62 +591,79 @@ Be in character. 1-2 sentences. Just the dialogue, no quotes or formatting."""
             logger.error(f"Error generating failure dismissal: {e}")
             return "I don't think I should be talking to you anymore. Please excuse me."
     
-    def _get_pacing_instruction(self, turn_count: int, suspicion: int, difficulty: str, already_achieved: set, target_outcomes: set) -> str:
-        """Generate pacing instructions based on turn count, difficulty, AND suspicion.
+    def _get_pacing_instruction(self, turn_count: int, suspicion: int, difficulty: str, 
+                                already_achieved: set, target_outcomes: set,
+                                session: 'ConversationSession' = None) -> str:
+        """Generate pacing instructions using the opening mechanic.
         
-        Turn budgets (total turns to get ALL target outcomes):
-        - Easy:   4-5 turns  
-        - Medium: 5-7 turns  
-        - Hard:   6-8 turns  
+        Flow:
+        1. Before min turns: no hints, no reveals
+        2. After min turns + enough high-fit choices: NPC gives an "opening" (hint)
+        3. After opening: if player follows up, NPC reveals
+        4. Auto-reveal fallback (easy/medium only) as safety net
         
-        KEY RULE: High suspicion blocks reveals. The NPC should NOT share
-        secrets with someone they're getting suspicious of, regardless of 
-        turn count. This creates a real risk of failure.
+        KEY RULE: High suspicion blocks everything.
         """
         remaining = len(target_outcomes - already_achieved)
         
         if remaining == 0:
             return "PACING: All target outcomes achieved. Just chat naturally, no more reveals needed."
         
-        # High suspicion blocks reveals regardless of turn count
+        # High suspicion blocks everything regardless of turn count
         if suspicion >= 4:
             return f"""PACING: Turn {turn_count}. Suspicion is {suspicion}/5 -- you are very uncomfortable.
-Do NOT share any sensitive information. You're thinking about ending this conversation.
+Do NOT share any sensitive information. Do NOT give openings or hints.
 Give short, deflective answers. {remaining} outcome(s) remaining but you're NOT sharing."""
         
         if suspicion >= 3:
             return f"""PACING: Turn {turn_count}. Suspicion is {suspicion}/5 -- something feels off about this person.
-Do NOT reveal target outcomes right now. Be evasive and change the subject.
+Do NOT reveal target outcomes or give any hints. Be evasive and change the subject.
 They need to say something that puts you at ease first. {remaining} outcome(s) remaining."""
         
-        # Deadlines: after this many turns with low suspicion, you MUST reveal
-        # "should" threshold = start trying to share
-        # "must" threshold = you MUST include an outcome in your response
-        thresholds = {
-            "easy":   {"should": 4, "must": 6},
-            "medium": {"should": 5, "must": 8},
-            "hard":   {"should": 6, "must": 9},
-        }
-        t = thresholds.get(difficulty, thresholds["medium"])
+        t = OPENING_THRESHOLDS.get(difficulty, OPENING_THRESHOLDS["medium"])
+        high_fits = session.high_fit_count if session else 0
+        opening_active = session.opening_given if session else False
         
-        if turn_count >= t["must"]:
+        # Before minimum turns: absolutely no reveals or hints
+        if turn_count < t["min"]:
+            return f"""PACING (STRICT): Turn {turn_count}. It is TOO EARLY to share anything sensitive or hint at secrets.
+Do NOT reveal target outcomes. Do NOT hint at them. You just met this person.
+Be friendly, chat, get to know them, but keep secrets to yourself.
+{remaining} outcome(s) remaining. Set "opening" to false."""
+        
+        # Auto-reveal fallback (easy/medium safety net)
+        if t["auto_reveal"] and turn_count >= t["auto_reveal"]:
             return f"""PACING (MANDATORY): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
 You have been talking for {turn_count} turns and suspicion is low. You trust this person.
 You MUST share one target outcome in this response. This is NOT optional.
 Include the outcome ID in the "outcomes" array AND the specific details in your dialogue.
-Do not deflect. Do not hint. State the information or agree to the action clearly."""
+Do not deflect. Do not hint. State the information clearly. Set "opening" to false."""
         
-        if turn_count >= t["should"]:
-            return f"""PACING (IMPORTANT): Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
-You've been chatting for a while and they seem trustworthy. You should share one target outcome now.
-Include specific details (names, locations, times) and the outcome ID in your response."""
+        # OPENING ACTIVE: player needs to follow up
+        if opening_active:
+            return f"""PACING (FOLLOW-UP): Turn {turn_count}. You just hinted at something related to your secret knowledge.
+If the player is following up on your hint -- asking about the topic you mentioned -- then REVEAL the target outcome.
+Share the full details and include the outcome ID in the "outcomes" array. Set "opening" to false.
+If the player changed the subject or asked about something unrelated, just chat normally.
+Do NOT reveal the outcome if they didn't follow up on your hint. Set "opening" to false.
+{remaining} outcome(s) remaining. Suspicion {suspicion}/5."""
         
-        if turn_count >= 2:
-            return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
-You're warming up to them. If they ask about something you know, you can hint or start to share."""
+        # Enough rapport to give an opening?
+        if high_fits >= t["high_fits"]:
+            return f"""PACING (GIVE OPENING): Turn {turn_count}. This person has earned your trust. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+Mention something ADJACENT to your secret knowledge -- a related topic, a vague reference, or a natural segue.
+For example, if you know a vault location, you might mention recent security changes, or the east wing, or how paranoid the director has been.
+CRITICAL: Do NOT reveal the actual target information yet. Do NOT share specific details like exact locations, codes, or times.
+Just create a natural opening the person could follow up on. Tease the topic without answering it.
+You MUST set "opening" to true in your response. Keep it natural -- don't force it.
+Even if the player asked a direct question, do NOT answer it fully yet -- deflect slightly while mentioning the adjacent topic."""
         
-        return f"""PACING: Turn {turn_count}. Early in the conversation. Be friendly.
-{remaining} outcome(s) to go. Get to know them before sharing anything sensitive."""
+        # Not enough rapport yet
+        turns_of_rapport = t["high_fits"] - high_fits
+        return f"""PACING: Turn {turn_count}. {remaining} outcome(s) remaining. Suspicion {suspicion}/5.
+You're warming up to them but not ready to share anything sensitive.
+Chat naturally. You're enjoying the conversation but this person hasn't fully earned your trust yet.
+Set "opening" to false."""
     
     def _get_difficulty_prompt(self, difficulty: str) -> str:
         """Get difficulty-specific instructions for the NPC"""
@@ -594,19 +671,19 @@ You're warming up to them. If they ask about something you know, you can hint or
             return """Player difficulty: easy
 - Accept their cover story at face value.
 - Be friendly and forthcoming. You like talking to people.
-- If they ask about something you know, share it willingly.
-- Share one tagged item per response when the topic is relevant."""
+- ALWAYS follow the PACING instructions exactly -- they control when you hint and reveal.
+- When PACING says to give an opening, make your hint obvious and easy to follow up on."""
         elif difficulty == "hard":
             return """Player difficulty: hard
 - Be observant and skeptical of their cover. Notice if questions don't fit.
 - Require real rapport before sharing sensitive info.
-- A well-crafted question that fits the cover naturally still gets an answer.
-- NEVER completely stonewall -- always leave an opening for clever players."""
+- ALWAYS follow the PACING instructions exactly -- they control when you hint and reveal.
+- When PACING says to give an opening, make it subtle -- a passing mention, not an obvious hint."""
         else:  # medium
             return """Player difficulty: medium
 - Be realistic -- friendly but not giving away secrets to strangers.
-- After a few turns of good conversation, share info when asked.
-- If they ask about something related to your knowledge, give them something useful."""
+- ALWAYS follow the PACING instructions exactly -- they control when you hint and reveal.
+- When PACING says to give an opening, make it natural but noticeable."""
     
     def _pick_fit_targets(self) -> List[int]:
         """Pick 3 random fit targets, ensuring at least one is 4 or 5"""

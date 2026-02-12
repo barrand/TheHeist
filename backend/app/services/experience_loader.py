@@ -46,7 +46,6 @@ class ExperienceLoader:
         "🔍": TaskType.SEARCH,
         "🤝": TaskType.HANDOFF,
         "🗣️": TaskType.INFO_SHARE,
-        "🎯": TaskType.DISCOVERY,
     }
     
     # Role code mapping (for task IDs)
@@ -256,6 +255,10 @@ class ExperienceLoader:
             relationships_match = re.search(r'-\s*\*\*Relationships\*\*:\s*(.+)', block)
             relationships = relationships_match.group(1).strip() if relationships_match else ""
             
+            # Extract story context (optional) - immutable world facts
+            story_context_match = re.search(r'-\s*\*\*Story Context\*\*:\s*(.+)', block)
+            story_context = story_context_match.group(1).strip() if story_context_match else ""
+            
             # Extract visual fields for image generation
             gender_match = re.search(r'-\s*\*\*Gender\*\*:\s*(.+)', block)
             gender = gender_match.group(1).strip() if gender_match else "person"
@@ -291,6 +294,7 @@ class ExperienceLoader:
                 personality=personality,
                 location=location,
                 relationships=relationships,
+                story_context=story_context,
                 gender=gender,
                 ethnicity=ethnicity,
                 clothing=clothing,
@@ -475,6 +479,9 @@ class ExperienceLoader:
                 hidden_match = re.search(r'-\s*\*\*Hidden\*\*:\s*(true|false)', item_block, re.IGNORECASE)
                 hidden = hidden_match and hidden_match.group(1).lower() == 'true'
                 
+                # Extract Unlock prerequisites (same format as task prerequisites)
+                unlock_prerequisites = self._extract_item_unlock_prerequisites(item_block)
+                
                 item = Item(
                     id=item_id,
                     name=name,
@@ -482,7 +489,8 @@ class ExperienceLoader:
                     visual=visual,
                     location=location_name,
                     required_for=required_for,
-                    hidden=hidden
+                    hidden=hidden,
+                    unlock_prerequisites=unlock_prerequisites
                 )
                 items.append(item)
                 logger.debug(f"Parsed item: {name} at {location_name}")
@@ -491,6 +499,49 @@ class ExperienceLoader:
                 items_by_location[location_name] = items
         
         return items_by_location
+    
+    def _extract_item_unlock_prerequisites(self, item_block: str) -> List[Prerequisite]:
+        """Extract unlock prerequisites from an item block.
+        
+        Format:
+          - **Unlock**:
+            - Task `SC2` (vault must be cracked open first)
+            - Outcome `leave_post` (guard must have left)
+        """
+        prereqs = []
+        
+        # Find Unlock section (multi-line)
+        unlock_match = re.search(r'-\s*\*\*Unlock\*\*:\s*(.*?)(?=\n\s*-\s*\*\*|\Z)', item_block, re.DOTALL)
+        if not unlock_match:
+            return prereqs
+        
+        unlock_text = unlock_match.group(1).strip()
+        
+        if not unlock_text or "none" in unlock_text.lower():
+            return prereqs
+        
+        type_map = {
+            'task': PrerequisiteType.TASK,
+            'outcome': PrerequisiteType.OUTCOME,
+            'item': PrerequisiteType.ITEM,
+        }
+        
+        for line in unlock_text.split('\n'):
+            line = line.strip()
+            if line.startswith('-'):
+                line = line.lstrip('- ').strip()
+            
+            prereq_match = re.match(r'(Task|Outcome|Item)\s+`(\w+)`\s*(?:\((.+?)\))?', line, re.IGNORECASE)
+            if prereq_match:
+                ptype = type_map.get(prereq_match.group(1).lower())
+                if ptype:
+                    prereqs.append(Prerequisite(
+                        type=ptype,
+                        id=prereq_match.group(2),
+                        description=prereq_match.group(3) if prereq_match.group(3) else None
+                    ))
+        
+        return prereqs
     
     def _extract_role_tasks(self, content: str, role: str) -> Dict[str, Task]:
         """Extract all tasks for a specific role"""
@@ -533,6 +584,7 @@ class ExperienceLoader:
             
             # Extract metadata
             location = self._extract_field(task_details, "Location")
+            detail_description = self._extract_field(task_details, "Description") or ""
             prerequisites = self._extract_prerequisites(task_details)
             # Also extract legacy dependencies for backward compatibility
             dependencies = self._extract_dependencies(task_details)
@@ -543,6 +595,7 @@ class ExperienceLoader:
                 id=task_id,
                 type=task_type,
                 description=task_description,
+                detail_description=detail_description,
                 assigned_role=role,
                 location=location or "Unknown",
                 status=TaskStatus.LOCKED,

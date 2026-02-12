@@ -313,6 +313,7 @@ class ConversationTurnResult {
   final bool conversationFailed;
   final double? cooldownUntil;
   final List<String> completedTasks;
+  final bool openingGiven;
 
   ConversationTurnResult({
     required this.npcResponse,
@@ -323,6 +324,7 @@ class ConversationTurnResult {
     required this.conversationFailed,
     this.cooldownUntil,
     this.completedTasks = const [],
+    this.openingGiven = false,
   });
 
   factory ConversationTurnResult.fromJson(Map<String, dynamic> json) {
@@ -337,6 +339,7 @@ class ConversationTurnResult {
       conversationFailed: json['conversation_failed'] ?? false,
       cooldownUntil: json['cooldown_until']?.toDouble(),
       completedTasks: List<String>.from(json['completed_tasks'] ?? []),
+      openingGiven: json['opening_given'] ?? false,
     );
   }
 }

@@ -14,7 +14,6 @@ class TaskType(str, Enum):
     SEARCH = "search"            # Search location for items
     HANDOFF = "handoff"          # Transfer item between players
     INFO_SHARE = "info_share"    # Verbal information exchange (real-life)
-    DISCOVERY = "discovery"      # Open-ended exploration task
 
 
 class TaskStatus(str, Enum):
@@ -53,6 +52,7 @@ class Task(BaseModel):
     id: str = Field(..., description="Unique task ID (e.g., 'MM1', 'H3')")
     type: TaskType = Field(..., description="Type of task")
     description: str = Field(..., description="What player needs to do")
+    detail_description: str = Field(default="", description="Longer description with specifics (e.g. intel details)")
     assigned_role: str = Field(..., description="Role this task belongs to")
     assigned_player_id: Optional[str] = Field(None, description="Specific player assigned")
     location: str = Field(..., description="Where task takes place")
@@ -150,6 +150,9 @@ class NPCData(BaseModel):
     # Relationships with other NPCs (injected into LLM as background flavor)
     relationships: str = Field(default="", description="Who else this NPC knows and how they relate to them")
     
+    # Story context: immutable world facts the NPC must never contradict
+    story_context: str = Field(default="", description="Ground-truth facts about the world this NPC knows, preventing LLM improvisation errors")
+    
     # Structured conversation data
     information_known: List[NPCInfoItem] = Field(default_factory=list, description="Info items this NPC knows")
     actions_available: List[NPCAction] = Field(default_factory=list, description="Actions this NPC can be convinced to perform")
@@ -167,6 +170,10 @@ class Item(BaseModel):
     hidden: bool = Field(default=False, description="Requires thorough search to find")
     quantity: int = Field(default=1, description="Number available")
     transferable: bool = Field(default=True, description="Can be given to other players")
+    unlock_prerequisites: List[Prerequisite] = Field(
+        default_factory=list,
+        description="Prerequisites that must be met for item to appear in search results"
+    )
 
 
 class GameState(BaseModel):
@@ -257,6 +264,36 @@ class GameState(BaseModel):
                 newly_available.append(task.id)
         
         return newly_available
+    
+    def check_item_visible(self, item: 'Item') -> bool:
+        """Check if an item's unlock prerequisites are met (visible in search results).
+        
+        Uses the same prerequisite types as tasks: Task, Outcome, Item.
+        Items with no unlock_prerequisites are always visible.
+        """
+        if not item.unlock_prerequisites:
+            return True
+        
+        completed = self.get_completed_task_ids()
+        
+        all_outcomes: set = set()
+        for outcomes in self.achieved_outcomes.values():
+            all_outcomes.update(outcomes)
+        
+        for prereq in item.unlock_prerequisites:
+            if prereq.type == PrerequisiteType.TASK and prereq.id not in completed:
+                return False
+            if prereq.type == PrerequisiteType.OUTCOME and prereq.id not in all_outcomes:
+                return False
+            # For item prerequisites, check if ANY player has the item
+            # (unlike tasks which check assigned player's inventory)
+            if prereq.type == PrerequisiteType.ITEM:
+                # Item prereqs on items are rare but supported
+                # We can't easily check inventory here without room reference
+                # so we skip for now -- task prereqs and outcomes cover the main cases
+                pass
+        
+        return True
     
     def get_npc_by_id(self, npc_id: str) -> Optional[NPCData]:
         """Get NPC data by ID"""

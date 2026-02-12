@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:the_heist/core/theme/app_colors.dart';
 import 'package:the_heist/core/theme/app_dimensions.dart';
-import 'package:the_heist/core/app_config.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
 import 'package:the_heist/widgets/common/heist_secondary_button.dart';
 
@@ -77,7 +76,6 @@ class GameEndScreen extends StatelessWidget {
   
   Widget _buildCrewImage() {
     final imageName = success ? 'crew_celebration_success.png' : 'crew_celebration_failure.png';
-    final imageUrl = '${AppConfig.backendUrl}/assets/images/$imageName';
     
     return Container(
       height: 200,
@@ -90,13 +88,11 @@ class GameEndScreen extends StatelessWidget {
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Image.network(
-        imageUrl,
+      child: Image.asset(
+        'assets/roles/$imageName',
         fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          
-          // Loading placeholder
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to placeholder if image not found
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -107,20 +103,16 @@ class GameEndScreen extends StatelessWidget {
                   color: (success ? AppColors.success : AppColors.danger).withValues(alpha: 0.3),
                 ),
                 SizedBox(height: AppDimensions.spaceSM),
-                CircularProgressIndicator(
-                  color: success ? AppColors.success : AppColors.danger,
+                Text(
+                  success ? '🎉 THE CREW CELEBRATES 🎉' : '🚨 BUSTED 🚨',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: success ? AppColors.success : AppColors.danger,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ],
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          // Error fallback
-          return Center(
-            child: Icon(
-              success ? Icons.celebration : Icons.warning_amber,
-              size: 80,
-              color: (success ? AppColors.success : AppColors.danger).withValues(alpha: 0.3),
             ),
           );
         },

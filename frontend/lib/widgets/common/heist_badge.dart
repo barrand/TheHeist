@@ -6,7 +6,6 @@ enum BadgeType {
   team,
   minigame,
   npc,
-  discovery,
   completed,
 }
 
@@ -29,8 +28,6 @@ class HeistBadge extends StatelessWidget {
         return AppColors.warning;
       case BadgeType.npc:
         return AppColors.accentSecondary;
-      case BadgeType.discovery:
-        return AppColors.accentTertiary;
       case BadgeType.completed:
         return AppColors.success;
     }

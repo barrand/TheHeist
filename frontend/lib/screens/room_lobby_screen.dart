@@ -123,16 +123,19 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         debugPrint('🎭 LOBBY: Player $playerName ($playerId) selected role: $role');
         debugPrint('🎭 LOBBY: Current players before update: $_players');
         
-        // Update player's role
+        // Update player's role and difficulty
+        final difficulty = message['difficulty'] ?? 'easy';
         final playerIndex = _players.indexWhere((p) => p['id'] == playerId);
         if (playerIndex != -1) {
           _players[playerIndex]['role'] = role;
-          debugPrint('🎭 LOBBY: Updated player at index $playerIndex');
+          _players[playerIndex]['difficulty'] = difficulty;
+          debugPrint('🎭 LOBBY: Updated player at index $playerIndex (difficulty: $difficulty)');
           
-          // Update my role if it's me
+          // Update my role/difficulty if it's me
           if (playerId == _myPlayerId) {
             _myRole = role;
-            debugPrint('🎭 LOBBY: Updated my role to: $role');
+            _myDifficulty = difficulty;
+            debugPrint('🎭 LOBBY: Updated my role to: $role, difficulty: $difficulty');
           }
         } else {
           debugPrint('❌ LOBBY: Could not find player $playerId in players list!');
@@ -222,13 +225,13 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       _myRole = myPlayer['role'];
       debugPrint('🏠 LOBBY: My initial role: $_myRole');
 
-      // Debug auto-assign: host → Mastermind (hard), joiner → Safe Cracker (easy)
+      // Debug auto-assign: host → Mastermind (easy), joiner → Safe Cracker (easy)
       if (AppConfig.debugMode && (_myRole == null || _myRole == '')) {
         if (_isHost && _players.length == 1) {
-          debugPrint('🎯 DEBUG: Auto-selecting Mastermind (hard) for host');
+          debugPrint('🎯 DEBUG: Auto-selecting Mastermind (easy) for host');
           Future.delayed(Duration(milliseconds: 500), () {
             if (mounted) {
-              _myDifficulty = 'hard';
+              _myDifficulty = 'easy';
               _selectRole('mastermind');
             }
           });

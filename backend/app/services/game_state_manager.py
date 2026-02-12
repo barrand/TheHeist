@@ -79,8 +79,8 @@ class GameStateManager:
         if task.status != TaskStatus.AVAILABLE and task.status != TaskStatus.IN_PROGRESS:
             return False, f"Task {task_id} is not available (status: {task.status})"
         
-        # Check if player is at correct location (discovery/info_share can be done anywhere)
-        if task.type not in (TaskType.DISCOVERY, TaskType.INFO_SHARE) and player.location != task.location:
+        # Check if player is at correct location (info_share can be done anywhere)
+        if task.type != TaskType.INFO_SHARE and player.location != task.location:
             return False, f"You must be at {task.location} to complete this task"
         
         # Specific validation by task type

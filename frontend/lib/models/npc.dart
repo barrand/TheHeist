@@ -98,11 +98,13 @@ class ChatMessage {
   final String text;
   final bool isPlayer;
   final DateTime timestamp;
+  final bool isOpening;
 
   const ChatMessage({
     required this.id,
     required this.text,
     required this.isPlayer,
     required this.timestamp,
+    this.isOpening = false,
   });
 }

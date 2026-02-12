@@ -88,6 +88,7 @@ class ConversationChatResponse(BaseModel):
     conversation_failed: bool = Field(default=False, description="True if suspicion hit 5")
     cooldown_until: Optional[float] = Field(None, description="Epoch timestamp when cooldown expires (if failed)")
     completed_tasks: List[str] = Field(default_factory=list, description="Task IDs that auto-completed from outcomes")
+    opening_given: bool = Field(default=False, description="True if the NPC just gave an opening hint (debug info)")
 
 
 class CooldownStatusResponse(BaseModel):
