@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_heist/core/theme/app_colors.dart';
 import 'package:the_heist/core/theme/app_dimensions.dart';
+import 'package:the_heist/core/app_config.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
 import 'package:the_heist/widgets/common/heist_secondary_button.dart';
 
@@ -75,8 +76,9 @@ class GameEndScreen extends StatelessWidget {
   }
   
   Widget _buildCrewImage() {
-    // TODO: Display generated crew celebration/failure image
-    // For now, show placeholder with role icons
+    final imageName = success ? 'crew_celebration_success.png' : 'crew_celebration_failure.png';
+    final imageUrl = '${AppConfig.backendUrl}/assets/images/$imageName';
+    
     return Container(
       height: 200,
       decoration: BoxDecoration(
@@ -87,32 +89,41 @@ class GameEndScreen extends StatelessWidget {
           width: 2,
         ),
       ),
-      child: Stack(
-        children: [
-          // Placeholder background pattern
-          Center(
+      clipBehavior: Clip.antiAlias,
+      child: Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          
+          // Loading placeholder
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  success ? Icons.celebration : Icons.warning_amber,
+                  size: 60,
+                  color: (success ? AppColors.success : AppColors.danger).withValues(alpha: 0.3),
+                ),
+                SizedBox(height: AppDimensions.spaceSM),
+                CircularProgressIndicator(
+                  color: success ? AppColors.success : AppColors.danger,
+                ),
+              ],
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          // Error fallback
+          return Center(
             child: Icon(
               success ? Icons.celebration : Icons.warning_amber,
               size: 80,
               color: (success ? AppColors.success : AppColors.danger).withValues(alpha: 0.3),
             ),
-          ),
-          // Overlay text until image generation is implemented
-          Center(
-            child: Container(
-              padding: EdgeInsets.all(AppDimensions.spaceMD),
-              child: Text(
-                success ? '🎉 THE CREW CELEBRATES 🎉' : '🚨 BUSTED 🚨',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: success ? AppColors.success : AppColors.danger,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

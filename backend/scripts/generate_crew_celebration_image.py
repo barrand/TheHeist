@@ -117,8 +117,9 @@ Group composition, dynamic poses, stylized illustration style, bold comic book a
     
     # Save the image
     if not output_file:
-        role_names = "_".join(role_ids)
-        output_file = Path('output') / f'crew_{scene_type}_{role_names}.png'
+        # Save to backend assets directory by default
+        assets_dir = Path(__file__).parent.parent / 'assets' / 'images'
+        output_file = assets_dir / f'crew_celebration_{scene_type}.png'
     else:
         output_file = Path(output_file)
     
@@ -203,7 +204,6 @@ if __name__ == '__main__':
         generate_crew_celebration_image(
             ['mastermind', 'safe_cracker', 'hacker'],
             success=True,
-            output_file='output/crew_celebration_test.png'
         )
         
         print("\n")
@@ -215,7 +215,6 @@ if __name__ == '__main__':
         generate_crew_celebration_image(
             ['mastermind', 'safe_cracker', 'hacker'],
             success=False,
-            output_file='output/crew_failure_test.png'
         )
         
         print("\n📝 Usage: python generate_crew_celebration_image.py <experience_file.md>")
