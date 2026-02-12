@@ -38,81 +38,97 @@ ROLE_DESIGNS = {
 }
 
 
-# 8 different celebration scenarios (NO alcohol or smoking)
+# 10 NEW celebration scenarios (NO alcohol or smoking) - 3 characters only
 CELEBRATION_VARIANTS = [
     {
-        "num": 1,
-        "name": "Rooftop Victory",
-        "setting": "urban rooftop at night, city lights twinkling below",
-        "action": "throwing arms up in triumph, high-fiving each other, big smiles and laughter, celebrating against skyline",
-        "mood": "vibrant purple neon city lights, golden victory glow, cyan skyline reflections",
-        "composition": "group huddle, slight low angle, celebrating against dramatic cityscape"
+        "num": 9,
+        "name": "Tropical Beach Victory",
+        "setting": "private tropical beach at sunset, white sand, palm trees swaying, turquoise water",
+        "action": "relaxed celebratory poses on beach, arms around each other, big genuine smiles, bare feet in sand",
+        "mood": "golden sunset glow, purple-orange sky, warm tropical atmosphere, peaceful victory",
+        "composition": "medium group shot, beach paradise backdrop, casual triumphant mood"
     },
     {
-        "num": 2,
-        "name": "Getaway Car Celebration",
-        "setting": "inside vintage getaway car speeding away, motion blur background",
-        "action": "high-fiving and fist-bumping enthusiastically, throwing stolen cash in air playfully, ecstatic expressions",
-        "mood": "golden hour lighting through car windows, purple shadows, warm triumphant glow",
-        "composition": "tight interior shot, characters packed together celebrating, money floating"
+        "num": 10,
+        "name": "Private Jet Luxury",
+        "setting": "inside luxury private jet cabin, leather seats, polished wood interior, champagne bucket visible but NOT being used",
+        "action": "lounging victoriously in jet seats, high-fiving across aisle, feet up, totally relaxed and triumphant",
+        "mood": "warm cabin lighting, golden accents, purple mood lighting, sophisticated wealth",
+        "composition": "interior jet shot showing all three, luxury and success on display"
     },
     {
-        "num": 3,
-        "name": "Hideout Victory",
-        "setting": "cozy underground hideout with dim mood lighting, brick walls, scattered heist equipment",
-        "action": "group fist bump in center, relaxed triumphant poses, genuine smiles and relief, celebrating success",
-        "mood": "warm amber lighting, purple accent lights, cozy victorious atmosphere",
-        "composition": "medium group shot around table with heist plans, intimate celebration mood"
+        "num": 11,
+        "name": "Limousine Getaway",
+        "setting": "inside stretch limousine back seat, tinted windows showing city lights outside, plush interior",
+        "action": "throwing hands up celebrating, leaning back in seats, laughing together, pure joy and relief",
+        "mood": "purple and cyan city lights through windows, golden interior lighting, energetic celebration",
+        "composition": "tight interior shot, all three visible in luxurious back seat, victorious energy"
     },
     {
-        "num": 4,
-        "name": "Dockside Escape",
-        "setting": "industrial dockside at night, shipping containers in background, water reflections",
-        "action": "group victory pose walking away from heist, confident swagger, looking back at camera with grins",
-        "mood": "dramatic purple and cyan dock lights, golden moonlight reflections on water, cinematic",
-        "composition": "wide action shot, walking toward camera, cool confident energy"
+        "num": 12,
+        "name": "Safe House Celebration",
+        "setting": "cozy crew safe house living room, comfortable furniture, heist plans on coffee table, home-like atmosphere",
+        "action": "casual group fist bump, sitting and standing together, genuine smiles of relief, celebrating like family",
+        "mood": "warm comfortable lighting, purple and amber tones, home-like victory atmosphere",
+        "composition": "medium interior shot, intimate celebration space, crew as family"
     },
     {
-        "num": 5,
-        "name": "Safe House Party",
-        "setting": "modern safe house apartment with floor-to-ceiling windows, night city view",
-        "action": "dancing and celebrating wildly, arms up in victory, genuine joy and relief, jumping with excitement",
-        "mood": "vibrant neon city glow through windows, purple and cyan party lighting, energetic atmosphere",
-        "composition": "dynamic action shot, mid-dance celebration, pure excitement"
+        "num": 13,
+        "name": "Victory Portrait",
+        "setting": "simple gradient background (dark purple to cyan), studio-style, no distractions",
+        "action": "confident victory poses facing camera, arms crossed or raised, fierce triumphant expressions, power stance",
+        "mood": "dramatic purple and cyan gradient background, golden rim lighting, heroic professional",
+        "composition": "clean professional group shot, all three clearly visible, iconic team pose"
     },
     {
-        "num": 6,
-        "name": "Warehouse Victory Huddle",
-        "setting": "industrial warehouse with dramatic overhead lighting, urban grit",
-        "action": "group huddle with hands stacked together in center, looking up at camera, fierce triumphant expressions",
-        "mood": "dramatic spotlight from above, purple shadows, golden rim lighting, heroic composition",
-        "composition": "low angle looking up, powerful team unity pose, dramatic lighting"
+        "num": 14,
+        "name": "Helicopter Escape",
+        "setting": "inside helicopter in flight, city skyline visible through windows, pilot visible in background",
+        "action": "celebrating in passenger seats, pointing down at city below, victorious gestures, exhilarated expressions",
+        "mood": "golden hour light through windows, purple city lights below, adrenaline and freedom",
+        "composition": "interior helicopter shot, city visible outside, escape and victory combined"
     },
     {
-        "num": 7,
-        "name": "Sunset Escape",
-        "setting": "elevated escape route at golden hour, urban skyline silhouetted against sunset",
-        "action": "silhouetted victory poses against sunset, raising arms high, celebrating freedom and success",
-        "mood": "brilliant golden sunset, purple and orange sky, cyan city lights just turning on, epic scale",
-        "composition": "wide cinematic shot, characters in triumphant silhouette, breathtaking backdrop"
+        "num": 15,
+        "name": "Rooftop Pool Party",
+        "setting": "luxury rooftop pool area at night, city skyline behind, lounge chairs and modern furniture",
+        "action": "celebrating poolside, jumping with excitement, arms raised high, silhouettes against city lights",
+        "mood": "vibrant purple and cyan city glow, pool water reflecting lights, party atmosphere",
+        "composition": "wide rooftop shot, pool and city as backdrop, energetic celebration"
     },
     {
-        "num": 8,
-        "name": "Victory Celebration",
-        "setting": "modern penthouse safe house with city skyline view, sleek urban interior",
-        "action": "group celebration with sparklers and confetti, victorious poses, arms raised in triumph, genuine joy",
-        "mood": "vibrant purple and cyan city lights through windows, golden sparkler light, luxurious victory vibes",
-        "composition": "glamorous celebration shot, wealth and success on display, vibrant energy"
+        "num": 16,
+        "name": "Art Gallery Heist Success",
+        "setting": "elegant art gallery at night, empty picture frames on walls, marble floors, dramatic lighting",
+        "action": "walking away from gallery together, looking back with grins, confident swagger, mission accomplished",
+        "mood": "dramatic gallery spotlights, purple shadows, golden art lighting, sophisticated setting",
+        "composition": "medium shot walking away, empty frames hint at successful heist, cool confidence"
+    },
+    {
+        "num": 17,
+        "name": "Urban Alley Victory",
+        "setting": "stylish urban alley with street art murals, neon signs, brick walls with graffiti",
+        "action": "leaning against wall together, cool relaxed poses, fist bumps and high-fives, street-smart celebration",
+        "mood": "vibrant neon signs (purple and cyan), urban glow, edgy street atmosphere",
+        "composition": "street photography style, graffiti backdrop, authentic urban victory"
+    },
+    {
+        "num": 18,
+        "name": "Penthouse Overlook",
+        "setting": "luxury penthouse balcony overlooking city at night, glass railing, modern architecture",
+        "action": "standing at railing celebrating, arms spread wide, taking in the view they've earned, victorious silhouettes",
+        "mood": "dramatic city lights below, purple-orange sky, golden penthouse lighting, on top of world",
+        "composition": "balcony shot from inside looking out, city sprawl below, kings of the city"
     }
 ]
 
 
 def generate_celebration_variant(variant_info, role_ids=['mastermind', 'safe_cracker', 'hacker']):
-    """Generate a celebration image variant."""
+    """Generate a celebration image variant with 3 characters."""
     
-    # Build detailed character descriptions using role designs
+    # Build detailed character descriptions using role designs - ONLY 3 CHARACTERS
     crew_members = []
-    for role_id in role_ids[:4]:
+    for role_id in role_ids[:3]:  # Changed from [:4] to [:3]
         if role_id in ROLE_DESIGNS:
             design = ROLE_DESIGNS[role_id]
             role_name = role_id.replace('_', ' ').title()
@@ -124,10 +140,10 @@ def generate_celebration_variant(variant_info, role_ids=['mastermind', 'safe_cra
     
     crew_description = ". ".join(crew_members)
     
-    # Build the prompt - NO ALCOHOL OR SMOKING
+    # Build the prompt - NO ALCOHOL OR SMOKING, 3 CHARACTERS ONLY
     prompt = f"""{HEIST_ART_STYLE}.
 
-Group shot of heist crew celebrating successful heist with these specific characters:
+Group shot of THREE heist crew members celebrating successful heist with these specific characters:
 {crew_description}.
 
 Setting: {variant_info['setting']}.
@@ -138,8 +154,8 @@ Lighting and mood: {variant_info['mood']}.
 
 Camera composition: {variant_info['composition']}.
 
-IMPORTANT: NO alcohol (no wine, beer, champagne, cocktails), NO smoking (no cigarettes, cigars, vaping), NO text or words visible anywhere in image.
-All characters visible, facing toward camera, stylized illustration style, bold comic book aesthetic, vibrant heist game art."""
+IMPORTANT: EXACTLY 3 characters visible, NO MORE. NO alcohol (no wine, beer, champagne, cocktails), NO smoking (no cigarettes, cigars, vaping), NO text or words visible anywhere in image.
+All three characters visible, facing toward camera, stylized illustration style, bold comic book aesthetic, vibrant heist game art."""
     
     print(f"\n{'='*60}")
     print(f"VARIANT {variant_info['num']}: {variant_info['name']}")
@@ -181,8 +197,8 @@ All characters visible, facing toward camera, stylized illustration style, bold 
 
 
 if __name__ == '__main__':
-    print("🎨 Generating 8 celebration image variants...")
-    print("Each with unique setting, composition, and mood for review\n")
+    print("🎨 Generating 10 NEW celebration image variants...")
+    print("Each with 3 characters, unique setting, composition, and mood for review\n")
     
     for variant in CELEBRATION_VARIANTS:
         try:
@@ -195,5 +211,5 @@ if __name__ == '__main__':
     print("✅ ALL VARIANTS GENERATED!")
     print(f"{'='*60}")
     print(f"📁 Location: backend/scripts/output/static_images/")
-    print(f"📝 Files: crew_celebration_success_1.png through crew_celebration_success_8.png")
-    print(f"\n💡 Review the images and rename your favorite to crew_celebration_success.png")
+    print(f"📝 Files: crew_celebration_success_9.png through crew_celebration_success_18.png")
+    print(f"\n💡 Review the images and keep your favorites alongside the 4 you already selected")
