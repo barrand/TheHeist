@@ -18,12 +18,12 @@ vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details, NOT photorealistic,
 set in year 2020, contemporary setting (not futuristic)"""
 
-# Character descriptions from generate_role_images_gendered.py
+# Character descriptions from generate_role_images_gendered.py (NO screens/tablets/laptops)
 ROLE_DESIGNS = {
     "mastermind": {
         "ethnicity": "distinguished 40-year-old Indian",
         "clothing": "tailored suit with rolled-up sleeves, tactical vest over dress shirt",
-        "details": "holding tablet showing heist blueprints, wearing smart glasses",
+        "details": "wearing smart glasses, confident leadership presence",
     },
     "safe_cracker": {
         "ethnicity": "Middle Eastern",
@@ -33,92 +33,92 @@ ROLE_DESIGNS = {
     "hacker": {
         "ethnicity": "young Korean",
         "clothing": "tech hoodie with cyberpunk patches, fingerless gloves, AR glasses",
-        "details": "neon underglow on equipment, laptop visible",
+        "details": "neon underglow on equipment, tech-focused appearance",
     }
 }
 
 
-# 10 NEW celebration scenarios (NO alcohol or smoking) - 3 characters only
+# 10 NEW international/travel celebration scenarios - 3 characters only
 CELEBRATION_VARIANTS = [
     {
-        "num": 9,
-        "name": "Tropical Beach Victory",
-        "setting": "private tropical beach at sunset, white sand, palm trees swaying, turquoise water",
-        "action": "relaxed celebratory poses on beach, arms around each other, big genuine smiles, bare feet in sand",
-        "mood": "golden sunset glow, purple-orange sky, warm tropical atmosphere, peaceful victory",
-        "composition": "medium group shot, beach paradise backdrop, casual triumphant mood"
+        "num": 19,
+        "name": "Dubai Burj Khalifa",
+        "setting": "luxury Dubai penthouse with Burj Khalifa visible through floor-to-ceiling windows, modern Arabian architecture",
+        "action": "celebrating against iconic Dubai skyline, arms raised triumphantly, exhilarated expressions, on top of the world",
+        "mood": "golden desert sunset glow, purple city lights, cyan modern LED lighting, opulent victory",
+        "composition": "wide shot with Burj Khalifa prominent, three celebrating against iconic backdrop"
     },
     {
-        "num": 10,
-        "name": "Private Jet Luxury",
-        "setting": "inside luxury private jet cabin, leather seats, polished wood interior, champagne bucket visible but NOT being used",
-        "action": "lounging victoriously in jet seats, high-fiving across aisle, feet up, totally relaxed and triumphant",
-        "mood": "warm cabin lighting, golden accents, purple mood lighting, sophisticated wealth",
-        "composition": "interior jet shot showing all three, luxury and success on display"
+        "num": 20,
+        "name": "Mexico City Colorful Streets",
+        "setting": "vibrant Mexico City street with colorful colonial buildings, papel picado banners overhead, festive atmosphere",
+        "action": "dancing celebration in street, arms up with joy, genuine excitement, cultural victory celebration",
+        "mood": "warm golden evening light, vibrant colors (purple, orange, cyan), festive energy",
+        "composition": "street celebration shot, colorful buildings as backdrop, authentic Mexican setting"
     },
     {
-        "num": 11,
-        "name": "Limousine Getaway",
-        "setting": "inside stretch limousine back seat, tinted windows showing city lights outside, plush interior",
-        "action": "throwing hands up celebrating, leaning back in seats, laughing together, pure joy and relief",
-        "mood": "purple and cyan city lights through windows, golden interior lighting, energetic celebration",
-        "composition": "tight interior shot, all three visible in luxurious back seat, victorious energy"
+        "num": 21,
+        "name": "Luxury Train Orient Express",
+        "setting": "inside elegant vintage train cabin, art deco interior, passing countryside visible through window",
+        "action": "lounging victoriously in plush train seats, toasting with glasses raised (non-alcoholic), relaxed triumph",
+        "mood": "warm vintage golden lighting, purple velvet seats, classic luxury atmosphere",
+        "composition": "intimate train cabin interior, all three visible in classic travel setting"
     },
     {
-        "num": 12,
-        "name": "Safe House Celebration",
-        "setting": "cozy crew safe house living room, comfortable furniture, heist plans on coffee table, home-like atmosphere",
-        "action": "casual group fist bump, sitting and standing together, genuine smiles of relief, celebrating like family",
-        "mood": "warm comfortable lighting, purple and amber tones, home-like victory atmosphere",
-        "composition": "medium interior shot, intimate celebration space, crew as family"
+        "num": 22,
+        "name": "Tokyo Shibuya Crossing",
+        "setting": "overlooking famous Shibuya crossing at night, neon signs everywhere, bustling Tokyo energy",
+        "action": "celebrating on elevated walkway, pointing at city below, excited gestures, cyberpunk victory",
+        "mood": "vibrant neon lights (purple, cyan, pink), futuristic glow, high-energy Tokyo atmosphere",
+        "composition": "elevated shot with crossing visible below, iconic Tokyo neon backdrop"
     },
     {
-        "num": 13,
-        "name": "Victory Portrait",
-        "setting": "simple gradient background (dark purple to cyan), studio-style, no distractions",
-        "action": "confident victory poses facing camera, arms crossed or raised, fierce triumphant expressions, power stance",
-        "mood": "dramatic purple and cyan gradient background, golden rim lighting, heroic professional",
-        "composition": "clean professional group shot, all three clearly visible, iconic team pose"
+        "num": 23,
+        "name": "Paris Eiffel Tower Rooftop",
+        "setting": "Parisian rooftop terrace at night, Eiffel Tower illuminated in background, classic French architecture",
+        "action": "arms around each other celebrating, looking toward Eiffel Tower, romantic victory moment",
+        "mood": "golden Eiffel Tower lights, purple Parisian night sky, classic European elegance",
+        "composition": "rooftop shot with Eiffel Tower prominent, three celebrating in foreground"
     },
     {
-        "num": 14,
-        "name": "Helicopter Escape",
-        "setting": "inside helicopter in flight, city skyline visible through windows, pilot visible in background",
-        "action": "celebrating in passenger seats, pointing down at city below, victorious gestures, exhilarated expressions",
-        "mood": "golden hour light through windows, purple city lights below, adrenaline and freedom",
-        "composition": "interior helicopter shot, city visible outside, escape and victory combined"
+        "num": 24,
+        "name": "Rio de Janeiro Beach",
+        "setting": "Copacabana beach at golden hour, Sugarloaf Mountain visible, tropical Brazilian coast",
+        "action": "celebrating on beach, jumping with excitement, arms raised, genuine joy and freedom",
+        "mood": "warm Brazilian sunset, purple-orange sky, tropical celebration energy",
+        "composition": "beach shot with iconic Rio mountains in background, energetic celebration"
     },
     {
-        "num": 15,
-        "name": "Rooftop Pool Party",
-        "setting": "luxury rooftop pool area at night, city skyline behind, lounge chairs and modern furniture",
-        "action": "celebrating poolside, jumping with excitement, arms raised high, silhouettes against city lights",
-        "mood": "vibrant purple and cyan city glow, pool water reflecting lights, party atmosphere",
-        "composition": "wide rooftop shot, pool and city as backdrop, energetic celebration"
+        "num": 25,
+        "name": "Swiss Alps Cable Car",
+        "setting": "inside glass cable car high above Swiss Alps, snow-capped peaks visible, dramatic mountain scenery",
+        "action": "celebrating in cable car, pointing at peaks below, exhilarated by height and success",
+        "mood": "bright alpine sunlight, purple mountain shadows, cyan sky, breathtaking scale",
+        "composition": "interior cable car shot, mountains visible through glass, elevated victory"
     },
     {
-        "num": 16,
-        "name": "Art Gallery Heist Success",
-        "setting": "elegant art gallery at night, empty picture frames on walls, marble floors, dramatic lighting",
-        "action": "walking away from gallery together, looking back with grins, confident swagger, mission accomplished",
-        "mood": "dramatic gallery spotlights, purple shadows, golden art lighting, sophisticated setting",
-        "composition": "medium shot walking away, empty frames hint at successful heist, cool confidence"
+        "num": 26,
+        "name": "Singapore Marina Bay",
+        "setting": "Marina Bay Sands rooftop infinity pool area, Singapore skyline at night, futuristic cityscape",
+        "action": "celebrating poolside at iconic location, arms raised against skyline, modern luxury victory",
+        "mood": "vibrant purple and cyan city lights, golden pool lighting, futuristic atmosphere",
+        "composition": "iconic Singapore backdrop, three celebrating at world-famous location"
     },
     {
-        "num": 17,
-        "name": "Urban Alley Victory",
-        "setting": "stylish urban alley with street art murals, neon signs, brick walls with graffiti",
-        "action": "leaning against wall together, cool relaxed poses, fist bumps and high-fives, street-smart celebration",
-        "mood": "vibrant neon signs (purple and cyan), urban glow, edgy street atmosphere",
-        "composition": "street photography style, graffiti backdrop, authentic urban victory"
+        "num": 27,
+        "name": "New York Times Square",
+        "setting": "Times Square at night, massive LED billboards everywhere, quintessential NYC energy",
+        "action": "celebrating in heart of Times Square, arms up in victory, surrounded by lights and energy",
+        "mood": "vibrant billboard lights (purple, cyan, gold), electric NYC atmosphere, urban triumph",
+        "composition": "wide shot capturing Times Square chaos, three celebrating in iconic location"
     },
     {
-        "num": 18,
-        "name": "Penthouse Overlook",
-        "setting": "luxury penthouse balcony overlooking city at night, glass railing, modern architecture",
-        "action": "standing at railing celebrating, arms spread wide, taking in the view they've earned, victorious silhouettes",
-        "mood": "dramatic city lights below, purple-orange sky, golden penthouse lighting, on top of world",
-        "composition": "balcony shot from inside looking out, city sprawl below, kings of the city"
+        "num": 28,
+        "name": "Venice Gondola Night",
+        "setting": "in ornate Venetian gondola at night, historic canal buildings and bridges, romantic Italian setting",
+        "action": "relaxed celebration in gondola, casual poses, genuine relief and happiness, floating victory",
+        "mood": "warm golden canal lights, purple evening sky, romantic Italian ambiance",
+        "composition": "gondola shot with Venice architecture, intimate celebration on water"
     }
 ]
 
@@ -197,8 +197,8 @@ All three characters visible, facing toward camera, stylized illustration style,
 
 
 if __name__ == '__main__':
-    print("🎨 Generating 10 NEW celebration image variants...")
-    print("Each with 3 characters, unique setting, composition, and mood for review\n")
+    print("🎨 Generating 10 NEW international celebration variants...")
+    print("Each with 3 characters in iconic world locations\n")
     
     for variant in CELEBRATION_VARIANTS:
         try:
@@ -211,5 +211,5 @@ if __name__ == '__main__':
     print("✅ ALL VARIANTS GENERATED!")
     print(f"{'='*60}")
     print(f"📁 Location: backend/scripts/output/static_images/")
-    print(f"📝 Files: crew_celebration_success_9.png through crew_celebration_success_18.png")
-    print(f"\n💡 Review the images and keep your favorites alongside the 4 you already selected")
+    print(f"📝 Files: crew_celebration_success_19.png through crew_celebration_success_28.png")
+    print(f"\n💡 Review the images and keep narrowing down to your favorites")
