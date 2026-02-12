@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generate 8 different crew celebration image variants for review.
-Each with unique setting, composition, and mood.
+Generate celebration image variants with RANDOM crew characters.
+Each variant uses 3 randomly selected characters from all 12 roles.
 Uses specific character descriptions from role designs.
 """
 
@@ -9,6 +9,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY
+import random
 
 # Art style EXACTLY matching individual role images
 HEIST_ART_STYLE = """2D illustration, comic book art style,
@@ -18,22 +19,67 @@ vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details, NOT photorealistic,
 set in year 2020, contemporary setting (not futuristic)"""
 
-# Character descriptions from generate_role_images_gendered.py (NO screens/tablets/laptops)
+# ALL 12 character descriptions (NO glasses/eyewear, NO screens/tablets/laptops)
 ROLE_DESIGNS = {
     "mastermind": {
         "ethnicity": "distinguished 40-year-old Indian",
         "clothing": "tailored suit with rolled-up sleeves, tactical vest over dress shirt",
-        "details": "wearing smart glasses, confident leadership presence",
+        "details": "confident leadership presence",
     },
     "safe_cracker": {
         "ethnicity": "Middle Eastern",
-        "clothing": "worn leather jacket, tool belt with precision instruments, magnifying headset",
-        "details": "lockpicking tools visible in belt",
+        "clothing": "worn leather jacket, tool belt with precision instruments",
+        "details": "lockpicking tools visible in belt, stethoscope around neck",
     },
     "hacker": {
         "ethnicity": "young Korean",
-        "clothing": "tech hoodie with cyberpunk patches, fingerless gloves, AR glasses",
-        "details": "neon underglow on equipment, tech-focused appearance",
+        "clothing": "tech hoodie with cyberpunk patches, fingerless gloves",
+        "details": "neon underglow visible, tech-focused appearance",
+    },
+    "driver": {
+        "ethnicity": "Latina/Latino",
+        "clothing": "leather racing jacket with sponsor patches, driving gloves",
+        "details": "holding car keys, radio earpiece visible, racing watch on wrist",
+    },
+    "insider": {
+        "ethnicity": "professional Black",
+        "clothing": "crisp business suit, company ID badge displayed, polished appearance",
+        "details": "holding briefcase and access card, perfectly groomed",
+    },
+    "grifter": {
+        "ethnicity": "charismatic European",
+        "clothing": "expensive designer suit, silk pocket square, luxury watch",
+        "details": "multiple fake badges and IDs visible in pocket, perfectly styled",
+    },
+    "muscle": {
+        "ethnicity": "imposing Polynesian with muscular build",
+        "clothing": "tactical gear, reinforced vest, fingerless tactical gloves, combat boots",
+        "details": "ear piece visible, utility belt with tactical equipment",
+    },
+    "lookout": {
+        "ethnicity": "sharp-eyed young adult South Asian",
+        "clothing": "tactical urban wear, multiple pockets, binoculars around neck",
+        "details": "holding radio, scanning surroundings alertly",
+    },
+    "fence": {
+        "ethnicity": "street-smart 40-year-old white",
+        "clothing": "vintage jacket covered in pins and patches, multiple rings, layers of necklaces",
+        "details": "examining jewel with magnifying loupe, street-smart appearance",
+    },
+    "cat_burglar": {
+        "ethnicity": "agile Japanese",
+        "clothing": "form-fitting black stealth suit, climbing harness, soft-soled boots",
+        "details": "grappling equipment visible, climbing gloves",
+    },
+    "cleaner": {
+        "ethnicity": "meticulous Scandinavian",
+        "clothing": "professional dark suit with latex gloves tucked in pocket",
+        "details": "holding UV flashlight, spray bottle visible",
+    },
+    "pickpocket": {
+        "ethnicity": "street-smart young adult Southeast Asian",
+        "clothing": "inconspicuous casual street clothes, light jacket with hidden pockets, sneakers",
+        "details": "hands showing subtle sleight-of-hand gesture, innocent appearance",
     }
 }
 
@@ -123,22 +169,29 @@ CELEBRATION_VARIANTS = [
 ]
 
 
-def generate_celebration_variant(variant_info, role_ids=['mastermind', 'safe_cracker', 'hacker']):
-    """Generate a celebration image variant with 3 characters."""
+def generate_celebration_variant(variant_info, role_ids=None):
+    """Generate a celebration image variant with 3 RANDOM characters."""
+    
+    # Randomly select 3 different roles if not provided
+    if role_ids is None:
+        role_ids = random.sample(list(ROLE_DESIGNS.keys()), 3)
     
     # Build detailed character descriptions using role designs - ONLY 3 CHARACTERS
     crew_members = []
-    for role_id in role_ids[:3]:  # Changed from [:4] to [:3]
+    for role_id in role_ids[:3]:
         if role_id in ROLE_DESIGNS:
             design = ROLE_DESIGNS[role_id]
             role_name = role_id.replace('_', ' ').title()
-            # Mix male and female for variety
-            gender = "man" if role_id == "mastermind" else ("woman" if role_id == "hacker" else "person")
+            # Randomly choose gender for each character
+            gender = random.choice(["man", "woman"])
             ethnicity_with_gender = f"{design['ethnicity']} {gender}"
             char_desc = f"{role_name} - {ethnicity_with_gender}, wearing {design['clothing']}, {design['details']}"
             crew_members.append(char_desc)
     
     crew_description = ". ".join(crew_members)
+    
+    # Print which roles were selected for this variant
+    print(f"🎭 Selected roles: {', '.join(role_ids)}")
     
     # Build the prompt - NO ALCOHOL OR SMOKING, 3 CHARACTERS ONLY
     prompt = f"""{HEIST_ART_STYLE}.
@@ -197,8 +250,12 @@ All three characters visible, facing toward camera, stylized illustration style,
 
 
 if __name__ == '__main__':
-    print("🎨 Generating 10 NEW international celebration variants...")
-    print("Each with 3 characters in iconic world locations\n")
+    print("🎨 Generating 10 NEW celebration variants with RANDOM characters...")
+    print("Each variant will have 3 randomly selected crew members from all 12 roles\n")
+    print("🎲 Characters will be different in each image for variety!\n")
+    
+    # Set random seed for reproducibility during this run, but different each time script runs
+    random.seed()
     
     for variant in CELEBRATION_VARIANTS:
         try:
@@ -212,4 +269,5 @@ if __name__ == '__main__':
     print(f"{'='*60}")
     print(f"📁 Location: backend/scripts/output/static_images/")
     print(f"📝 Files: crew_celebration_success_19.png through crew_celebration_success_28.png")
-    print(f"\n💡 Review the images and keep narrowing down to your favorites")
+    print(f"\n💡 Each image has different random crew members!")
+    print(f"💡 NO glasses/eyewear, NO screens/tablets/laptops in character descriptions")
