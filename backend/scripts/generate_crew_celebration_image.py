@@ -58,7 +58,7 @@ def generate_crew_celebration_image(role_ids, success=True, output_file=None):
     
     if success:
         # Success/celebration scene
-        scene_type = "celebration"
+        scene_type = "success"
         mood = "triumphant and joyful"
         action = """celebrating successful heist together,
         high-fiving, fist bumps, raising arms in victory,
