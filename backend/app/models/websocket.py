@@ -102,6 +102,7 @@ class RoleSelectedMessage(BaseModel):
     player_id: str = Field(..., description="Player who selected")
     player_name: str = Field(..., description="Player's name")
     role: str = Field(..., description="Selected role")
+    difficulty: str = Field(default="easy", description="Player's difficulty setting")
 
 
 class GameStartedMessage(BaseModel):
@@ -152,6 +153,8 @@ class GameEndedMessage(BaseModel):
     type: Literal["game_ended"] = "game_ended"
     result: Literal["success", "failure"] = Field(..., description="Did team win?")
     summary: str = Field(..., description="End game summary text")
+    objective: Optional[str] = Field(None, description="Original heist objective")
+    scenario: Optional[str] = Field(None, description="Scenario name")
 
 
 class ErrorMessage(BaseModel):

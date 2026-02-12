@@ -2466,6 +2466,166 @@ Icon size:              24px
 
 ---
 
+## Screen 16: Game End Screen (Victory)
+
+**Purpose**: Celebrate successful heist completion with the crew
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│  [Crew Celebration Image]       │
+│  (Generated image of 3-4 crew   │
+│   members in celebratory pose)  │
+│                                 │
+├─────────────────────────────────┤
+│                                 │
+│    🎉 HEIST COMPLETE! 🎉        │
+│                                 │
+│  "Another job well done for     │
+│   the crew. The Eye of Orion    │
+│   is yours, and the city will   │
+│   never know what hit them."    │
+│                                 │
+├─────────────────────────────────┤
+│                                 │
+│  THE STORY                      │
+│  ─────────────────────          │
+│  The crew set out to steal the  │
+│  legendary Eye of Orion jewels  │
+│  from the museum's high-security│
+│  vault during the annual gala.  │
+│                                 │
+│  Through careful planning,      │
+│  social engineering, and expert │
+│  safe-cracking, the team pulled │
+│  off the impossible and escaped │
+│  with $12 million in priceless  │
+│  gemstones.                     │
+│                                 │
+│  THE CREW                       │
+│  ─────────────────────          │
+│  • [Player 1] as Mastermind     │
+│  • [Player 2] as Safe Cracker   │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   🏠 Return to Menu       │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   🔄 Play Again           │ │
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Crew celebration image (generated AI art, shows 3-4 role characters together)
+- [ ] Success headline with celebration emojis
+- [ ] Flavor text (heist-themed congratulations message)
+- [ ] Story summary section (brief recap of the heist objective and outcome)
+- [ ] The Crew section (list of players and their roles)
+- [ ] "Return to Menu" button (primary CTA)
+- [ ] "Play Again" button (secondary, if host)
+
+**Visual Design:**
+- Background: Dark with subtle celebration confetti/sparkles overlay
+- Accent: Gold/success green highlights
+- Image: Full-width at top (aspect ratio ~16:9), celebrates the crew's roles
+- Typography: Bold headline, readable story text
+- Spacing: Generous padding around all elements
+- Animation: Subtle confetti or shimmer effect in background
+
+**Interaction:**
+1. Game ends with success
+2. Show crew celebration image generation loading state (1-2 seconds)
+3. Animate in celebration message
+4. Display story summary and crew list
+5. Buttons fade in last
+6. "Return to Menu" disconnects WebSocket and returns to landing page
+7. "Play Again" (host only) creates new room with same scenario
+
+**Success Message Variations** (randomly selected):
+- "Another job well done for the crew. [Target] is yours, and the city will never know what hit them."
+- "Clean getaway, no traces left behind. The crew strikes again."
+- "Perfect execution. [Target] secured, and not a single alarm tripped."
+- "They'll be talking about this heist for years. Well done, crew."
+- "In and out, just like the plan. The crew doesn't miss."
+
+---
+
+## Screen 17: Game End Screen (Failure)
+
+**Purpose**: Show failed heist outcome with option to retry
+
+### UI Elements:
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│  [Crew Caught Image]            │
+│  (Generated image of crew       │
+│   members in custody/retreat)   │
+│                                 │
+├─────────────────────────────────┤
+│                                 │
+│    ❌ HEIST FAILED ❌           │
+│                                 │
+│  "The crew got sloppy. The      │
+│   guards were tipped off and    │
+│   the heist fell apart."        │
+│                                 │
+├─────────────────────────────────┤
+│                                 │
+│  WHAT WENT WRONG                │
+│  ─────────────────────          │
+│  [Backend-generated summary     │
+│   of what caused the failure:   │
+│   time ran out, suspicion too   │
+│   high, critical task missed]   │
+│                                 │
+│  THE CREW                       │
+│  ─────────────────────          │
+│  • [Player 1] as Mastermind     │
+│  • [Player 2] as Safe Cracker   │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   🏠 Return to Menu       │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │   🔄 Try Again            │ │
+│  └───────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Crew failure image (police lights, retreat scene, etc.)
+- [ ] Failure headline with warning icon
+- [ ] Flavor text (heist-themed failure message)
+- [ ] "What Went Wrong" section (backend-provided failure reason)
+- [ ] The Crew section (list of players and their roles)
+- [ ] "Return to Menu" button (primary CTA)
+- [ ] "Try Again" button (secondary, if host)
+
+**Visual Design:**
+- Background: Dark with red/warning color accents
+- Accent: Red/danger color for failure state
+- Image: Full-width at top, dramatic failure scene
+- Typography: Clear failure message, instructive text
+- No celebration effects, more somber tone
+
+**Failure Message Variations** (randomly selected):
+- "The crew got sloppy. The guards were tipped off and the heist fell apart."
+- "Sirens in the distance. Time to scatter. Better luck next time, crew."
+- "The plan fell apart. Sometimes even the best crews make mistakes."
+- "Busted. The crew will have to lay low for a while."
+- "Not every heist goes as planned. Regroup and try again."
+
+---
+
 ## 🚀 Next Steps
 
 1. Review these mockups

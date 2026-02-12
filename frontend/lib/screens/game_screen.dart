@@ -7,6 +7,7 @@ import 'package:the_heist/widgets/common/top_toast.dart';
 import 'package:the_heist/models/item.dart';
 import 'package:the_heist/models/npc.dart';
 import 'package:the_heist/screens/npc_conversation_screen.dart';
+import 'package:the_heist/screens/game_end_screen.dart';
 
 /// Game screen where players complete their tasks
 class GameScreen extends StatefulWidget {
@@ -263,7 +264,7 @@ class _GameScreenState extends State<GameScreen> {
     }
     
     // Build objectives from player's relevant incomplete tasks (legacy, passed but not displayed)
-    final relevantTypes = {'discovery', 'npc_llm', 'search', 'explore'};
+    final relevantTypes = {'npc_llm', 'search', 'explore'};
     final npcObjectives = _myTasks
         .where((task) => 
             relevantTypes.contains(task['type']) && 
@@ -301,7 +302,7 @@ class _GameScreenState extends State<GameScreen> {
   }
   
   void _manualCompleteTask(String taskId) {
-    // For manual-complete types only (INFO_SHARE, DISCOVERY, MINIGAME placeholder)
+    // For manual-complete types only (INFO_SHARE, MINIGAME placeholder)
     widget.wsService.completeTask(taskId);
     
     setState(() {
@@ -340,19 +341,30 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     if (_gameEnded) {
-      return _buildGameEndedScreen();
+      return GameEndScreen(
+        success: _gameResult == 'success',
+        summary: _gameSummary,
+        scenario: widget.scenario,
+        objective: widget.objective,
+        players: _allPlayers,
+        onReturnToMenu: () {
+          widget.wsService.disconnect();
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        },
+        onPlayAgain: null, // TODO: Add play again functionality
+      );
     }
     
     // Group tasks by location
-    // Tasks at current location OR tasks that can be done anywhere (discovery, info_share)
+    // Tasks at current location OR tasks that can be done anywhere (info_share)
     final tasksHere = _myTasks.where((t) {
       if (t['status'] == 'completed') return false;
       
       final location = t['location'] as String?;
       final type = t['type'] as String?;
       
-      // Discovery and info_share tasks can be done from anywhere
-      if (type == 'discovery' || type == 'info_share') return true;
+      // Info_share tasks can be done from anywhere
+      if (type == 'info_share') return true;
       
       // Other tasks must be at specific location
       return location == _currentLocation;
@@ -364,8 +376,8 @@ class _GameScreenState extends State<GameScreen> {
       final location = t['location'] as String?;
       final type = t['type'] as String?;
       
-      // Discovery and info_share are never "elsewhere"
-      if (type == 'discovery' || type == 'info_share') return false;
+      // Info_share is never "elsewhere"
+      if (type == 'info_share') return false;
       
       return location != _currentLocation;
     }).toList();
@@ -971,6 +983,7 @@ class _GameScreenState extends State<GameScreen> {
                         setState(() {
                           _currentLocation = location;
                         });
+                        widget.wsService.moveLocation(location);
                         _showSnackBar('Traveled to $location', color: AppColors.success);
                       },
                       style: ElevatedButton.styleFrom(
@@ -1022,8 +1035,8 @@ class _GameScreenState extends State<GameScreen> {
     final bool isAvailable = status == 'available';
     final bool isCompleted = status == 'completed';
     
-    // Gray out if not at current location (except discovery/info_share which are location-agnostic)
-    final bool isLocationAgnostic = type == 'discovery' || type == 'info_share';
+    // Gray out if not at current location (except info_share which are location-agnostic)
+    final bool isLocationAgnostic = type == 'info_share';
     final bool isGrayedOut = !isAtCurrentLocation && !isCompleted && !isLocationAgnostic;
     
     return Container(
@@ -1169,7 +1182,7 @@ class _GameScreenState extends State<GameScreen> {
   }) {
     final String type = task['type'] ?? 'minigame';
     final bool isCompleted = (task['status'] ?? 'locked') == 'completed';
-    final bool isLocationAgnostic = type == 'discovery' || type == 'info_share';
+    final bool isLocationAgnostic = type == 'info_share';
     final bool canAct = isAvailable && (isAtCurrentLocation || isLocationAgnostic) && !isCompleted;
     
     switch (type) {
@@ -1183,8 +1196,6 @@ class _GameScreenState extends State<GameScreen> {
         return _buildInfoShareTaskContent(task, canAct: canAct);
       case 'handoff':
         return _buildHandoffTaskContent(task, canAct: canAct);
-      case 'discovery':
-        return _buildDiscoveryTaskContent(task, canAct: canAct);
       default:
         return SizedBox.shrink();
     }
@@ -1255,32 +1266,71 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
   
-  /// INFO_SHARE task: confirm shared button
+  /// INFO_SHARE task: show intel details + confirm shared button
   Widget _buildInfoShareTaskContent(Map<String, dynamic> task, {required bool canAct}) {
     if (!canAct) return SizedBox.shrink();
     
     final taskId = task['id'] ?? '';
+    final detailDescription = task['detail_description'] as String? ?? '';
     
     return Padding(
       padding: EdgeInsets.only(top: AppDimensions.spaceSM),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () => _manualCompleteTask(taskId),
-          icon: Icon(Icons.check, size: 16),
-          label: Text(
-            'Confirm Shared',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Show intel details so the player knows what to share
+          if (detailDescription.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(AppDimensions.spaceSM),
+              decoration: BoxDecoration(
+                color: AppColors.accentPrimary.withAlpha(20),
+                borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+                border: Border.all(
+                  color: AppColors.accentPrimary.withAlpha(60),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: AppColors.accentPrimary),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      detailDescription,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: AppDimensions.spaceSM),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _manualCompleteTask(taskId),
+              icon: Icon(Icons.check, size: 16),
+              label: Text(
+                'Confirm Shared',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                padding: EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
           ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.success,
-            padding: EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -1290,88 +1340,6 @@ class _GameScreenState extends State<GameScreen> {
     return SizedBox.shrink();
   }
   
-  /// DISCOVERY task: mark complete button
-  Widget _buildDiscoveryTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    if (!canAct) return SizedBox.shrink();
-    
-    final taskId = task['id'] ?? '';
-    
-    return Padding(
-      padding: EdgeInsets.only(top: AppDimensions.spaceSM),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () => _manualCompleteTask(taskId),
-          icon: Icon(Icons.check, size: 16),
-          label: Text(
-            'Mark Complete',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.accentPrimary,
-            padding: EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildGameEndedScreen() {
-    final bool won = _gameResult == 'success';
-    
-    return Scaffold(
-      backgroundColor: AppColors.bgPrimary,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(AppDimensions.space2XL),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  won ? Icons.celebration : Icons.error_outline,
-                  size: 100,
-                  color: won ? AppColors.success : AppColors.danger,
-                ),
-                SizedBox(height: AppDimensions.spaceLG),
-                Text(
-                  won ? '🎉 SUCCESS!' : '❌ FAILED',
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: won ? AppColors.success : AppColors.danger,
-                  ),
-                ),
-                SizedBox(height: AppDimensions.spaceMD),
-                if (_gameSummary != null)
-                  Text(
-                    _gameSummary!,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                SizedBox(height: AppDimensions.spaceXL),
-                HeistPrimaryButton(
-                  text: 'Return to Lobby',
-                  onPressed: () {
-                    widget.wsService.disconnect();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
-                  icon: Icons.home,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
   
   // Search current room
   void _searchRoom() {
