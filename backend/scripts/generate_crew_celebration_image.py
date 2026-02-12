@@ -34,12 +34,11 @@ def load_role_descriptions():
     return {role['role_id']: role['description'] for role in data['roles']}
 
 
-def generate_crew_celebration_image(role_ids, success=True, output_file=None):
-    """Generate crew celebration (or failure) image using Imagen 4.0.
+def generate_crew_celebration_image(role_ids, output_file=None):
+    """Generate crew celebration image using Imagen 4.0.
     
     Args:
         role_ids: List of role IDs (e.g., ['mastermind', 'safe_cracker', 'hacker'])
-        success: True for celebration, False for failure/caught scene
         output_file: Custom output path
     """
     
@@ -56,31 +55,18 @@ def generate_crew_celebration_image(role_ids, success=True, output_file=None):
     
     crew_description = ", ".join(crew_members)
     
-    if success:
-        # Success/celebration scene
-        scene_type = "success"
-        mood = "triumphant and joyful"
-        action = """celebrating successful heist together,
-        high-fiving, fist bumps, raising arms in victory,
-        big smiles and laughter, victorious poses,
-        sparkle effects and confetti in background,
-        golden hour lighting, heroic composition"""
-        color_mood = "vibrant purple lighting, golden yellow accents, cyan highlights, triumphant atmosphere"
-    else:
-        # Failure/caught scene
-        scene_type = "failure"
-        mood = "defeated but defiant"
-        action = """looking frustrated after failed heist,
-        hands up in surrender or running away,
-        police lights flashing in background (red and blue),
-        dramatic shadows, determined expressions despite failure,
-        sense of urgency and tension"""
-        color_mood = "dramatic red and blue police lights, purple shadows, tense atmosphere"
+    # Success/celebration scene
+    action = """celebrating successful heist together,
+    high-fiving, fist bumps, raising arms in victory,
+    big smiles and laughter, victorious poses,
+    sparkle effects and confetti in background,
+    golden hour lighting, heroic composition"""
+    color_mood = "vibrant purple lighting, golden yellow accents, cyan highlights, triumphant atmosphere"
     
     # Build the full prompt - ART STYLE FIRST!
     prompt = f"""{HEIST_ART_STYLE}.
 
-Group shot of heist crew ({scene_type}): {crew_description}.
+Group shot of heist crew celebrating success: {crew_description}.
 
 The crew is {action}.
 
@@ -94,11 +80,10 @@ Group composition, dynamic poses, stylized illustration style, bold comic book a
     # Truncate for display
     display_prompt = prompt[:150] + "..." if len(prompt) > 150 else prompt
     print(f"📝 Prompt:\n   {display_prompt}\n")
-    print(f"👥 Crew roles: {', '.join(role_ids)}")
-    print(f"🎬 Scene type: {scene_type.upper()}\n")
+    print(f"👥 Crew roles: {', '.join(role_ids)}\n")
     
     print(f"🚀 Calling Imagen 4.0...")
-    print(f"   Generating crew {scene_type} image...")
+    print(f"   Generating crew celebration image...")
     
     # Initialize client inside function to ensure API key is loaded
     client = genai.Client(api_key=GEMINI_API_KEY)
@@ -119,7 +104,7 @@ Group composition, dynamic poses, stylized illustration style, bold comic book a
     if not output_file:
         # Save to static images directory (same location as role portraits and scenarios)
         static_images_dir = Path(__file__).parent / 'output' / 'static_images'
-        output_file = static_images_dir / f'crew_celebration_{scene_type}.png'
+        output_file = static_images_dir / 'crew_celebration_success.png'
     else:
         output_file = Path(output_file)
     
@@ -131,7 +116,7 @@ Group composition, dynamic poses, stylized illustration style, bold comic book a
         with open(output_file, 'wb') as f:
             f.write(response.generated_images[0].image.image_bytes)
         
-        print(f"\n✅ Generated crew {scene_type} image!")
+        print(f"\n✅ Generated crew celebration image!")
         print(f"💾 Saved to: {output_file}")
         print(f"\nℹ️  Note: Image includes SynthID watermark (Google's authenticity mark)")
         print(f"🎨 Generated using Imagen 4.0 (high quality!)\n")
@@ -141,8 +126,8 @@ Group composition, dynamic poses, stylized illustration style, bold comic book a
         raise Exception("No image generated")
 
 
-def generate_experience_celebration_images(experience_md_file):
-    """Generate both success and failure images for an experience file.
+def generate_experience_celebration_image(experience_md_file):
+    """Generate celebration image for an experience file.
     
     Args:
         experience_md_file: Path to experience markdown file
@@ -172,19 +157,10 @@ def generate_experience_celebration_images(experience_md_file):
     
     # Generate success image
     print("=" * 60)
-    print("GENERATING SUCCESS IMAGE")
+    print("GENERATING SUCCESS CELEBRATION IMAGE")
     print("=" * 60)
     success_output = experience_path.parent / 'images' / f'{experience_path.stem}_success.png'
-    generate_crew_celebration_image(role_ids, success=True, output_file=success_output)
-    
-    print("\n")
-    
-    # Generate failure image
-    print("=" * 60)
-    print("GENERATING FAILURE IMAGE")
-    print("=" * 60)
-    failure_output = experience_path.parent / 'images' / f'{experience_path.stem}_failure.png'
-    generate_crew_celebration_image(role_ids, success=False, output_file=failure_output)
+    generate_crew_celebration_image(role_ids, output_file=success_output)
 
 
 if __name__ == '__main__':
@@ -192,30 +168,16 @@ if __name__ == '__main__':
     
     if len(sys.argv) > 1:
         # Generate for specific experience file
-        generate_experience_celebration_images(sys.argv[1])
+        generate_experience_celebration_image(sys.argv[1])
     else:
         # Test with default roles
-        print("🧪 Testing with default roles: Mastermind, Safe Cracker, Hacker\n")
+        print("🧪 Generating celebration image with default roles: Mastermind, Safe Cracker, Hacker\n")
         
         # Generate success image
         print("=" * 60)
-        print("GENERATING SUCCESS IMAGE")
+        print("GENERATING SUCCESS CELEBRATION IMAGE")
         print("=" * 60)
-        generate_crew_celebration_image(
-            ['mastermind', 'safe_cracker', 'hacker'],
-            success=True,
-        )
-        
-        print("\n")
-        
-        # Generate failure image
-        print("=" * 60)
-        print("GENERATING FAILURE IMAGE")
-        print("=" * 60)
-        generate_crew_celebration_image(
-            ['mastermind', 'safe_cracker', 'hacker'],
-            success=False,
-        )
+        generate_crew_celebration_image(['mastermind', 'safe_cracker', 'hacker'])
         
         print("\n📝 Usage: python generate_crew_celebration_image.py <experience_file.md>")
         print("   Example: python generate_crew_celebration_image.py ../experiences/museum_gala_vault.md")

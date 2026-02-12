@@ -75,7 +75,42 @@ class GameEndScreen extends StatelessWidget {
   }
   
   Widget _buildCrewImage() {
-    final imageName = success ? 'crew_celebration_success.png' : 'crew_celebration_failure.png';
+    // Only show image for success - failure uses icon fallback
+    if (!success) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: AppColors.bgSecondary,
+          borderRadius: BorderRadius.circular(AppDimensions.borderRadiusLG),
+          border: Border.all(
+            color: AppColors.danger,
+            width: 2,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.warning_amber,
+                size: 80,
+                color: AppColors.danger.withValues(alpha: 0.5),
+              ),
+              SizedBox(height: AppDimensions.spaceSM),
+              Text(
+                '🚨 BUSTED 🚨',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.danger,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     
     return Container(
       height: 200,
@@ -83,13 +118,13 @@ class GameEndScreen extends StatelessWidget {
         color: AppColors.bgSecondary,
         borderRadius: BorderRadius.circular(AppDimensions.borderRadiusLG),
         border: Border.all(
-          color: success ? AppColors.success : AppColors.danger,
+          color: AppColors.success,
           width: 2,
         ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Image.asset(
-        'assets/static/$imageName',
+        'assets/static/crew_celebration_success.png',
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           // Fallback to placeholder if image not found
@@ -98,17 +133,17 @@ class GameEndScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  success ? Icons.celebration : Icons.warning_amber,
+                  Icons.celebration,
                   size: 60,
-                  color: (success ? AppColors.success : AppColors.danger).withValues(alpha: 0.3),
+                  color: AppColors.success.withValues(alpha: 0.3),
                 ),
                 SizedBox(height: AppDimensions.spaceSM),
                 Text(
-                  success ? '🎉 THE CREW CELEBRATES 🎉' : '🚨 BUSTED 🚨',
+                  '🎉 THE CREW CELEBRATES 🎉',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: success ? AppColors.success : AppColors.danger,
+                    color: AppColors.success,
                   ),
                   textAlign: TextAlign.center,
                 ),
