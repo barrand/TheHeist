@@ -114,6 +114,8 @@ class RoomManager:
         """
         Add player to existing room
         
+        First joiner becomes host if room has no valid host (handles E2E testing and disconnects).
+        
         Args:
             room_code: Code of room to join
             player_name: Player's display name
@@ -135,6 +137,9 @@ class RoomManager:
             logger.warning(f"❌ Room {room_code} is full (12 players)")
             return None
         
+        # Check if room has a valid host (exists and is still in players dict)
+        has_valid_host = room.host_id and room.host_id in room.players
+        
         # Create player
         player_id = str(uuid.uuid4())
         player = Player(
@@ -144,8 +149,15 @@ class RoomManager:
             connected=True
         )
         
+        # Add player to room
         room.players[player_id] = player
-        logger.info(f"✅ Player {player_name} ({player_id}) joined room {room_code}")
+        
+        # If no valid host, make this player the host (first joiner or host disconnected)
+        if not has_valid_host:
+            room.host_id = player_id
+            logger.info(f"✅ Player {player_name} ({player_id}) joined room {room_code} as HOST (first joiner)")
+        else:
+            logger.info(f"✅ Player {player_name} ({player_id}) joined room {room_code}")
         
         return room, player_id
     

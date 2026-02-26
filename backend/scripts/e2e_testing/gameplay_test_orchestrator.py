@@ -126,7 +126,13 @@ class GameplayTestOrchestrator:
         # Extract roles from parsed data
         roles = validator.roles if validator.roles else []
         scenario_name = scenario_file.stem
-        scenario_id = scenario_file.stem
+        
+        # Extract actual scenario ID from file content (e.g., museum_gala_vault)
+        import re
+        content = scenario_file.read_text()
+        id_match = re.search(r'\*\*ID\*\*:\s*`([^`]+)`', content)
+        scenario_id = id_match.group(1) if id_match else scenario_file.stem
+        logger.info(f"Extracted scenario ID: {scenario_id}")
         
         logger.info(f"Scenario: {scenario_name}")
         logger.info(f"Roles: {roles}")
@@ -164,15 +170,17 @@ class GameplayTestOrchestrator:
                 )
                 bots.append(bot)
             
-            # Connect all bots
-            logger.info(f"Connecting {len(bots)} bots...")
-            connect_tasks = [bot.connect(room_code) for bot in bots]
-            connect_results = await asyncio.gather(*connect_tasks)
-            
-            if not all(connect_results):
-                result.status = "ERROR"
-                result.issues.append("Some bots failed to connect")
-                return result
+            # Connect bots sequentially with small delay to ensure stable connections
+            logger.info(f"Connecting {len(bots)} bots sequentially...")
+            for i, bot in enumerate(bots):
+                success = await bot.connect(room_code)
+                if not success:
+                    result.status = "ERROR"
+                    result.issues.append(f"Bot {bot.player_name} failed to connect")
+                    return result
+                # Small delay between connections for stability
+                if i < len(bots) - 1:
+                    await asyncio.sleep(1)
             
             # All bots select roles
             logger.info("Bots selecting roles...")
@@ -181,25 +189,15 @@ class GameplayTestOrchestrator:
             
             await asyncio.sleep(1)  # Give backend time to process
             
-            # Mark first bot as host directly in room_manager for E2E testing
-            try:
-                import sys
-                from pathlib import Path
-                backend_path = Path(__file__).parent.parent.parent
-                sys.path.insert(0, str(backend_path))
-                from app.services.room_manager import get_room_manager
-                
-                room_manager = get_room_manager()
-                room = room_manager.get_room(room_code)
-                if room and bots:
-                    room.host_id = bots[0].state.player_id
-                    bots[0].state.is_host = True
-                    logger.info(f"Assigned {bots[0].player_name} as host for E2E testing")
-            except Exception as e:
-                logger.warning(f"Could not assign host: {e}")
+            # First bot should be host (first joiner logic)
+            host_bot = bots[0]
+            if not host_bot.state.is_host:
+                logger.error("First bot is not marked as host! Check backend join_room logic.")
+                result.status = "ERROR"
+                result.issues.append("First bot did not become host")
+                return result
             
             # Host starts game
-            host_bot = bots[0]
             logger.info(f"Host ({host_bot.player_name}) starting game...")
             game_started = await host_bot.start_game(scenario_id)
             
@@ -426,23 +424,32 @@ class GameplayTestOrchestrator:
         return False
     
     async def _create_room(self) -> Optional[str]:
-        """Create room via HTTP API"""
-        url = f"{self.backend_url}/api/rooms/create"
-        
+        """Create empty room directly - first WebSocket joiner becomes host"""
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json={"host_name": "E2E_TestHost"}) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        room_code = data.get("room_code")
-                        player_id = data.get("player_id")
-                        logger.info(f"Created room {room_code} (host player: {player_id})")
-                        # Store the host player_id to assign to first bot
-                        self._host_player_id = player_id
-                        return room_code
-                    else:
-                        logger.error(f"Failed to create room: {resp.status}")
-                        return None
+            # Import room_manager directly (same process)
+            import sys
+            from pathlib import Path
+            backend_path = Path(__file__).parent.parent.parent
+            sys.path.insert(0, str(backend_path))
+            
+            from app.services.room_manager import get_room_manager
+            from app.models.room import GameRoom, RoomStatus
+            
+            room_manager = get_room_manager()
+            room_code = room_manager.generate_room_code()
+            
+            # Create empty room with no players - first joiner will become host
+            room = GameRoom(
+                room_code=room_code,
+                host_id="",  # Will be assigned to first joiner
+                players={},
+                status=RoomStatus.LOBBY
+            )
+            
+            room_manager.rooms[room_code] = room
+            logger.info(f"Created empty room {room_code} for E2E testing (first joiner becomes host)")
+            return room_code
+            
         except Exception as e:
             logger.error(f"Error creating room: {e}", exc_info=True)
             return None

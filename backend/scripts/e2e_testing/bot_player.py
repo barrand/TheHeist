@@ -100,13 +100,16 @@ class BotPlayer:
             asyncio.create_task(self._message_receiver())
             
             # Send join message
-            await self._send({
+            join_msg = {
                 "type": "join_room",
                 "room_code": room_code,
                 "player_name": self.player_name
-            })
+            }
+            logger.debug(f"Bot {self.player_name} sending join_room: {join_msg}")
+            await self._send(join_msg)
             
             # Wait for room_state message
+            logger.debug(f"Bot {self.player_name} waiting for room_state...")
             msg = await self._wait_for_message("room_state", timeout=5)
             if msg:
                 self.state.player_id = msg.get("your_player_id")
@@ -114,6 +117,7 @@ class BotPlayer:
                 logger.info(f"Bot {self.player_name} joined as {self.state.player_id}, host={self.state.is_host}")
                 return True
             
+            logger.error(f"Bot {self.player_name} timed out waiting for room_state")
             return False
             
         except Exception as e:
@@ -144,14 +148,14 @@ class BotPlayer:
     
     async def start_game(self, scenario: str) -> bool:
         """
-        Start the game (host only, or E2E testing bypass)
+        Start the game (host only)
         
         Args:
             scenario: Scenario ID to play
         """
-        # For E2E testing, skip host check (backend will validate)
         if not self.state.is_host:
-            logger.warning(f"Bot {self.player_name} is not marked as host, but attempting to start game for E2E testing")
+            logger.warning(f"Bot {self.player_name} is not host, cannot start game")
+            return False
         
         await self._send({
             "type": "start_game",
@@ -316,17 +320,25 @@ class BotPlayer:
     async def _message_receiver(self):
         """Background task that receives and queues messages"""
         try:
-            async for message in self.ws:
-                data = json.loads(message)
-                await self._message_queue.put(data)
-                
-                # Handle messages that update state
-                await self._handle_message(data)
-                
+            while self._running:
+                try:
+                    message = await asyncio.wait_for(self.ws.recv(), timeout=1.0)
+                    data = json.loads(message)
+                    await self._message_queue.put(data)
+                    
+                    # Handle messages that update state
+                    await self._handle_message(data)
+                    
+                except asyncio.TimeoutError:
+                    continue  # No message received, continue loop
+                except json.JSONDecodeError as e:
+                    logger.error(f"Bot {self.player_name} JSON decode error: {e}")
+                    continue
+                    
         except websockets.exceptions.ConnectionClosed:
             logger.info(f"Bot {self.player_name} connection closed")
         except Exception as e:
-            logger.error(f"Bot {self.player_name} message receiver error: {e}")
+            logger.error(f"Bot {self.player_name} message receiver error: {e}", exc_info=True)
     
     async def _handle_message(self, msg: Dict):
         """Process messages that update bot state"""

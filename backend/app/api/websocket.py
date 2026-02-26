@@ -67,15 +67,21 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
                 # Handle join room
                 player_name = data.get("player_name")
                 
-                # Get or join room
+                # Get or create room (for E2E testing)
                 room = room_manager.get_room(room_code)
                 if not room:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": f"Room {room_code} not found"
-                    })
-                    await websocket.close()
-                    return
+                    # Auto-create room if it doesn't exist (E2E testing support)
+                    # First joiner will become host
+                    from app.models.room import GameRoom
+                    from app.models.room import RoomStatus as RoomStatusEnum
+                    room = GameRoom(
+                        room_code=room_code,
+                        host_id="",  # Will be assigned to first joiner
+                        players={},
+                        status=RoomStatusEnum.LOBBY
+                    )
+                    room_manager.rooms[room_code] = room
+                    logger.info(f"✨ Auto-created room {room_code} for first joiner {player_name}")
                 
                 # Check if rejoining
                 existing_player = None
