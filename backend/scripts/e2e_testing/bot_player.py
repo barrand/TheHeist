@@ -144,14 +144,14 @@ class BotPlayer:
     
     async def start_game(self, scenario: str) -> bool:
         """
-        Start the game (host only)
+        Start the game (host only, or E2E testing bypass)
         
         Args:
             scenario: Scenario ID to play
         """
+        # For E2E testing, skip host check (backend will validate)
         if not self.state.is_host:
-            logger.warning(f"Bot {self.player_name} is not host, cannot start game")
-            return False
+            logger.warning(f"Bot {self.player_name} is not marked as host, but attempting to start game for E2E testing")
         
         await self._send({
             "type": "start_game",

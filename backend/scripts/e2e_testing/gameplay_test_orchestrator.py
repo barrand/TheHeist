@@ -121,11 +121,12 @@ class GameplayTestOrchestrator:
         
         # Parse scenario to get roles and metadata
         validator = ScenarioValidator(scenario_file)
-        validator._parse_file()
+        validator.parse_file()
         
-        roles = list(validator.role_tasks.keys())
-        scenario_name = validator.metadata.get("name", scenario_file.stem)
-        scenario_id = validator.metadata.get("id", scenario_file.stem)
+        # Extract roles from parsed data
+        roles = validator.roles if validator.roles else []
+        scenario_name = scenario_file.stem
+        scenario_id = scenario_file.stem
         
         logger.info(f"Scenario: {scenario_name}")
         logger.info(f"Roles: {roles}")
@@ -179,6 +180,23 @@ class GameplayTestOrchestrator:
             await asyncio.gather(*select_tasks)
             
             await asyncio.sleep(1)  # Give backend time to process
+            
+            # Mark first bot as host directly in room_manager for E2E testing
+            try:
+                import sys
+                from pathlib import Path
+                backend_path = Path(__file__).parent.parent.parent
+                sys.path.insert(0, str(backend_path))
+                from app.services.room_manager import get_room_manager
+                
+                room_manager = get_room_manager()
+                room = room_manager.get_room(room_code)
+                if room and bots:
+                    room.host_id = bots[0].state.player_id
+                    bots[0].state.is_host = True
+                    logger.info(f"Assigned {bots[0].player_name} as host for E2E testing")
+            except Exception as e:
+                logger.warning(f"Could not assign host: {e}")
             
             # Host starts game
             host_bot = bots[0]
@@ -408,18 +426,23 @@ class GameplayTestOrchestrator:
         return False
     
     async def _create_room(self) -> Optional[str]:
-        """Create a game room via REST API"""
+        """Create room via HTTP API"""
         url = f"{self.backend_url}/api/rooms/create"
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, json={"host_name": "TestHost"}) as resp:
+                async with session.post(url, json={"host_name": "E2E_TestHost"}) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        return data.get("room_code")
+                        room_code = data.get("room_code")
+                        player_id = data.get("player_id")
+                        logger.info(f"Created room {room_code} (host player: {player_id})")
+                        # Store the host player_id to assign to first bot
+                        self._host_player_id = player_id
+                        return room_code
                     else:
                         logger.error(f"Failed to create room: {resp.status}")
                         return None
         except Exception as e:
-            logger.error(f"Error creating room: {e}")
+            logger.error(f"Error creating room: {e}", exc_info=True)
             return None

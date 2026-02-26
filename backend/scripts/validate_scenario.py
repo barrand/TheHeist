@@ -185,7 +185,9 @@ class ScenarioValidator:
         # Selected Roles
         roles_match = re.search(r'\*\*Selected Roles\*\*:\s*(.+)', self.content)
         if roles_match:
-            self.roles = [r.strip() for r in roles_match.group(1).replace(' ', '_').lower().split(',')]
+            # Convert role names to snake_case IDs
+            role_names = [r.strip() for r in roles_match.group(1).split(',')]
+            self.roles = [r.lower().replace(' ', '_') for r in role_names]
         
         # Player Count
         player_match = re.search(r'\*\*Player Count\*\*:\s*(\d+)', self.content)
