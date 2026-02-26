@@ -1,0 +1,16 @@
+# E2E Testing Framework Dependencies
+
+# WebSocket client
+websockets>=12.0
+
+# HTTP client for REST API
+aiohttp>=3.9.0
+
+# Google AI
+google-generativeai>=0.3.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Data validation
+pydantic>=2.0.0

@@ -91,6 +91,107 @@ Here's an example of the format and quality expected:
 
 {example}
 
+## CRITICAL: ID-ONLY REFERENCE FORMAT
+
+**THIS IS THE #1 CAUSE OF VALIDATION FAILURES!**
+
+When writing tasks, you MUST use backtick IDs for ALL references:
+
+❌ WRONG:
+```
+- *Location:* Safe House
+- *Location:* Bank Lobby  
+- *NPC:* `lobby_guard` (without backticks on location!)
+```
+
+✅ CORRECT:
+```
+- *Location:* `safe_house`
+- *Location:* `bank_lobby`
+- *NPC:* `lobby_guard` (Guard Name)
+```
+
+**MEMORIZE THIS:**
+- Location in tasks = `location_id` in backticks
+- NPC in tasks = `npc_id` in backticks
+- Prerequisites = `task_id`, `outcome_id`, `item_id` in backticks
+- NEVER use the display Name, ALWAYS use the ID
+
+---
+
+## VALIDATION REQUIREMENTS (MUST FOLLOW)
+
+Your generated scenario MUST pass these validation rules:
+
+### Location Count (CRITICAL)
+- **2-3 players**: 4-6 locations minimum
+- **4-5 players**: 6-9 locations minimum  
+- **6-8 players**: 8-12 locations minimum
+- **9-12 players**: 10-15 locations minimum
+Include: preparation locations, entry points, public areas, restricted areas, target location, escape routes.
+
+### Task Count (CRITICAL)
+- **3-7 players**: 30-40 tasks total
+- **8-12 players**: 40-50 tasks total
+Distribute evenly: each role should have 3-8 tasks.
+
+### Cross-Role Interaction (CRITICAL)
+- Include at least **3 handoff tasks** (🤝 HANDOFF) where items are physically transferred
+- Include at least **2 info share tasks** (🗣️ INFO) where players verbally coordinate
+- Include **6-10 search tasks** (🔍 SEARCH) for item discovery
+
+### Task Balance (CRITICAL)
+- **60-70% social interactions**: NPC conversations, handoffs, info shares, searches
+- **30-40% minigames**: Action tasks
+- Do NOT make every task a minigame!
+
+### Reference Integrity (CRITICAL - USE IDS ONLY!)
+
+**MANDATORY ID-ONLY REFERENCE RULES:**
+
+1. **Task Locations** - MUST use location ID in backticks:
+   ```
+   - *Location:* `bank_lobby`     ✅ CORRECT
+   - *Location:* Bank Lobby       ❌ WRONG (no backticks, uses Name)
+   - *Location:* bank_lobby       ❌ WRONG (no backticks)
+   ```
+
+2. **Task NPCs** - MUST use NPC ID in backticks:
+   ```
+   - *NPC:* `lobby_guard_brenda` (Guard Name)    ✅ CORRECT
+   - *NPC:* lobby_guard_brenda                   ❌ WRONG (no backticks)
+   - *NPC:* Brenda Jenkins                       ❌ WRONG (uses name)
+   ```
+
+3. **Prerequisites** - MUST use IDs in backticks:
+   ```
+   - Task `MM1`             ✅ CORRECT
+   - Task MM1               ❌ WRONG
+   - Item `keycard`         ✅ CORRECT
+   - Outcome `guard_info`   ✅ CORRECT
+   ```
+
+4. **Target Outcomes** - MUST use outcome ID in backticks:
+   ```
+   - *Target Outcomes:* `guard_distracted`   ✅ CORRECT
+   ```
+
+**VERIFICATION CHECKLIST:**
+- [ ] Every task location uses `location_id` format
+- [ ] Every task NPC uses `npc_id` format  
+- [ ] Every prerequisite uses `id` format
+- [ ] Every NPC ID exists in NPCs section
+- [ ] Every outcome ID exists in an NPC's "Information Known"
+- [ ] Every item ID exists in Items section
+- [ ] Every location ID exists in Locations section
+
+### Task IDs (CRITICAL)
+- Use proper format: `MM1`, `MM2` for Mastermind, `H1`, `H2` for Hacker, etc.
+- Role codes: MM=Mastermind, H=Hacker, SC=Safe Cracker, D=Driver, I=Insider, G=Grifter, M=Muscle, L=Lookout, F=Fence, CB=Cat Burglar, CL=Cleaner, PP=Pickpocket
+- Number sequentially starting from 1
+
+---
+
 ## CRITICAL: Task System Requirements
 
 ### 1. Team Objectives (1-3 high-level goals)
@@ -185,30 +286,34 @@ Rules for NPCs:
 - If you need more outcomes, add more NPCs -- don't overload one NPC
 - NARRATIVE CONSISTENCY (Story Context): Every NPC MUST have a Story Context field with immutable world facts. This prevents the AI playing the NPC from improvising contradictions (e.g., saying stolen items are "on display" when they're in a locked vault). Think carefully about: where key objects physically are and why, what is public vs secret knowledge, what this NPC would and would NOT volunteer to do, and how the scenario's setup constrains the NPC's behavior.
 
-### Task Prerequisite Format:
+### Task Format (ID-ONLY REFERENCES):
 ```markdown
 1. **MM1. 💬 NPC_LLM** - Task Description
    - *Description:* Detailed description
    - *NPC:* `npc_id` (NPC Name)
    - *Target Outcomes:* `single_outcome_id`
-   - *Location:* Location Name
+   - *Location:* `location_id`
    - *Prerequisites:* None (starting task)
 
 2. **MM2. 🎮 minigame_id** - Task Description
    - *Description:* Detailed description
-   - *Location:* Location Name
+   - *Location:* `location_id`
    - *Prerequisites:*
      - Task `MM1` (description of why)
      - Outcome `info_id` (what info is needed)
      - Item `item_id` (what item is needed)
 ```
 
+CRITICAL: Notice Location uses `location_id` in backticks, NOT "Location Name"!
+
 Rules for Tasks:
+- **ALWAYS use backtick IDs for ALL references**: `location_id`, `npc_id`, `item_id`, `outcome_id`
 - Use typed prerequisites: `Task`, `Outcome`, `Item` (not plain dependency IDs)
-- NPC tasks MUST have `*Target Outcomes:*` with exactly ONE outcome ID (matches the NPC's single tagged item/action)
-- `*NPC:*` field must reference NPC by backtick ID: `*NPC:* \`npc_id\` (Name)`
-- Search tasks use `*Search Items:*` instead of `*Find:*`
-- Any player role can do search/social tasks; role-locked tasks are minigames requiring specific skills
+- NPC tasks MUST have `*Target Outcomes:*` with exactly ONE outcome ID
+- Task location format: `*Location:* \`location_id\``
+- Task NPC format: `*NPC:* \`npc_id\` (Display Name)`
+- Search tasks use `*Search Items:*` with item IDs: `item_1`, `item_2`
+- Any player role can do search/social tasks; role-locked tasks are minigames
 
 ### Item Format:
 ```markdown
@@ -484,14 +589,92 @@ Examples:
         help='Output file path (default: scripts/output/{scenario}_{roles}.md)'
     )
     
+    parser.add_argument(
+        '--validate',
+        action='store_true',
+        help='Run validation checks after generation'
+    )
+    
     args = parser.parse_args()
     
     # Generate the heist experience
-    generate_experience(
+    output_path = generate_experience(
         scenario_id=args.scenario,
         role_ids=args.roles,
         output_file=args.output
     )
+    
+    # Run validation if requested
+    if args.validate:
+        print("\n" + "="*80)
+        print("RUNNING VALIDATION")
+        print("="*80)
+        
+        try:
+            from validate_scenario import ScenarioValidator, ValidationLevel
+            from scenario_editor_agent import ScenarioEditorAgent
+            
+            max_attempts = 3
+            attempt = 0
+            editor = ScenarioEditorAgent()
+            
+            while attempt < max_attempts:
+                attempt += 1
+                print(f"\n--- Validation Attempt {attempt}/{max_attempts} ---\n")
+                
+                # Run validation
+                validator = ScenarioValidator(Path(output_path))
+                report = validator.validate_all()
+                
+                # Show results
+                critical_count = len([i for i in report.issues if i.level == ValidationLevel.CRITICAL])
+                important_count = len([i for i in report.issues if i.level == ValidationLevel.IMPORTANT])
+                advisory_count = len([i for i in report.issues if i.level == ValidationLevel.ADVISORY])
+                
+                if report.passed:
+                    print(f"\n✅ VALIDATION PASSED!")
+                    print(f"   Advisory: {advisory_count}")
+                    break
+                
+                print(f"\n❌ VALIDATION FAILED")
+                print(f"   Critical: {critical_count}")
+                print(f"   Important: {important_count}")
+                
+                # Show first few critical issues
+                critical_issues = [i for i in report.issues if i.level == ValidationLevel.CRITICAL]
+                print(f"\n   Critical Issues:")
+                for issue in critical_issues[:5]:
+                    print(f"     • [{issue.rule_number}] {issue.title}")
+                
+                if attempt < max_attempts:
+                    print(f"\n🤖 Scenario Editor Agent fixing issues...")
+                    
+                    # Use Editor Agent to fix issues
+                    results = editor.fix_issues(
+                        Path(output_path),
+                        critical_issues,
+                        max_issues=5
+                    )
+                    
+                    success_count = sum(1 for r in results if r.success)
+                    print(f"   Fixed {success_count}/{len(results)} issues")
+                else:
+                    print(f"\n⚠️  Max validation attempts ({max_attempts}) reached.")
+                    print(f"   Scenario has remaining issues. Manual review recommended.")
+                    
+                    # Show full report for manual fixing
+                    print("\n" + "="*80)
+                    print("FULL VALIDATION REPORT")
+                    print("="*80)
+                    report.print_report()
+                    
+                    sys.exit(1)
+            
+        except Exception as e:
+            print(f"\n❌ Validation error: {e}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
 
 
 if __name__ == '__main__':
