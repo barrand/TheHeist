@@ -288,6 +288,9 @@
                                     await refreshScenarios();
                                 } else {
                                     appendGenLog(`❌ Failed: ${msg.error}`, true);
+                                    if (msg.errors && msg.errors.length) {
+                                        msg.errors.forEach(e => appendGenLog(`   • ${e}`, true));
+                                    }
                                     if (msg.traceback) {
                                         appendGenLog(msg.traceback, true);
                                     }
@@ -310,6 +313,9 @@
                                 await refreshScenarios();
                             } else {
                                 appendGenLog(`❌ Failed: ${msg.error}`, true);
+                                if (msg.errors && msg.errors.length) {
+                                    msg.errors.forEach(e => appendGenLog(`   • ${e}`, true));
+                                }
                             }
                         }
                     } catch (_) {}

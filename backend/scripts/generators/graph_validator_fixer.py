@@ -46,10 +46,9 @@ class GraphValidator:
         for iteration in range(max_iterations):
             self.errors = []
             self.warnings = []
-            
+
             print(f"🔍 Validation iteration {iteration + 1}/{max_iterations}")
-            
-            # Run all validation checks
+
             self._validate_location_count()
             self._validate_task_count()
             self._validate_references()
@@ -57,7 +56,7 @@ class GraphValidator:
             self._validate_hidden_items()
             self._validate_starting_tasks()
             self._validate_task_balance()
-            
+
             if not self.errors:
                 print(f"✅ Validation passed!")
                 return ValidationResult(
@@ -65,15 +64,23 @@ class GraphValidator:
                     warnings=self.warnings,
                     fixes_applied=self.fixes
                 )
-            
-            # Try to fix errors
+
             print(f"   Found {len(self.errors)} errors, attempting fixes...")
             fixes_made = self._apply_fixes()
-            
+
+            # Fixes may have resolved all remaining errors in this iteration
+            if not self.errors:
+                print(f"✅ All errors resolved by fixes!")
+                return ValidationResult(
+                    is_valid=True,
+                    warnings=self.warnings,
+                    fixes_applied=self.fixes
+                )
+
             if not fixes_made:
                 print(f"❌ Could not fix remaining errors")
                 break
-        
+
         return ValidationResult(
             is_valid=False,
             errors=self.errors,
