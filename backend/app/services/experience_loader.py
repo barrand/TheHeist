@@ -5,8 +5,10 @@ Parses generated experience markdown files into GameState objects
 
 import logging
 import re
+import json
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
+from collections import defaultdict
 
 from app.models.game_state import (
     GameState,
@@ -87,7 +89,13 @@ class ExperienceLoader:
         Returns:
             Parsed GameState
         """
-        # Find the markdown file
+        # Try loading JSON first (procedurally generated)
+        json_path = self.experiences_dir / f"{scenario}.json"
+        if json_path.exists():
+            logger.info(f"Loading experience from JSON: {json_path}")
+            return self._load_from_json(json_path, scenario, selected_roles)
+        
+        # Fall back to markdown file
         # Format: generated_{scenario}_{player_count}players.md
         player_count = len(selected_roles)
         filename = f"generated_{scenario}_{player_count}players.md"
@@ -97,13 +105,173 @@ class ExperienceLoader:
             logger.error(f"Experience file not found: {filepath}")
             raise FileNotFoundError(f"Experience file not found: {filename}")
         
-        logger.info(f"Loading experience from {filepath}")
+        logger.info(f"Loading experience from markdown: {filepath}")
         
         # Parse the markdown
         with open(filepath, 'r') as f:
             content = f.read()
         
         return self._parse_markdown(content, scenario, selected_roles)
+    
+    def _load_from_json(self, json_path: Path, scenario: str, selected_roles: List[str]) -> GameState:
+        """
+        Load experience from JSON file (procedurally generated)
+        
+        Args:
+            json_path: Path to JSON file
+            scenario: Scenario ID
+            selected_roles: List of roles players selected
+        
+        Returns:
+            Parsed GameState
+        """
+        import json
+        
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Parse locations
+        locations = []
+        for loc_data in data.get('locations', []):
+            locations.append(Location(
+                id=loc_data['id'],
+                name=loc_data['name'],
+                description=loc_data['description'],
+                category=loc_data.get('category', 'General'),
+                visual=loc_data.get('visual', '')
+            ))
+        
+        # Parse NPCs
+        npcs = []
+        for npc_data in data.get('npcs', []):
+            # Parse information known
+            information_known = []
+            for info in npc_data.get('information_known', []):
+                information_known.append(NPCInfoItem(
+                    info_id=info.get('info_id'),
+                    confidence=info['confidence'],
+                    description=info['description']
+                ))
+            
+            # Parse actions available
+            actions_available = []
+            for action in npc_data.get('actions_available', []):
+                actions_available.append(NPCAction(
+                    action_id=action['action_id'],
+                    confidence=action['confidence'],
+                    description=action['description']
+                ))
+            
+            # Parse cover options
+            cover_options = []
+            for cover in npc_data.get('cover_options', []):
+                cover_options.append(NPCCoverOption(
+                    cover_id=cover['cover_id'],
+                    description=cover['description'],
+                    npc_reaction=cover.get('npc_reaction', '')
+                ))
+            
+            npcs.append(NPCData(
+                id=npc_data['id'],
+                name=npc_data['name'],
+                role=npc_data['role'],
+                personality=npc_data['personality'],
+                location=npc_data['location'],
+                information_known=information_known,
+                actions_available=actions_available,
+                cover_options=cover_options,
+                gender=npc_data.get('gender', 'person'),
+                ethnicity=npc_data.get('ethnicity', ''),
+                clothing=npc_data.get('clothing', ''),
+                expression=npc_data.get('expression', 'neutral'),
+                attitude=npc_data.get('attitude', 'professional'),
+                details=npc_data.get('details', ''),
+                relationships=npc_data.get('relationships', ''),
+                story_context=npc_data.get('story_context', '')
+            ))
+        
+        # Parse items by location
+        items_by_location = defaultdict(list)
+        for item_data in data.get('items', []):
+            # Parse unlock prerequisites
+            unlock_prerequisites = []
+            for prereq in item_data.get('unlock_prerequisites', []):
+                unlock_prerequisites.append(Prerequisite(
+                    type=PrerequisiteType(prereq['type']),
+                    id=prereq['id'],
+                    description=prereq.get('description')
+                ))
+            
+            item = Item(
+                id=item_data['id'],
+                name=item_data['name'],
+                description=item_data['description'],
+                visual=item_data.get('visual', ''),
+                location=item_data.get('location'),
+                required_for=item_data.get('required_for'),
+                hidden=item_data.get('hidden', False),
+                quantity=item_data.get('quantity', 1),
+                transferable=item_data.get('transferable', True),
+                unlock_prerequisites=unlock_prerequisites
+            )
+            
+            if item.location:
+                items_by_location[item.location].append(item)
+        
+        # Parse tasks
+        tasks = {}
+        for task_data in data.get('tasks', []):
+            # Parse prerequisites
+            prerequisites = []
+            for prereq in task_data.get('prerequisites', []):
+                prerequisites.append(Prerequisite(
+                    type=PrerequisiteType(prereq['type']),
+                    id=prereq['id'],
+                    description=prereq.get('description')
+                ))
+            
+            task = Task(
+                id=task_data['id'],
+                type=TaskType(task_data['type']),
+                description=task_data['description'],
+                detail_description=task_data.get('detail_description', ''),
+                assigned_role=task_data['assigned_role'],
+                assigned_player_id=task_data.get('assigned_player_id'),
+                location=task_data['location'],
+                status=TaskStatus(task_data.get('status', 'locked')),
+                prerequisites=prerequisites,
+                dependencies=task_data.get('dependencies', []),
+                target_outcomes=task_data.get('target_outcomes', []),
+                minigame_id=task_data.get('minigame_id'),
+                npc_id=task_data.get('npc_id'),
+                npc_name=task_data.get('npc_name'),
+                npc_personality=task_data.get('npc_personality'),
+                search_items=task_data.get('search_items', []),
+                handoff_item=task_data.get('handoff_item'),
+                handoff_to_role=task_data.get('handoff_to_role'),
+                info_description=task_data.get('info_description')
+            )
+            
+            tasks[task.id] = task
+        
+        # Set initial task statuses
+        self._set_initial_statuses(tasks)
+        
+        # Create GameState
+        game_state = GameState(
+            objective=data.get('objective', 'Complete the heist'),
+            scenario=scenario,
+            locations=locations,
+            tasks=tasks,
+            npcs=npcs,
+            items_by_location=dict(items_by_location),
+            timeline_minutes=data.get('timeline_minutes', 120),
+            elapsed_minutes=0
+        )
+        
+        logger.info(f"✅ Loaded scenario from JSON: {len(tasks)} tasks, {len(npcs)} NPCs, {len(locations)} locations")
+        
+        return game_state
     
     def _parse_markdown(self, content: str, scenario: str, selected_roles: List[str]) -> GameState:
         """Parse markdown content into GameState"""

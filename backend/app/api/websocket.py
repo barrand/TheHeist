@@ -638,8 +638,18 @@ async def handle_search_room(room_code: str, player_id: str, data: Dict[str, Any
         })
         return
     
+    # Normalize location to ID (try direct match first, then by normalized name)
+    location_key = location
+    if location not in game_state.items_by_location:
+        # Try to find by location ID directly (location might be already an ID)
+        # Or find location by normalized name
+        for loc in game_state.locations:
+            if loc.id == location or loc.name.lower() == location.lower():
+                location_key = loc.id
+                break
+    
     # Get items at this location, filtered by unlock prerequisites
-    all_items_here = game_state.items_by_location.get(location, [])
+    all_items_here = game_state.items_by_location.get(location_key, [])
     visible_items = [item for item in all_items_here if game_state.check_item_visible(item)]
     
     # Send search results
@@ -677,8 +687,16 @@ async def handle_pickup_item(room_code: str, player_id: str, data: Dict[str, Any
         })
         return
     
+    # Normalize location to ID (same logic as search)
+    location_key = location
+    if location not in game_state.items_by_location:
+        for loc in game_state.locations:
+            if loc.id == location or loc.name.lower() == location.lower():
+                location_key = loc.id
+                break
+    
     # Find and remove item from location
-    items_here = game_state.items_by_location.get(location, [])
+    items_here = game_state.items_by_location.get(location_key, [])
     item = None
     for i, loc_item in enumerate(items_here):
         if loc_item.id == item_id:

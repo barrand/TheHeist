@@ -1,24 +1,40 @@
 """
-Stage 4: Markdown Renderer
-
-Converts validated JSON scenario graph into final markdown format.
-Uses templates to ensure consistent formatting and proper ID usage.
+Markdown Renderer
+Converts procedural scenario graphs to human-readable markdown format
 """
 
-import sys
 import json
 from pathlib import Path
-from typing import List, Dict
 from collections import defaultdict
 
-# Import graph structures
-sys.path.insert(0, str(Path(__file__).parent))
-from structure_extractor import ScenarioGraph, Task, Location, Item, NPC
+
+def render_markdown(graph) -> str:
+    """
+    Render complete markdown from scenario graph
+    
+    Args:
+        graph: ScenarioGraph from procedural_generator
+    
+    Returns:
+        Complete markdown string
+    """
+    output = ""
+    
+    output += _render_header(graph)
+    output += _render_locations(graph)
+    output += _render_items(graph)
+    output += _render_npcs(graph)
+    output += _render_tasks(graph)
+    
+    return output
 
 
-def render_header(graph: ScenarioGraph) -> str:
+def _render_header(graph) -> str:
     """Render scenario header"""
-    role_names = ', '.join([r.replace('_', ' ').title() for r in graph.roles])
+    # Determine roles from tasks
+    roles = sorted(set(task.assigned_role for task in graph.tasks))
+    role_names = ', '.join([r.replace('_', ' ').title() for r in roles])
+    player_count = len(roles)
     
     return f"""---
 ---
@@ -31,7 +47,7 @@ def render_header(graph: ScenarioGraph) -> str:
 **ID**: `{graph.scenario_id}`
 **Scenario**: {graph.objective}
 **Selected Roles**: {role_names}
-**Player Count**: {graph.player_count} players
+**Player Count**: {player_count} players
 
 ## Objective
 {graph.objective}
@@ -39,23 +55,26 @@ def render_header(graph: ScenarioGraph) -> str:
 """
 
 
-def render_locations(graph: ScenarioGraph) -> str:
+def _render_locations(graph) -> str:
     """Render locations section"""
     output = "## Locations\n\n"
     
-    # Group locations by category (optional, for now just list them)
+    # Group by category
+    locations_by_category = defaultdict(list)
     for location in graph.locations:
-        output += f"### {location.name}\n"
-        output += f"- **ID**: `{location.id}`\n"
-        output += f"  - **Name**: {location.name}\n"
-        output += f"  - **Description**: {location.description}\n"
-        output += f"  - **Visual**: {location.description}\n\n"
+        locations_by_category[location.category].append(location)
+    
+    for category, locations in sorted(locations_by_category.items()):
+        output += f"### {category}\n"
+        for location in locations:
+            output += f"- **{location.name}** (`{location.id}`): {location.description}\n"
+        output += "\n"
     
     output += f"**Total Locations**: {len(graph.locations)}\n\n"
     return output
 
 
-def render_items(graph: ScenarioGraph) -> str:
+def _render_items(graph) -> str:
     """Render items by location"""
     output = "## Items by Location\n\n"
     
@@ -67,29 +86,33 @@ def render_items(graph: ScenarioGraph) -> str:
     # Get location names
     loc_names = {loc.id: loc.name for loc in graph.locations}
     
-    for loc_id, items in items_by_loc.items():
+    for loc_id in sorted(items_by_loc.keys()):
+        items = items_by_loc[loc_id]
         loc_name = loc_names.get(loc_id, loc_id.replace('_', ' ').title())
         output += f"### {loc_name}\n"
         
         for item in items:
-            output += f"- **ID**: `{item.id}`\n"
-            output += f"  - **Name**: {item.name}\n"
+            output += f"- **{item.name}** (`{item.id}`)\n"
             output += f"  - **Description**: {item.description}\n"
-            output += f"  - **Visual**: {item.description}\n"
-            output += f"  - **Required For**: {item.needed_for}\n"
-            output += f"  - **Hidden**: {str(item.hidden).lower()}\n"
+            output += f"  - **Visual**: {item.visual or item.description}\n"
+            
+            if item.required_for:
+                output += f"  - **Required For**: `{item.required_for}`\n"
+            
+            output += f"  - **Hidden**: {'true' if item.hidden else 'false'}\n"
             
             if item.unlock_prerequisites:
                 output += f"  - **Unlock**:\n"
-                for unlock_task in item.unlock_prerequisites:
-                    output += f"    - Task `{unlock_task}`\n"
+                for prereq in item.unlock_prerequisites:
+                    prereq_type = prereq.type.capitalize()
+                    output += f"    - {prereq_type} `{prereq.id}`\n"
             
             output += "\n"
     
     return output
 
 
-def render_npcs(graph: ScenarioGraph) -> str:
+def _render_npcs(graph) -> str:
     """Render NPCs section"""
     output = "## NPCs\n\n"
     
@@ -98,53 +121,70 @@ def render_npcs(graph: ScenarioGraph) -> str:
         output += f"- **ID**: `{npc.id}`\n"
         output += f"- **Role**: {npc.role}\n"
         output += f"- **Location**: `{npc.location}`\n"
-        output += f"- **Age**: 30\n"  # Default age
-        output += f"- **Gender**: unknown\n"  # Default gender
-        output += f"- **Ethnicity**: Unknown\n"  # Default
-        output += f"- **Clothing**: Professional attire\n"  # Default
-        output += f"- **Expression**: Neutral\n"  # Default
-        output += f"- **Attitude**: {npc.personality[:50]}\n"
-        output += f"- **Details**: Standard appearance\n"  # Default
+        output += f"- **Age**: 35\n"
+        output += f"- **Gender**: {npc.gender}\n"
+        output += f"- **Ethnicity**: {npc.ethnicity or 'Unknown'}\n"
+        output += f"- **Clothing**: {npc.clothing or 'Professional attire'}\n"
+        output += f"- **Expression**: {npc.expression}\n"
+        output += f"- **Attitude**: {npc.attitude}\n"
+        output += f"- **Details**: {npc.details or 'Standard appearance'}\n"
         output += f"- **Personality**: {npc.personality}\n"
-        output += f"- **Relationships**: Interacts professionally with colleagues\n"  # Default
-        output += f"- **Story Context**: {npc.story_context}\n"
-        output += f"- **Information Known**:\n"
-        output += f"  - `{npc.outcome_provided}` HIGH: Key information this NPC provides\n"
-        output += f"- **Actions Available**:\n"
-        output += f"  - (none)\n"
-        output += f"- **Cover Story Options**:\n"
-        output += f"  - `professional`: \"I have an appointment.\" -- (Checks schedule)\n"
-        output += f"  - `delivery`: \"I'm delivering a package.\" -- (Asks for ID)\n"
-        output += f"  - `alien`: \"I'm from outer space.\" -- (Confused look)\n\n"
-    
-    return output
-
-
-def render_tasks(graph: ScenarioGraph) -> str:
-    """Render tasks by role"""
-    output = "## Roles & Tasks\n\n"
-    
-    # Group tasks by role
-    tasks_by_role = defaultdict(list)
-    for task in graph.tasks:
-        tasks_by_role[task.role].append(task)
-    
-    # Render each role's tasks
-    for role in graph.roles:
-        role_name = role.replace('_', ' ').title()
-        output += f"### {role_name}\n\n"
-        output += f"**Tasks:**\n"
+        output += f"- **Relationships**: {npc.relationships or 'Interacts professionally with colleagues'}\n"
+        output += f"- **Story Context**: {npc.story_context or 'Works at this location'}\n"
         
-        role_tasks = tasks_by_role.get(role, [])
-        for idx, task in enumerate(role_tasks, 1):
-            output += self._render_single_task(idx, task)
+        output += f"- **Information Known**:\n"
+        if npc.information_known:
+            for info in npc.information_known:
+                info_id_str = f"`{info.info_id}`" if info.info_id else "(flavor)"
+                output += f"  - {info_id_str} {info.confidence}: {info.description}\n"
+        else:
+            output += f"  - (none)\n"
+        
+        output += f"- **Actions Available**:\n"
+        if npc.actions_available:
+            for action in npc.actions_available:
+                output += f"  - `{action.action_id}` {action.confidence}: {action.description}\n"
+        else:
+            output += f"  - (none)\n"
+        
+        output += f"- **Cover Story Options**:\n"
+        if npc.cover_options:
+            for cover in npc.cover_options:
+                reaction = f" -- {cover.npc_reaction}" if cover.npc_reaction else ""
+                output += f"  - `{cover.cover_id}`: \"{cover.description}\"{reaction}\n"
+        else:
+            output += f"  - `direct`: \"I'm here on business.\" -- (Professional response)\n"
         
         output += "\n"
     
     return output
 
 
-def _render_single_task(idx: int, task: Task) -> str:
+def _render_tasks(graph) -> str:
+    """Render tasks by role"""
+    output = "## Roles & Tasks\n\n"
+    
+    # Group tasks by role
+    tasks_by_role = defaultdict(list)
+    for task in graph.tasks:
+        tasks_by_role[task.assigned_role].append(task)
+    
+    # Render each role's tasks
+    for role in sorted(tasks_by_role.keys()):
+        role_name = role.replace('_', ' ').title()
+        output += f"### {role_name}\n\n"
+        output += f"**Tasks:**\n\n"
+        
+        role_tasks = tasks_by_role[role]
+        for idx, task in enumerate(role_tasks, 1):
+            output += _render_single_task(idx, task)
+        
+        output += "\n"
+    
+    return output
+
+
+def _render_single_task(idx: int, task) -> str:
     """Render a single task"""
     # Map task type to emoji
     emoji_map = {
@@ -164,124 +204,75 @@ def _render_single_task(idx: int, task: Task) -> str:
         type_display = f"{emoji} {task.type.upper()}"
     
     output = f"{idx}. **{task.id}. {type_display}** - {task.description}\n"
-    output += f"    - *Description:* {task.description}\n"
     
     # Add type-specific fields
-    if task.type == 'npc_llm' and task.npc_id:
-        output += f"    - *NPC:* `{task.npc_id}`\n"
-        if task.target_outcome:
-            output += f"    - *Target Outcomes:* `{task.target_outcome}`\n"
+    if task.type == 'npc_llm':
+        if task.npc_id:
+            output += f"   - *NPC:* `{task.npc_id}`\n"
+        if task.target_outcomes:
+            outcomes_str = ', '.join([f'`{o}`' for o in task.target_outcomes])
+            output += f"   - *Target Outcomes:* {outcomes_str}\n"
     
-    elif task.type == 'search' and task.search_items:
-        items_str = ', '.join([f'`{item}`' for item in task.search_items])
-        output += f"    - *Search Items:* {items_str}\n"
+    elif task.type == 'search':
+        if task.search_items:
+            items_str = ', '.join([f'`{item}`' for item in task.search_items])
+            output += f"   - *Search Items:* {items_str}\n"
     
     elif task.type == 'handoff':
         if task.handoff_item:
-            output += f"    - *Handoff Item:* `{task.handoff_item}`\n"
+            output += f"   - *Handoff Item:* `{task.handoff_item}`\n"
         if task.handoff_to_role:
-            output += f"    - *Handoff To:* {task.handoff_to_role.replace('_', ' ').title()}\n"
+            output += f"   - *Handoff To:* {task.handoff_to_role.replace('_', ' ').title()}\n"
     
     elif task.type == 'info_share':
-        if task.info_id:
-            output += f"    - *Info:* `{task.info_id}`\n"
-        if task.share_with:
-            output += f"    - *Share With:* {task.share_with}\n"
+        if task.info_description:
+            output += f"   - *Info:* {task.info_description}\n"
     
-    output += f"    - *Location:* `{task.location}`\n"
+    output += f"   - *Location:* `{task.location}`\n"
     
     # Render prerequisites
     if task.prerequisites:
-        output += f"    - *Prerequisites:*\n"
+        output += f"   - *Prerequisites:*\n"
         for prereq in task.prerequisites:
-            prereq_type = prereq['type'].capitalize()
-            prereq_id = prereq['id']
-            output += f"        - {prereq_type} `{prereq_id}`\n"
+            prereq_type = prereq.type.capitalize()
+            prereq_id = prereq.id
+            output += f"      - {prereq_type} `{prereq_id}`\n"
     else:
-        output += f"    - *Prerequisites:* None (starting task)\n"
+        output += f"   - *Prerequisites:* None (starting task)\n"
     
     output += "\n"
     return output
 
 
-def render_markdown(graph: ScenarioGraph) -> str:
+def export_to_markdown(graph, output_path: str = None) -> str:
     """
-    Render complete markdown from scenario graph
+    Export scenario graph to markdown file
     
     Args:
-        graph: Validated ScenarioGraph
+        graph: ScenarioGraph instance
+        output_path: Optional path to write markdown. If None, auto-generates path.
     
     Returns:
-        Complete markdown string
+        Path to written markdown file
     """
-    output = ""
-    
-    output += render_header(graph)
-    output += render_locations(graph)
-    output += render_items(graph)
-    output += render_npcs(graph)
-    output += render_tasks(graph)
-    
-    return output
-
-
-if __name__ == '__main__':
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Render markdown from graph (Stage 4)")
-    parser.add_argument("graph_file", help="Path to JSON graph file")
-    parser.add_argument("--output", help="Output markdown file path")
-    
-    args = parser.parse_args()
-    
-    print(f"📝 Rendering markdown from graph...")
-    print(f"   Graph: {args.graph_file}")
-    print()
-    
-    # Load graph
-    graph_path = Path(args.graph_file)
-    if not graph_path.exists():
-        print(f"❌ Graph file not found: {graph_path}")
-        sys.exit(1)
-    
-    graph_data = json.loads(graph_path.read_text())
-    
-    # Reconstruct graph (simple approach)
-    # In production, add proper deserialization
-    graph = ScenarioGraph(
-        scenario_id=graph_data['scenario_id'],
-        objective=graph_data['objective'],
-        player_count=graph_data['player_count'],
-        roles=graph_data['roles']
-    )
-    
-    # Reconstruct locations
-    for loc_data in graph_data.get('locations', []):
-        graph.locations.append(Location(**loc_data))
-    
-    # Reconstruct items
-    for item_data in graph_data.get('items', []):
-        graph.items.append(Item(**item_data))
-    
-    # Reconstruct NPCs
-    for npc_data in graph_data.get('npcs', []):
-        graph.npcs.append(NPC(**npc_data))
-    
-    # Reconstruct tasks
-    for task_data in graph_data.get('tasks', []):
-        graph.tasks.append(Task(**task_data))
-    
-    # Render markdown
     markdown = render_markdown(graph)
     
-    # Save to file
-    if args.output:
-        output_path = Path(args.output)
+    # Determine output path
+    if output_path is None:
+        output_dir = Path(__file__).parent.parent.parent / "experiences"
+        output_dir.mkdir(exist_ok=True)
+        
+        # Determine player count from roles
+        roles = set(task.assigned_role for task in graph.tasks)
+        player_count = len(roles)
+        
+        output_path = output_dir / f"generated_{graph.scenario_id}_{player_count}players.md"
     else:
-        output_path = graph_path.with_suffix('.md')
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(markdown)
+    # Write markdown
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(markdown)
     
-    print(f"✅ Rendered markdown ({len(markdown.split())} words)")
-    print(f"💾 Saved to: {output_path}")
+    return str(output_path)

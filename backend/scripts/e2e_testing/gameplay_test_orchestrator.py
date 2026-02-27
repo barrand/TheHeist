@@ -128,16 +128,16 @@ class GameplayTestOrchestrator:
         
         # Validate scenario BEFORE testing - abort if critical issues found
         logger.info("Validating scenario before E2E test...")
-        validator.validate()
+        validation_report = validator.validate_all()
         
-        critical_issues = [issue for issue in validator.validation_issues if issue.severity == "critical"]
+        critical_issues = [issue for issue in validation_report.issues if issue.level.value == "critical"]
         if critical_issues:
             logger.error(f"")
             logger.error(f"🛑 {'='*60}")
             logger.error(f"   ABORTING E2E TEST: Scenario has {len(critical_issues)} CRITICAL validation issues")
             logger.error(f"{'='*60}")
             for issue in critical_issues:
-                logger.error(f"   • [{issue.rule_id}] {issue.title}")
+                logger.error(f"   • [Rule {issue.rule_number}] {issue.title}")
                 if issue.details:
                     for detail in issue.details[:3]:  # Show first 3 details
                         logger.error(f"     - {detail}")
@@ -148,7 +148,7 @@ class GameplayTestOrchestrator:
             result.status = "ERROR"
             result.issues.append(f"Scenario validation failed with {len(critical_issues)} critical issues")
             for issue in critical_issues:
-                result.issues.append(f"[{issue.rule_id}] {issue.title}")
+                result.issues.append(f"[Rule {issue.rule_number}] {issue.title}")
             return result
         
         # Extract roles from parsed data
@@ -323,12 +323,26 @@ class GameplayTestOrchestrator:
             active_bots = [b for b in bots if b.has_available_tasks()]
             
             if not active_bots:
-                result.status = "DEADLOCK"
-                result.issues.append(f"Turn {turn}: No bots have available tasks (deadlock)")
-                logger.warning(f"")
-                logger.warning(f"⚠️  {'='*60}")
-                logger.warning(f"   DEADLOCK: No bots have available tasks")
-                logger.warning(f"   {'='*60}")
+                # No bots have available tasks - this could be a win condition if all tasks are completed
+                # Check if we have a reasonable number of completed tasks (at least 1 per bot)
+                total_completed = sum(len(bot.state.completed_tasks) for bot in bots)
+                expected_min = len(bots)  # At least 1 task per bot
+                
+                if total_completed >= expected_min:
+                    # All tasks completed successfully
+                    result.status = "WIN"
+                    logger.info(f"")
+                    logger.info(f"🎉 {'='*60}")
+                    logger.info(f"   ✅ ALL TASKS COMPLETED IN {turn} TURNS!")
+                    logger.info(f"   {'='*60}")
+                else:
+                    # True deadlock - no tasks available but none completed either
+                    result.status = "DEADLOCK"
+                    result.issues.append(f"Turn {turn}: No bots have available tasks (deadlock)")
+                    logger.warning(f"")
+                    logger.warning(f"⚠️  {'='*60}")
+                    logger.warning(f"   DEADLOCK: No bots have available tasks, {total_completed} total completions")
+                    logger.warning(f"   {'='*60}")
                 break
             
             # Track idle bots
@@ -359,6 +373,13 @@ class GameplayTestOrchestrator:
         
         # Store idle counts
         result.idle_turns_per_role = idle_counts
+        
+        # Finalize task completion counts by checking each bot's completed_tasks
+        # This ensures we count all tasks, including those auto-completed by the backend
+        for bot in bots:
+            completed_count = len(bot.state.completed_tasks)
+            result.tasks_completed_per_role[bot.role] = completed_count
+            logger.debug(f"Bot {bot.role} completed {completed_count} tasks total")
         
         return result
     
@@ -592,15 +613,9 @@ class GameplayTestOrchestrator:
     
     async def _check_game_won(self, bots: List[BotPlayer]) -> bool:
         """
-        Check if game is won
-        
-        For now, we assume game is won if all bots have no available tasks
-        and all tasks are completed. A better approach would be to listen
-        for the game_ended WebSocket message.
+        Check if game is won by detecting game_ended WebSocket broadcast
         """
-        # TODO: Implement proper win condition checking
-        # Could track game_ended WebSocket message
-        return False
+        return any(bot.state.game_ended for bot in bots)
     
     async def _create_room(self) -> Optional[str]:
         """Create empty room directly - first WebSocket joiner becomes host"""

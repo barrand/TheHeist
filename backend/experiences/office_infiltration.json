@@ -1,0 +1,515 @@
+{
+  "scenario_id": "office_infiltration",
+  "objective": "Steal confidential documents from the executive suite",
+  "locations": [
+    {
+      "id": "archive_room",
+      "name": "Archive Room",
+      "description": "Document storage",
+      "category": "Office Interior",
+      "visual": "archive room environment"
+    },
+    {
+      "id": "rooftop",
+      "name": "Rooftop",
+      "description": "Roof access",
+      "category": "Office Exterior",
+      "visual": "rooftop environment"
+    },
+    {
+      "id": "server_room",
+      "name": "Server Room",
+      "description": "Data center",
+      "category": "Office Interior",
+      "visual": "server room environment"
+    },
+    {
+      "id": "cubicle_farm",
+      "name": "Cubicle Farm",
+      "description": "Open workspace",
+      "category": "Office Interior",
+      "visual": "cubicle farm environment"
+    },
+    {
+      "id": "reception",
+      "name": "Reception Area",
+      "description": "Front desk",
+      "category": "Office Interior",
+      "visual": "reception area environment"
+    },
+    {
+      "id": "executive_suite",
+      "name": "Executive Suite",
+      "description": "C-level offices",
+      "category": "Office Interior",
+      "visual": "executive suite environment"
+    }
+  ],
+  "items": [
+    {
+      "id": "item_1",
+      "name": "Item 1",
+      "description": "A useful item found at Archive Room",
+      "location": "archive_room",
+      "hidden": false,
+      "visual": "generic item 1",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_2",
+      "name": "Item 2",
+      "description": "A useful item found at Archive Room",
+      "location": "archive_room",
+      "hidden": false,
+      "visual": "generic item 2",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_3",
+      "name": "Item 3",
+      "description": "A useful item found at Rooftop",
+      "location": "rooftop",
+      "hidden": false,
+      "visual": "generic item 3",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_4",
+      "name": "Item 4",
+      "description": "A useful item found at Rooftop",
+      "location": "rooftop",
+      "hidden": false,
+      "visual": "generic item 4",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_5",
+      "name": "Item 5",
+      "description": "A useful item found at Server Room",
+      "location": "server_room",
+      "hidden": false,
+      "visual": "generic item 5",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_6",
+      "name": "Item 6",
+      "description": "A useful item found at Cubicle Farm",
+      "location": "cubicle_farm",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "H6"
+        }
+      ],
+      "visual": "generic item 6",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_7",
+      "name": "Item 7",
+      "description": "A useful item found at Cubicle Farm",
+      "location": "cubicle_farm",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "I3"
+        },
+        {
+          "type": "task",
+          "id": "H3"
+        }
+      ],
+      "visual": "generic item 7",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_8",
+      "name": "Item 8",
+      "description": "A useful item found at Cubicle Farm",
+      "location": "cubicle_farm",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "H6"
+        }
+      ],
+      "visual": "generic item 8",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_9",
+      "name": "Item 9",
+      "description": "A useful item found at Reception Area",
+      "location": "reception",
+      "hidden": false,
+      "visual": "generic item 9",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_10",
+      "name": "Item 10",
+      "description": "A useful item found at Executive Suite",
+      "location": "executive_suite",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "H2"
+        }
+      ],
+      "visual": "generic item 10",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_11",
+      "name": "Item 11",
+      "description": "A useful item found at Executive Suite",
+      "location": "executive_suite",
+      "hidden": false,
+      "visual": "generic item 11",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_12",
+      "name": "Item 12",
+      "description": "A useful item found at Executive Suite",
+      "location": "executive_suite",
+      "hidden": false,
+      "visual": "generic item 12",
+      "quantity": 1,
+      "transferable": true
+    }
+  ],
+  "npcs": [
+    {
+      "id": "curator",
+      "name": "Curator",
+      "role": "curator",
+      "personality": "Knowledgeable and proud",
+      "location": "cubicle_farm",
+      "information_known": [
+        {
+          "info_id": "curator_info_1",
+          "confidence": "HIGH",
+          "description": "Information from Curator"
+        },
+        {
+          "info_id": "curator_info_2",
+          "confidence": "HIGH",
+          "description": "Information from Curator"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "curator_action_1",
+          "confidence": "MEDIUM",
+          "description": "Action performed by Curator"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "man",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "friendly",
+      "attitude": "casual",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "it_specialist",
+      "name": "IT Specialist",
+      "role": "IT",
+      "personality": "Technical and distracted",
+      "location": "rooftop",
+      "information_known": [
+        {
+          "info_id": "it_specialist_info_1",
+          "confidence": "LOW",
+          "description": "Information from IT Specialist"
+        },
+        {
+          "info_id": "it_specialist_info_2",
+          "confidence": "HIGH",
+          "description": "Information from IT Specialist"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "it_specialist_action_1",
+          "confidence": "HIGH",
+          "description": "Action performed by IT Specialist"
+        },
+        {
+          "action_id": "it_specialist_action_2",
+          "confidence": "HIGH",
+          "description": "Action performed by IT Specialist"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "man",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "neutral",
+      "attitude": "professional",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "receptionist",
+      "name": "Receptionist",
+      "role": "receptionist",
+      "personality": "Professional and helpful",
+      "location": "cubicle_farm",
+      "information_known": [
+        {
+          "info_id": "receptionist_info_1",
+          "confidence": "LOW",
+          "description": "Information from Receptionist"
+        },
+        {
+          "info_id": "receptionist_info_2",
+          "confidence": "LOW",
+          "description": "Information from Receptionist"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "receptionist_action_1",
+          "confidence": "LOW",
+          "description": "Action performed by Receptionist"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "woman",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "neutral",
+      "attitude": "casual",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    }
+  ],
+  "tasks": [
+    {
+      "id": "I1",
+      "type": "search",
+      "description": "Search for items at Rooftop",
+      "assigned_role": "insider",
+      "location": "rooftop",
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_3"
+      ]
+    },
+    {
+      "id": "I2",
+      "type": "minigame",
+      "description": "Complete alarm disable",
+      "assigned_role": "insider",
+      "location": "rooftop",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "I1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "alarm_disable"
+    },
+    {
+      "id": "I3",
+      "type": "npc_llm",
+      "description": "Talk to Receptionist",
+      "assigned_role": "insider",
+      "location": "cubicle_farm",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "I1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "receptionist",
+      "npc_name": "Receptionist",
+      "npc_personality": "Professional and helpful",
+      "target_outcomes": [
+        "receptionist_info_1",
+        "receptionist_info_2"
+      ]
+    },
+    {
+      "id": "H1",
+      "type": "search",
+      "description": "Search for items at Rooftop",
+      "assigned_role": "hacker",
+      "location": "rooftop",
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_4"
+      ]
+    },
+    {
+      "id": "H2",
+      "type": "npc_llm",
+      "description": "Talk to Curator",
+      "assigned_role": "hacker",
+      "location": "cubicle_farm",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "receptionist_info_2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "curator",
+      "npc_name": "Curator",
+      "npc_personality": "Knowledgeable and proud",
+      "target_outcomes": [
+        "curator_info_2",
+        "curator_action_1"
+      ]
+    },
+    {
+      "id": "H3",
+      "type": "npc_llm",
+      "description": "Talk to Receptionist",
+      "assigned_role": "hacker",
+      "location": "cubicle_farm",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H2"
+        },
+        {
+          "type": "outcome",
+          "id": "curator_action_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "receptionist",
+      "npc_name": "Receptionist",
+      "npc_personality": "Professional and helpful",
+      "target_outcomes": [
+        "receptionist_action_1",
+        "receptionist_info_1"
+      ]
+    },
+    {
+      "id": "H4",
+      "type": "handoff",
+      "description": "Hand off item to insider",
+      "assigned_role": "hacker",
+      "location": "reception",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "receptionist_action_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "handoff_item": "item_4",
+      "handoff_to_role": "insider"
+    },
+    {
+      "id": "H5",
+      "type": "minigame",
+      "description": "Complete fingerprint matching",
+      "assigned_role": "hacker",
+      "location": "reception",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "curator_action_1"
+        },
+        {
+          "type": "task",
+          "id": "I1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "fingerprint_matching"
+    },
+    {
+      "id": "H6",
+      "type": "npc_llm",
+      "description": "Talk to Receptionist",
+      "assigned_role": "hacker",
+      "location": "cubicle_farm",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "curator_info_2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "receptionist",
+      "npc_name": "Receptionist",
+      "npc_personality": "Professional and helpful",
+      "target_outcomes": [
+        "receptionist_info_1",
+        "receptionist_action_1"
+      ]
+    }
+  ],
+  "timeline_minutes": 120
+}

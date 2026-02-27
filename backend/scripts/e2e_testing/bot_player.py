@@ -37,6 +37,8 @@ class BotPlayerState:
     locations: List[Dict] = field(default_factory=list)
     
     game_started: bool = False
+    game_ended: bool = False
+    game_result: Optional[str] = None
     is_host: bool = False
 
 
@@ -489,18 +491,27 @@ class BotPlayer:
             for outcome in msg.get("achieved_outcomes", []):
                 self.state.achieved_outcomes.add(outcome)
             
-            # Remove completed task from available tasks (even if another player completed it)
+            # Track completed tasks and remove from available tasks
             completed_task_id = msg.get("task_id")
-            if completed_task_id and completed_task_id in self.state.available_tasks:
-                del self.state.available_tasks[completed_task_id]
-                logger.debug(f"Bot {self.player_name} removed completed task {completed_task_id} from available tasks")
+            if completed_task_id:
+                # Only add to completed_tasks if this task was assigned to this bot
+                # (it was in available_tasks at some point)
+                if completed_task_id in self.state.available_tasks:
+                    self.state.completed_tasks.add(completed_task_id)
+                    del self.state.available_tasks[completed_task_id]
+                    logger.debug(f"Bot {self.player_name} marked own task {completed_task_id} as completed (via broadcast)")
+                else:
+                    # Task was completed by another role - just track the outcomes
+                    logger.debug(f"Bot {self.player_name} saw other role complete task {completed_task_id}")
         
         elif msg_type == "item_picked_up":
             # Track if this bot picked up item (already handled in pickup_item)
             pass
         
         elif msg_type == "game_ended":
-            logger.info(f"Bot {self.player_name} saw game end: {msg.get('result')}")
+            self.state.game_ended = True
+            self.state.game_result = msg.get("result", "unknown")
+            logger.info(f"Bot {self.player_name} saw game end: {self.state.game_result}")
     
     async def _wait_for_message(self, message_type: str, timeout: float = 10) -> Optional[Dict]:
         """
