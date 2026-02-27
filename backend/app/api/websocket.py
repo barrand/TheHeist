@@ -651,16 +651,37 @@ async def handle_search_room(room_code: str, player_id: str, data: Dict[str, Any
     # Get items at this location, filtered by unlock prerequisites
     all_items_here = game_state.items_by_location.get(location_key, [])
     visible_items = [item for item in all_items_here if game_state.check_item_visible(item)]
-    
+
+    # Further filter to items relevant to this player's role.
+    # Items that appear in any search task's search_items are "claimed" by that task's role;
+    # only the owning role (or tasks with no role claim) should be able to find them.
+    # This prevents one player from accidentally picking up items intended for another role.
+    role_claimed_items: Dict[str, str] = {}  # item_id -> assigned_role that needs it
+    for task in game_state.tasks.values():
+        if task.type.value == "search" and task.search_items:
+            for item_id in task.search_items:
+                role_claimed_items[item_id] = task.assigned_role
+
+    player_role = room.players[player_id].role if player_id in room.players else None
+    role_filtered = [
+        item for item in visible_items
+        if item.id not in role_claimed_items  # unclaimed — anyone can find it
+        or role_claimed_items[item.id] == player_role  # claimed by this player's role
+    ]
+
     # Send search results
     search_results = SearchResultsMessage(
         type="search_results",
         location=location,
-        items=[item.model_dump(mode='json') for item in visible_items]
+        items=[item.model_dump(mode='json') for item in role_filtered]
     )
     await ws_manager.send_to_player(room_code, player_id, search_results.model_dump(mode='json'))
-    
-    logger.info(f"🔍 {player.name} searched {location} - found {len(visible_items)}/{len(all_items_here)} items")
+
+    logger.info(
+        f"🔍 {player.name} ({player_role}) searched {location} - "
+        f"found {len(role_filtered)}/{len(all_items_here)} items "
+        f"(visible={len(visible_items)}, role-filtered={len(visible_items)-len(role_filtered)} hidden)"
+    )
 
 
 async def handle_pickup_item(room_code: str, player_id: str, data: Dict[str, Any]) -> None:

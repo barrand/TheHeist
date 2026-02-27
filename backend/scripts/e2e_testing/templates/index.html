@@ -138,10 +138,10 @@
     </div>
 
     <script>
-        let backendLogSource = null;
-        let e2eLogSource = null;
         let scenarios = [];
         let generating = false;
+        let backendLogOffset = -1;  // -1 = "start from end of file"
+        let e2eLogOffset = -1;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -190,7 +190,7 @@
                                 class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold">
                             ▶ Run E2E Test
                         </button>
-                        <button onclick="deleteScenario('${s.id}')"
+                        <button onclick="deleteScenario('${s.id}', this)"
                                 class="bg-red-700 hover:bg-red-600 px-3 py-2 rounded text-sm">
                             🗑
                         </button>
@@ -331,26 +331,55 @@
         }
 
         // Delete a single scenario
-        async function deleteScenario(scenarioId) {
-            if (!confirm(`Delete scenario "${scenarioId}"?`)) return;
+        async function deleteScenario(scenarioId, btnEl) {
+            // Two-tap confirm: first click shows "Sure?" text, second click deletes
+            if (btnEl && btnEl.dataset.confirming !== 'true') {
+                btnEl.dataset.confirming = 'true';
+                btnEl.textContent = 'Sure?';
+                btnEl.classList.add('bg-red-500');
+                setTimeout(() => {
+                    if (btnEl.dataset.confirming === 'true') {
+                        btnEl.dataset.confirming = 'false';
+                        btnEl.textContent = '🗑';
+                        btnEl.classList.remove('bg-red-500');
+                    }
+                }, 3000);
+                return;
+            }
+            if (btnEl) btnEl.dataset.confirming = 'false';
             const resp = await fetch(`/api/scenarios/${scenarioId}`, { method: 'DELETE' });
             const result = await resp.json();
             if (result.success) {
                 await refreshScenarios();
             } else {
-                alert(`Delete failed: ${result.error}`);
+                appendGenLog(`❌ Delete failed: ${result.error}`, true);
             }
         }
 
         // Delete all scenarios
         async function deleteAllScenarios() {
-            if (!confirm('Delete ALL generated scenarios? This cannot be undone.')) return;
+            const btn = document.querySelector('button[onclick="deleteAllScenarios()"]');
+            if (btn && btn.dataset.confirming !== 'true') {
+                btn.dataset.confirming = 'true';
+                btn.textContent = '🗑 Sure? Click again';
+                btn.classList.add('bg-red-600');
+                setTimeout(() => {
+                    if (btn.dataset.confirming === 'true') {
+                        btn.dataset.confirming = 'false';
+                        btn.textContent = '🗑 Delete All';
+                        btn.classList.remove('bg-red-600');
+                    }
+                }, 3000);
+                return;
+            }
+            if (btn) { btn.dataset.confirming = 'false'; btn.textContent = '🗑 Delete All'; }
             const resp = await fetch('/api/scenarios', { method: 'DELETE' });
             const result = await resp.json();
             if (result.success) {
+                appendGenLog(`🗑 Deleted ${result.count} scenario file(s)`);
                 await refreshScenarios();
             } else {
-                alert(`Delete failed: ${result.error}`);
+                appendGenLog(`❌ Delete failed: ${result.error}`, true);
             }
         }
 
@@ -373,6 +402,7 @@
             if (result.success) {
                 document.getElementById('testStatus').textContent = `Running: ${scenarioId} (PID ${result.pid})`;
                 document.getElementById('stopTestBtn').classList.remove('hidden');
+                e2eLogOffset = -1;  // Reset to tail so we see fresh test output
                 clearLog('e2e');
             } else {
                 alert(`Failed to start test: ${result.error}`);
@@ -408,25 +438,29 @@
             }, 2000);
         }
 
-        // Start log streaming
-        function startLogStreaming() {
-            // Backend log
-            backendLogSource = new EventSource('/api/logs/backend/stream');
-            backendLogSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.line) {
-                    appendLog('backend', data.line);
+        // Poll log files for new lines
+        async function pollLog(type) {
+            const url = type === 'backend'
+                ? `/api/logs/backend/tail?since=${backendLogOffset}&lines=50`
+                : `/api/logs/e2e/tail?since=${e2eLogOffset}&lines=100`;
+            try {
+                const resp = await fetch(url);
+                const data = await resp.json();
+                if (data.lines && data.lines.length > 0) {
+                    data.lines.forEach(line => appendLog(type, line));
+                    if (type === 'backend') backendLogOffset = data.next_offset;
+                    else e2eLogOffset = data.next_offset;
                 }
-            };
+            } catch (_) {}
+        }
 
-            // E2E log
-            e2eLogSource = new EventSource('/api/logs/e2e/stream');
-            e2eLogSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.line) {
-                    appendLog('e2e', data.line);
-                }
-            };
+        function startLogStreaming() {
+            // Poll both logs every 2 seconds instead of holding open persistent connections
+            setInterval(() => pollLog('backend'), 2000);
+            setInterval(() => pollLog('e2e'), 2000);
+            // Fetch initial content immediately
+            pollLog('backend');
+            pollLog('e2e');
         }
 
         // Append log line
@@ -451,10 +485,15 @@
             }
         }
 
-        // Clear log
-        function clearLog(type) {
+        // Clear log (visual + reset offset to end of file so old content isn't replayed)
+        async function clearLog(type) {
             const logId = type === 'backend' ? 'backendLog' : 'e2eLog';
             document.getElementById(logId).innerHTML = '';
+            // Reset offset to -1 so next poll starts from end of file
+            if (type === 'backend') backendLogOffset = -1;
+            else e2eLogOffset = -1;
+            // Also truncate the file on disk
+            await fetch(`/api/logs/${type}/clear`, { method: 'POST' }).catch(() => {});
         }
     </script>
 </body>

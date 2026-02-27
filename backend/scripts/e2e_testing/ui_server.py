@@ -85,7 +85,11 @@ def discover_scenarios() -> List[ScenarioInfo]:
 @app.route("/")
 def index():
     """Main UI page"""
-    return render_template("index.html")
+    from flask import make_response
+    resp = make_response(render_template("index.html"))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
 
 
 @app.route("/api/scenarios")
@@ -186,10 +190,18 @@ def generate_scenario():
             validator = ScenarioValidator(md_path)
             report = validator.validate_all()
             critical_issues = [i for i in report.issues if i.level == ValidationLevel.CRITICAL]
-            important_count = sum(1 for i in report.issues if i.level == ValidationLevel.IMPORTANT)
+            important_issues = [i for i in report.issues if i.level == ValidationLevel.IMPORTANT]
+            advisory_issues = [i for i in report.issues if i.level == ValidationLevel.ADVISORY]
             yield _progress(
-                f"Markdown validation: {len(critical_issues)} critical, {important_count} important"
+                f"Markdown validation: {len(critical_issues)} critical, "
+                f"{len(important_issues)} important, {len(advisory_issues)} advisory"
             )
+            for issue in important_issues:
+                detail = "; ".join(issue.details) if issue.details else ""
+                yield _progress(f"  ⚠️  {issue.title}" + (f": {detail}" if detail else ""))
+            for issue in advisory_issues:
+                detail = "; ".join(issue.details) if issue.details else ""
+                yield _progress(f"  ℹ️  {issue.title}" + (f": {detail}" if detail else ""))
 
             if critical_issues:
                 yield _progress(f"Running editor to fix {len(critical_issues)} critical issue(s)...")
@@ -312,70 +324,54 @@ def test_status():
     return jsonify({"running": False, "pid": None, "exit_code": None})
 
 
-@app.route("/api/logs/backend/stream")
-def stream_backend_log():
-    """Stream backend log in real-time"""
-    def generate():
-        # Send existing log content first
-        if BACKEND_LOG.exists():
-            with open(BACKEND_LOG) as f:
-                lines = f.readlines()
-                # Send last 100 lines
-                for line in lines[-100:]:
-                    yield f"data: {json.dumps({'line': line.rstrip()})}\n\n"
-        
-        # Then tail -f for new content
-        try:
-            process = subprocess.Popen(
-                ["tail", "-f", str(BACKEND_LOG)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            for line in iter(process.stdout.readline, ""):
-                if line:
-                    yield f"data: {json.dumps({'line': line.rstrip()})}\n\n"
-                    
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-    
-    return Response(generate(), mimetype="text/event-stream")
+def _read_log_tail(log_path: Path, since: int, lines_param: int, initial_tail: int = 50):
+    """Read lines from a log file. If since==-1, start from the last `initial_tail` lines."""
+    if not log_path.exists():
+        return {"lines": [], "total": 0, "next_offset": 0}
+    with open(log_path) as f:
+        all_lines = f.readlines()
+    total = len(all_lines)
+    if since == -1:
+        # First load: start from near end so we don't replay old history
+        offset = max(0, total - initial_tail)
+    else:
+        offset = since
+    new_lines = [l.rstrip() for l in all_lines[offset:offset + lines_param]]
+    return {"lines": new_lines, "total": total, "next_offset": offset + len(new_lines)}
 
 
-@app.route("/api/logs/e2e/stream")
-def stream_e2e_log():
-    """Stream E2E test log in real-time"""
-    def generate():
-        # Wait for log file to exist
-        max_wait = 30
-        waited = 0
-        while not E2E_LOG.exists() and waited < max_wait:
-            import time
-            time.sleep(0.5)
-            waited += 0.5
-        
-        if not E2E_LOG.exists():
-            yield f"data: {json.dumps({'line': 'Waiting for E2E test to start...'})}\n\n"
-            return
-        
-        # Tail the log
-        try:
-            process = subprocess.Popen(
-                ["tail", "-f", str(E2E_LOG)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            for line in iter(process.stdout.readline, ""):
-                if line:
-                    yield f"data: {json.dumps({'line': line.rstrip()})}\n\n"
-                    
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-    
-    return Response(generate(), mimetype="text/event-stream")
+@app.route("/api/logs/backend/tail")
+def tail_backend_log():
+    """Return recent lines of backend log (poll-based, no persistent connection)"""
+    since = request.args.get("since", -1, type=int)
+    lines_param = request.args.get("lines", 100, type=int)
+    try:
+        return jsonify(_read_log_tail(BACKEND_LOG, since, lines_param, initial_tail=50))
+    except Exception as e:
+        return jsonify({"lines": [], "total": 0, "next_offset": 0, "error": str(e)})
+
+
+@app.route("/api/logs/e2e/tail")
+def tail_e2e_log():
+    """Return recent lines of E2E test log (poll-based, no persistent connection)"""
+    since = request.args.get("since", -1, type=int)
+    lines_param = request.args.get("lines", 200, type=int)
+    try:
+        return jsonify(_read_log_tail(E2E_LOG, since, lines_param, initial_tail=50))
+    except Exception as e:
+        return jsonify({"lines": [], "total": 0, "next_offset": 0, "error": str(e)})
+
+
+@app.route("/api/logs/<log_type>/clear", methods=["POST"])
+def clear_log(log_type):
+    """Truncate a log file"""
+    log_path = BACKEND_LOG if log_type == "backend" else E2E_LOG
+    try:
+        if log_path.exists():
+            log_path.write_text("")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 @app.route("/api/config/roles")
