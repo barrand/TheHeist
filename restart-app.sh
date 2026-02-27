@@ -16,13 +16,15 @@ echo ""
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-# Kill any existing Flutter/backend processes
+# Kill any existing Flutter/backend/E2E portal processes
 echo -e "${YELLOW}1. Stopping existing processes...${NC}"
 pkill -9 -f "flutter run" 2>/dev/null
 pkill -9 -f "python.*run.py" 2>/dev/null
+pkill -9 -f "ui_server.py" 2>/dev/null
 pkill -9 -f "flutter_tools_chrome_device" 2>/dev/null
 lsof -ti:8087 | xargs kill -9 2>/dev/null
 lsof -ti:8000 | xargs kill -9 2>/dev/null
+lsof -ti:5555 | xargs kill -9 2>/dev/null
 sleep 3
 echo -e "${GREEN}   ✓ Processes stopped${NC}"
 echo ""
@@ -61,8 +63,18 @@ flutter pub get
 echo -e "${GREEN}   ✓ Packages updated${NC}"
 echo ""
 
+# Start E2E portal
+echo -e "${YELLOW}6. Starting E2E Testing Portal...${NC}"
+mkdir -p /tmp/heist_logs
+cd "$SCRIPT_DIR/backend"
+E2E_PORT=5555 python3 scripts/e2e_testing/ui_server.py > /tmp/heist_logs/e2e_portal.log 2>&1 &
+E2E_PID=$!
+echo -e "${GREEN}   ✓ E2E portal starting (PID: $E2E_PID)${NC}"
+echo -e "     Logs: tail -f /tmp/heist_logs/e2e_portal.log"
+echo ""
+
 # Start Flutter web app (single instance, multiple browser tabs)
-echo -e "${YELLOW}6. Starting Flutter web app...${NC}"
+echo -e "${YELLOW}7. Starting Flutter web app...${NC}"
 echo -e "   Running on port 8087"
 echo -e "   This may take 30-60 seconds..."
 echo ""
@@ -74,7 +86,7 @@ echo -e "${GREEN}   ✓ Flutter starting (PID: $FLUTTER_PID)${NC}"
 echo ""
 
 # Wait for Flutter to build and start
-echo -e "${YELLOW}7. Waiting for Flutter to build...${NC}"
+echo -e "${YELLOW}8. Waiting for Flutter to build...${NC}"
 for i in {1..60}; do
     if lsof -i:8087 > /dev/null 2>&1; then
         echo -e "${GREEN}   ✓ Flutter web app is running!${NC}"
@@ -93,6 +105,7 @@ echo -e "${BLUE}======================================${NC}"
 echo ""
 echo -e "  📱 Frontend:  ${GREEN}http://localhost:8087${NC}"
 echo -e "  🔧 Backend:   ${GREEN}http://localhost:8000${NC}"
+echo -e "  🧪 E2E Portal: ${GREEN}http://localhost:5555${NC}"
 echo ""
 echo -e "  ${YELLOW}Quick Test:${NC}"
 echo -e "    1. Browser 1: Click 🎭 Test as Mastermind"
@@ -102,6 +115,7 @@ echo ""
 echo -e "  Logs:"
 echo -e "    Backend:  tail -f /tmp/theheist-backend.log"
 echo -e "    Flutter:  tail -f /tmp/theheist-flutter.log"
+echo -e "    E2E:      tail -f /tmp/heist_logs/e2e_portal.log"
 echo ""
 echo -e "  To stop:"
 echo -e "    pkill -f \"flutter run\""
