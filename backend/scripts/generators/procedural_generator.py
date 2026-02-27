@@ -137,11 +137,11 @@ class GeneratorConfig:
     tasks_per_role: Tuple[int, int] = (3, 6)
     hidden_item_ratio: float = 0.3
     task_type_distribution: Dict[str, float] = field(default_factory=lambda: {
-        "minigame": 0.30,
-        "npc_llm": 0.30,
-        "search": 0.20,
-        "handoff": 0.10,
-        "info_share": 0.10,
+        "minigame": 0.40,
+        "npc_llm": 0.35,
+        "search": 0.25,
+        "handoff": 0.00,  # Disabled: requires complex item prerequisite chains
+        "info_share": 0.00,  # Disabled: requires outcome tracking complexity
     })
     timeline_minutes: int = 120
     seed: Optional[int] = None
@@ -399,11 +399,14 @@ class ProceduralGraphGenerator:
         npc_outcomes = self._get_all_npc_outcomes(npcs)
         
         # Build items_by_location mapping and track assigned items
+        # Only include non-hidden items (hidden items can't be assigned to search tasks)
         items_by_location = {}
+        items_by_id = {item.id: item for item in items}
         for item in items:
-            if item.location not in items_by_location:
-                items_by_location[item.location] = []
-            items_by_location[item.location].append(item.id)
+            if not item.hidden:  # Only non-hidden items can be searched for
+                if item.location not in items_by_location:
+                    items_by_location[item.location] = []
+                items_by_location[item.location].append(item.id)
         
         assigned_items: Set[str] = set()
         
@@ -446,6 +449,12 @@ class ProceduralGraphGenerator:
                         selected_items = random.sample(available_location_items, num_items)
                         task.search_items = selected_items
                         assigned_items.update(selected_items)
+                    else:
+                        # No items available - convert to minigame instead
+                        task.type = TaskType.MINIGAME.value
+                        task.minigame_id = random.choice(MINIGAMES)
+                        task.description = f"Complete {task.minigame_id.replace('_', ' ')}"
+                        task.search_items = []
                 
                 tasks.append(task)
                 available_task_ids.add(task_id)

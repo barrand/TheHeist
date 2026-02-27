@@ -3,11 +3,11 @@
   "objective": "Infiltrate the bank and access the vault",
   "locations": [
     {
-      "id": "parking_garage",
-      "name": "Parking Garage",
-      "description": "Underground parking",
-      "category": "Bank Exterior",
-      "visual": "parking garage environment"
+      "id": "teller_area",
+      "name": "Teller Area",
+      "description": "Transaction stations",
+      "category": "Bank Interior",
+      "visual": "teller area environment"
     },
     {
       "id": "server_room",
@@ -24,13 +24,6 @@
       "visual": "vault environment"
     },
     {
-      "id": "manager_office",
-      "name": "Manager Office",
-      "description": "Bank manager workspace",
-      "category": "Bank Interior",
-      "visual": "manager office environment"
-    },
-    {
       "id": "lobby",
       "name": "Bank Lobby",
       "description": "Main customer area",
@@ -38,19 +31,19 @@
       "visual": "bank lobby environment"
     },
     {
-      "id": "teller_area",
-      "name": "Teller Area",
-      "description": "Transaction stations",
+      "id": "manager_office",
+      "name": "Manager Office",
+      "description": "Bank manager workspace",
       "category": "Bank Interior",
-      "visual": "teller area environment"
+      "visual": "manager office environment"
     }
   ],
   "items": [
     {
       "id": "item_1",
       "name": "Item 1",
-      "description": "A useful item found at Parking Garage",
-      "location": "parking_garage",
+      "description": "A useful item found at Teller Area",
+      "location": "teller_area",
       "hidden": false,
       "visual": "generic item 1",
       "quantity": 1,
@@ -59,9 +52,15 @@
     {
       "id": "item_2",
       "name": "Item 2",
-      "description": "A useful item found at Server Room",
-      "location": "server_room",
-      "hidden": false,
+      "description": "A useful item found at Teller Area",
+      "location": "teller_area",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "D5"
+        }
+      ],
       "visual": "generic item 2",
       "quantity": 1,
       "transferable": true
@@ -69,15 +68,9 @@
     {
       "id": "item_3",
       "name": "Item 3",
-      "description": "A useful item found at Vault",
-      "location": "vault",
-      "hidden": true,
-      "unlock_prerequisites": [
-        {
-          "type": "task",
-          "id": "H6"
-        }
-      ],
+      "description": "A useful item found at Teller Area",
+      "location": "teller_area",
+      "hidden": false,
       "visual": "generic item 3",
       "quantity": 1,
       "transferable": true
@@ -85,9 +78,15 @@
     {
       "id": "item_4",
       "name": "Item 4",
-      "description": "A useful item found at Manager Office",
-      "location": "manager_office",
-      "hidden": false,
+      "description": "A useful item found at Server Room",
+      "location": "server_room",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "SC1"
+        }
+      ],
       "visual": "generic item 4",
       "quantity": 1,
       "transferable": true
@@ -95,8 +94,8 @@
     {
       "id": "item_5",
       "name": "Item 5",
-      "description": "A useful item found at Manager Office",
-      "location": "manager_office",
+      "description": "A useful item found at Vault",
+      "location": "vault",
       "hidden": false,
       "visual": "generic item 5",
       "quantity": 1,
@@ -105,9 +104,19 @@
     {
       "id": "item_6",
       "name": "Item 6",
-      "description": "A useful item found at Bank Lobby",
-      "location": "lobby",
-      "hidden": false,
+      "description": "A useful item found at Vault",
+      "location": "vault",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "SC1"
+        },
+        {
+          "type": "task",
+          "id": "D3"
+        }
+      ],
       "visual": "generic item 6",
       "quantity": 1,
       "transferable": true
@@ -117,7 +126,17 @@
       "name": "Item 7",
       "description": "A useful item found at Bank Lobby",
       "location": "lobby",
-      "hidden": false,
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "H3"
+        },
+        {
+          "type": "task",
+          "id": "D3"
+        }
+      ],
       "visual": "generic item 7",
       "quantity": 1,
       "transferable": true
@@ -135,15 +154,9 @@
     {
       "id": "item_9",
       "name": "Item 9",
-      "description": "A useful item found at Teller Area",
-      "location": "teller_area",
-      "hidden": true,
-      "unlock_prerequisites": [
-        {
-          "type": "task",
-          "id": "SC4"
-        }
-      ],
+      "description": "A useful item found at Manager Office",
+      "location": "manager_office",
+      "hidden": false,
       "visual": "generic item 9",
       "quantity": 1,
       "transferable": true
@@ -151,43 +164,43 @@
     {
       "id": "item_10",
       "name": "Item 10",
-      "description": "A useful item found at Teller Area",
-      "location": "teller_area",
+      "description": "A useful item found at Manager Office",
+      "location": "manager_office",
       "hidden": false,
       "visual": "generic item 10",
-      "quantity": 1,
-      "transferable": true
-    },
-    {
-      "id": "item_11",
-      "name": "Item 11",
-      "description": "A useful item found at Teller Area",
-      "location": "teller_area",
-      "hidden": false,
-      "visual": "generic item 11",
       "quantity": 1,
       "transferable": true
     }
   ],
   "npcs": [
     {
-      "id": "janitor",
-      "name": "Janitor",
-      "role": "maintenance",
-      "personality": "Friendly but observant",
-      "location": "parking_garage",
+      "id": "curator",
+      "name": "Curator",
+      "role": "curator",
+      "personality": "Knowledgeable and proud",
+      "location": "manager_office",
       "information_known": [
         {
-          "info_id": "janitor_info_1",
-          "confidence": "MEDIUM",
-          "description": "Information from Janitor"
+          "info_id": "curator_info_1",
+          "confidence": "HIGH",
+          "description": "Information from Curator"
+        },
+        {
+          "info_id": "curator_info_2",
+          "confidence": "HIGH",
+          "description": "Information from Curator"
         }
       ],
       "actions_available": [
         {
-          "action_id": "janitor_action_1",
+          "action_id": "curator_action_1",
           "confidence": "MEDIUM",
-          "description": "Action performed by Janitor"
+          "description": "Action performed by Curator"
+        },
+        {
+          "action_id": "curator_action_2",
+          "confidence": "LOW",
+          "description": "Action performed by Curator"
         }
       ],
       "cover_options": [
@@ -202,11 +215,11 @@
           "npc_reaction": "May believe or may see through it"
         }
       ],
-      "gender": "man",
+      "gender": "woman",
       "ethnicity": "",
       "clothing": "",
-      "expression": "friendly",
-      "attitude": "professional",
+      "expression": "stern",
+      "attitude": "casual",
       "details": "",
       "relationships": "",
       "story_context": ""
@@ -220,7 +233,7 @@
       "information_known": [
         {
           "info_id": "it_specialist_info_1",
-          "confidence": "HIGH",
+          "confidence": "LOW",
           "description": "Information from IT Specialist"
         }
       ],
@@ -252,57 +265,6 @@
       "ethnicity": "",
       "clothing": "",
       "expression": "friendly",
-      "attitude": "professional",
-      "details": "",
-      "relationships": "",
-      "story_context": ""
-    },
-    {
-      "id": "receptionist",
-      "name": "Receptionist",
-      "role": "receptionist",
-      "personality": "Professional and helpful",
-      "location": "parking_garage",
-      "information_known": [
-        {
-          "info_id": "receptionist_info_1",
-          "confidence": "MEDIUM",
-          "description": "Information from Receptionist"
-        },
-        {
-          "info_id": "receptionist_info_2",
-          "confidence": "HIGH",
-          "description": "Information from Receptionist"
-        }
-      ],
-      "actions_available": [
-        {
-          "action_id": "receptionist_action_1",
-          "confidence": "LOW",
-          "description": "Action performed by Receptionist"
-        },
-        {
-          "action_id": "receptionist_action_2",
-          "confidence": "HIGH",
-          "description": "Action performed by Receptionist"
-        }
-      ],
-      "cover_options": [
-        {
-          "cover_id": "direct",
-          "description": "Be direct and honest",
-          "npc_reaction": "Suspicious but may help if convinced"
-        },
-        {
-          "cover_id": "lie",
-          "description": "Use a false cover story",
-          "npc_reaction": "May believe or may see through it"
-        }
-      ],
-      "gender": "person",
-      "ethnicity": "",
-      "clothing": "",
-      "expression": "neutral",
       "attitude": "casual",
       "details": "",
       "relationships": "",
@@ -313,19 +275,19 @@
     {
       "id": "H1",
       "type": "minigame",
-      "description": "Complete fingerprint matching",
+      "description": "Complete alarm disable",
       "assigned_role": "hacker",
-      "location": "lobby",
+      "location": "teller_area",
       "status": "locked",
       "detail_description": "",
-      "minigame_id": "fingerprint_matching"
+      "minigame_id": "alarm_disable"
     },
     {
       "id": "H2",
-      "type": "npc_llm",
-      "description": "Talk to Receptionist",
+      "type": "minigame",
+      "description": "Complete fingerprint matching",
       "assigned_role": "hacker",
-      "location": "parking_garage",
+      "location": "teller_area",
       "prerequisites": [
         {
           "type": "task",
@@ -334,20 +296,116 @@
       ],
       "status": "locked",
       "detail_description": "",
-      "npc_id": "receptionist",
-      "npc_name": "Receptionist",
-      "npc_personality": "Professional and helpful",
-      "target_outcomes": [
-        "receptionist_info_2"
-      ]
+      "minigame_id": "fingerprint_matching"
     },
     {
       "id": "H3",
       "type": "minigame",
       "description": "Complete safe cracking",
       "assigned_role": "hacker",
+      "location": "server_room",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H2"
+        },
+        {
+          "type": "task",
+          "id": "H1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "SC1",
+      "type": "minigame",
+      "description": "Complete camera bypass",
+      "assigned_role": "safe_cracker",
+      "location": "server_room",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "camera_bypass"
+    },
+    {
+      "id": "SC2",
+      "type": "minigame",
+      "description": "Complete camera bypass",
+      "assigned_role": "safe_cracker",
+      "location": "teller_area",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "SC1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "camera_bypass"
+    },
+    {
+      "id": "SC3",
+      "type": "minigame",
+      "description": "Complete wire connecting",
+      "assigned_role": "safe_cracker",
+      "location": "teller_area",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H3"
+        },
+        {
+          "type": "task",
+          "id": "SC2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "wire_connecting"
+    },
+    {
+      "id": "D1",
+      "type": "minigame",
+      "description": "Complete safe cracking",
+      "assigned_role": "driver",
+      "location": "lobby",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "D2",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "driver",
+      "location": "lobby",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_1"
+      ]
+    },
+    {
+      "id": "D3",
+      "type": "minigame",
+      "description": "Complete wire connecting",
+      "assigned_role": "driver",
       "location": "manager_office",
       "prerequisites": [
+        {
+          "type": "task",
+          "id": "SC3"
+        },
         {
           "type": "task",
           "id": "H2"
@@ -358,173 +416,11 @@
       "minigame_id": "wire_connecting"
     },
     {
-      "id": "H4",
-      "type": "minigame",
-      "description": "Complete fingerprint matching",
-      "assigned_role": "hacker",
-      "location": "teller_area",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "H3"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "fingerprint_matching"
-    },
-    {
-      "id": "H5",
-      "type": "minigame",
-      "description": "Complete camera bypass",
-      "assigned_role": "hacker",
-      "location": "vault",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "H4"
-        },
-        {
-          "type": "task",
-          "id": "H1"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "camera_bypass"
-    },
-    {
-      "id": "H6",
-      "type": "npc_llm",
-      "description": "Talk to IT Specialist",
-      "assigned_role": "hacker",
-      "location": "lobby",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "H3"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "npc_id": "it_specialist",
-      "npc_name": "IT Specialist",
-      "npc_personality": "Technical and distracted",
-      "target_outcomes": [
-        "it_specialist_action_1"
-      ]
-    },
-    {
-      "id": "SC1",
-      "type": "minigame",
-      "description": "Complete safe cracking",
-      "assigned_role": "safe_cracker",
-      "location": "vault",
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "safe_cracking"
-    },
-    {
-      "id": "SC2",
-      "type": "minigame",
-      "description": "Complete alarm disable",
-      "assigned_role": "safe_cracker",
-      "location": "server_room",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "H4"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "alarm_disable"
-    },
-    {
-      "id": "SC3",
-      "type": "npc_llm",
-      "description": "Talk to Janitor",
-      "assigned_role": "safe_cracker",
-      "location": "parking_garage",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "H1"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "npc_id": "janitor",
-      "npc_name": "Janitor",
-      "npc_personality": "Friendly but observant",
-      "target_outcomes": [
-        "janitor_info_1",
-        "janitor_action_1"
-      ]
-    },
-    {
-      "id": "SC4",
-      "type": "info_share",
-      "description": "Share information with team",
-      "assigned_role": "safe_cracker",
-      "location": "lobby",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "H2"
-        },
-        {
-          "type": "task",
-          "id": "H5"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "info_description": "Information about janitor_action_1"
-    },
-    {
-      "id": "SC5",
-      "type": "npc_llm",
-      "description": "Talk to IT Specialist",
-      "assigned_role": "safe_cracker",
-      "location": "lobby",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "SC2"
-        },
-        {
-          "type": "task",
-          "id": "SC4"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "npc_id": "it_specialist",
-      "npc_name": "IT Specialist",
-      "npc_personality": "Technical and distracted",
-      "target_outcomes": [
-        "it_specialist_action_2"
-      ]
-    },
-    {
-      "id": "D1",
-      "type": "search",
-      "description": "Search for items at Parking Garage",
-      "assigned_role": "driver",
-      "location": "parking_garage",
-      "status": "locked",
-      "detail_description": "",
-      "search_items": [
-        "item_1"
-      ]
-    },
-    {
-      "id": "D2",
+      "id": "D4",
       "type": "minigame",
       "description": "Complete fingerprint matching",
       "assigned_role": "driver",
-      "location": "parking_garage",
+      "location": "vault",
       "prerequisites": [
         {
           "type": "task",
@@ -536,78 +432,36 @@
       "minigame_id": "fingerprint_matching"
     },
     {
-      "id": "D3",
-      "type": "minigame",
-      "description": "Complete alarm disable",
-      "assigned_role": "driver",
-      "location": "manager_office",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "SC3"
-        },
-        {
-          "type": "task",
-          "id": "H4"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "alarm_disable"
-    },
-    {
-      "id": "D4",
-      "type": "search",
-      "description": "Search Vault",
-      "assigned_role": "driver",
-      "location": "vault",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "SC2"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "search_items": [
-        "item_3"
-      ]
-    },
-    {
       "id": "D5",
       "type": "minigame",
-      "description": "Complete alarm disable",
+      "description": "Complete fingerprint matching",
       "assigned_role": "driver",
       "location": "lobby",
       "prerequisites": [
         {
           "type": "task",
-          "id": "H6"
+          "id": "H1"
         }
       ],
       "status": "locked",
       "detail_description": "",
-      "minigame_id": "alarm_disable"
+      "minigame_id": "fingerprint_matching"
     },
     {
       "id": "D6",
-      "type": "info_share",
-      "description": "Share information with team",
+      "type": "minigame",
+      "description": "Complete safe cracking",
       "assigned_role": "driver",
-      "location": "parking_garage",
+      "location": "server_room",
       "prerequisites": [
         {
           "type": "task",
-          "id": "SC2"
-        },
-        {
-          "type": "task",
-          "id": "SC5"
+          "id": "H2"
         }
       ],
       "status": "locked",
       "detail_description": "",
-      "info_description": "Information about it_specialist_action_2"
+      "minigame_id": "safe_cracking"
     }
   ],
   "timeline_minutes": 120

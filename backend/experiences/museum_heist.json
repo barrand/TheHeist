@@ -3,34 +3,6 @@
   "objective": "Steal the priceless artifact from the museum vault",
   "locations": [
     {
-      "id": "storage_room",
-      "name": "Storage Room",
-      "description": "Back storage area",
-      "category": "Museum Interior",
-      "visual": "storage room environment"
-    },
-    {
-      "id": "loading_dock",
-      "name": "Loading Dock",
-      "description": "Service entrance",
-      "category": "Museum Exterior",
-      "visual": "loading dock environment"
-    },
-    {
-      "id": "entrance_hall",
-      "name": "Entrance Hall",
-      "description": "Grand entrance with security",
-      "category": "Museum Interior",
-      "visual": "entrance hall environment"
-    },
-    {
-      "id": "security_office",
-      "name": "Security Office",
-      "description": "Security monitoring room",
-      "category": "Museum Interior",
-      "visual": "security office environment"
-    },
-    {
       "id": "exhibit_floor",
       "name": "Exhibit Floor",
       "description": "Main gallery with displays",
@@ -45,30 +17,27 @@
       "visual": "rooftop access environment"
     },
     {
-      "id": "vault_chamber",
-      "name": "Vault Chamber",
-      "description": "Secure vault room",
+      "id": "loading_dock",
+      "name": "Loading Dock",
+      "description": "Service entrance",
+      "category": "Museum Exterior",
+      "visual": "loading dock environment"
+    },
+    {
+      "id": "entrance_hall",
+      "name": "Entrance Hall",
+      "description": "Grand entrance with security",
       "category": "Museum Interior",
-      "visual": "vault chamber environment"
+      "visual": "entrance hall environment"
     }
   ],
   "items": [
     {
       "id": "item_1",
       "name": "Item 1",
-      "description": "A useful item found at Storage Room",
-      "location": "storage_room",
-      "hidden": true,
-      "unlock_prerequisites": [
-        {
-          "type": "task",
-          "id": "H5"
-        },
-        {
-          "type": "task",
-          "id": "MM6"
-        }
-      ],
+      "description": "A useful item found at Exhibit Floor",
+      "location": "exhibit_floor",
+      "hidden": false,
       "visual": "generic item 1",
       "quantity": 1,
       "transferable": true
@@ -76,9 +45,19 @@
     {
       "id": "item_2",
       "name": "Item 2",
-      "description": "A useful item found at Loading Dock",
-      "location": "loading_dock",
-      "hidden": false,
+      "description": "A useful item found at Exhibit Floor",
+      "location": "exhibit_floor",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "H4"
+        },
+        {
+          "type": "task",
+          "id": "H2"
+        }
+      ],
       "visual": "generic item 2",
       "quantity": 1,
       "transferable": true
@@ -86,19 +65,9 @@
     {
       "id": "item_3",
       "name": "Item 3",
-      "description": "A useful item found at Loading Dock",
-      "location": "loading_dock",
-      "hidden": true,
-      "unlock_prerequisites": [
-        {
-          "type": "task",
-          "id": "MM5"
-        },
-        {
-          "type": "task",
-          "id": "H3"
-        }
-      ],
+      "description": "A useful item found at Exhibit Floor",
+      "location": "exhibit_floor",
+      "hidden": false,
       "visual": "generic item 3",
       "quantity": 1,
       "transferable": true
@@ -106,9 +75,19 @@
     {
       "id": "item_4",
       "name": "Item 4",
-      "description": "A useful item found at Entrance Hall",
-      "location": "entrance_hall",
-      "hidden": false,
+      "description": "A useful item found at Rooftop Access",
+      "location": "rooftop",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "SC1"
+        },
+        {
+          "type": "task",
+          "id": "MM5"
+        }
+      ],
       "visual": "generic item 4",
       "quantity": 1,
       "transferable": true
@@ -116,8 +95,8 @@
     {
       "id": "item_5",
       "name": "Item 5",
-      "description": "A useful item found at Security Office",
-      "location": "security_office",
+      "description": "A useful item found at Rooftop Access",
+      "location": "rooftop",
       "hidden": false,
       "visual": "generic item 5",
       "quantity": 1,
@@ -126,8 +105,8 @@
     {
       "id": "item_6",
       "name": "Item 6",
-      "description": "A useful item found at Security Office",
-      "location": "security_office",
+      "description": "A useful item found at Loading Dock",
+      "location": "loading_dock",
       "hidden": false,
       "visual": "generic item 6",
       "quantity": 1,
@@ -136,9 +115,15 @@
     {
       "id": "item_7",
       "name": "Item 7",
-      "description": "A useful item found at Security Office",
-      "location": "security_office",
-      "hidden": false,
+      "description": "A useful item found at Loading Dock",
+      "location": "loading_dock",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "H2"
+        }
+      ],
       "visual": "generic item 7",
       "quantity": 1,
       "transferable": true
@@ -146,15 +131,9 @@
     {
       "id": "item_8",
       "name": "Item 8",
-      "description": "A useful item found at Exhibit Floor",
-      "location": "exhibit_floor",
-      "hidden": true,
-      "unlock_prerequisites": [
-        {
-          "type": "task",
-          "id": "SC4"
-        }
-      ],
+      "description": "A useful item found at Loading Dock",
+      "location": "loading_dock",
+      "hidden": false,
       "visual": "generic item 8",
       "quantity": 1,
       "transferable": true
@@ -162,13 +141,13 @@
     {
       "id": "item_9",
       "name": "Item 9",
-      "description": "A useful item found at Exhibit Floor",
-      "location": "exhibit_floor",
+      "description": "A useful item found at Entrance Hall",
+      "location": "entrance_hall",
       "hidden": true,
       "unlock_prerequisites": [
         {
           "type": "task",
-          "id": "H1"
+          "id": "H5"
         }
       ],
       "visual": "generic item 9",
@@ -178,8 +157,8 @@
     {
       "id": "item_10",
       "name": "Item 10",
-      "description": "A useful item found at Exhibit Floor",
-      "location": "exhibit_floor",
+      "description": "A useful item found at Entrance Hall",
+      "location": "entrance_hall",
       "hidden": false,
       "visual": "generic item 10",
       "quantity": 1,
@@ -188,115 +167,43 @@
     {
       "id": "item_11",
       "name": "Item 11",
-      "description": "A useful item found at Rooftop Access",
-      "location": "rooftop",
+      "description": "A useful item found at Entrance Hall",
+      "location": "entrance_hall",
       "hidden": false,
       "visual": "generic item 11",
-      "quantity": 1,
-      "transferable": true
-    },
-    {
-      "id": "item_12",
-      "name": "Item 12",
-      "description": "A useful item found at Vault Chamber",
-      "location": "vault_chamber",
-      "hidden": false,
-      "visual": "generic item 12",
-      "quantity": 1,
-      "transferable": true
-    },
-    {
-      "id": "item_13",
-      "name": "Item 13",
-      "description": "A useful item found at Vault Chamber",
-      "location": "vault_chamber",
-      "hidden": true,
-      "unlock_prerequisites": [
-        {
-          "type": "task",
-          "id": "SC3"
-        }
-      ],
-      "visual": "generic item 13",
       "quantity": 1,
       "transferable": true
     }
   ],
   "npcs": [
     {
-      "id": "it_specialist",
-      "name": "IT Specialist",
-      "role": "IT",
-      "personality": "Technical and distracted",
-      "location": "vault_chamber",
+      "id": "receptionist",
+      "name": "Receptionist",
+      "role": "receptionist",
+      "personality": "Professional and helpful",
+      "location": "exhibit_floor",
       "information_known": [
         {
-          "info_id": "it_specialist_info_1",
-          "confidence": "HIGH",
-          "description": "Information from IT Specialist"
+          "info_id": "receptionist_info_1",
+          "confidence": "LOW",
+          "description": "Information from Receptionist"
         },
         {
-          "info_id": "it_specialist_info_2",
-          "confidence": "LOW",
-          "description": "Information from IT Specialist"
+          "info_id": "receptionist_info_2",
+          "confidence": "HIGH",
+          "description": "Information from Receptionist"
         }
       ],
       "actions_available": [
         {
-          "action_id": "it_specialist_action_1",
+          "action_id": "receptionist_action_1",
           "confidence": "HIGH",
-          "description": "Action performed by IT Specialist"
+          "description": "Action performed by Receptionist"
         },
         {
-          "action_id": "it_specialist_action_2",
+          "action_id": "receptionist_action_2",
           "confidence": "HIGH",
-          "description": "Action performed by IT Specialist"
-        }
-      ],
-      "cover_options": [
-        {
-          "cover_id": "direct",
-          "description": "Be direct and honest",
-          "npc_reaction": "Suspicious but may help if convinced"
-        },
-        {
-          "cover_id": "lie",
-          "description": "Use a false cover story",
-          "npc_reaction": "May believe or may see through it"
-        }
-      ],
-      "gender": "person",
-      "ethnicity": "",
-      "clothing": "",
-      "expression": "friendly",
-      "attitude": "casual",
-      "details": "",
-      "relationships": "",
-      "story_context": ""
-    },
-    {
-      "id": "janitor",
-      "name": "Janitor",
-      "role": "maintenance",
-      "personality": "Friendly but observant",
-      "location": "storage_room",
-      "information_known": [
-        {
-          "info_id": "janitor_info_1",
-          "confidence": "LOW",
-          "description": "Information from Janitor"
-        },
-        {
-          "info_id": "janitor_info_2",
-          "confidence": "LOW",
-          "description": "Information from Janitor"
-        }
-      ],
-      "actions_available": [
-        {
-          "action_id": "janitor_action_1",
-          "confidence": "LOW",
-          "description": "Action performed by Janitor"
+          "description": "Action performed by Receptionist"
         }
       ],
       "cover_options": [
@@ -315,6 +222,52 @@
       "ethnicity": "",
       "clothing": "",
       "expression": "neutral",
+      "attitude": "professional",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "curator",
+      "name": "Curator",
+      "role": "curator",
+      "personality": "Knowledgeable and proud",
+      "location": "rooftop",
+      "information_known": [
+        {
+          "info_id": "curator_info_1",
+          "confidence": "LOW",
+          "description": "Information from Curator"
+        },
+        {
+          "info_id": "curator_info_2",
+          "confidence": "HIGH",
+          "description": "Information from Curator"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "curator_action_1",
+          "confidence": "LOW",
+          "description": "Action performed by Curator"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "person",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "stern",
       "attitude": "suspicious",
       "details": "",
       "relationships": "",
@@ -327,17 +280,35 @@
       "type": "minigame",
       "description": "Complete fingerprint matching",
       "assigned_role": "mastermind",
-      "location": "vault_chamber",
+      "location": "exhibit_floor",
       "status": "locked",
       "detail_description": "",
       "minigame_id": "fingerprint_matching"
     },
     {
       "id": "MM2",
+      "type": "search",
+      "description": "Search Loading Dock",
+      "assigned_role": "mastermind",
+      "location": "loading_dock",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_8"
+      ]
+    },
+    {
+      "id": "MM3",
       "type": "minigame",
       "description": "Complete safe cracking",
       "assigned_role": "mastermind",
-      "location": "exhibit_floor",
+      "location": "rooftop",
       "prerequisites": [
         {
           "type": "task",
@@ -349,31 +320,27 @@
       "minigame_id": "safe_cracking"
     },
     {
-      "id": "MM3",
+      "id": "MM4",
       "type": "minigame",
-      "description": "Complete wire connecting",
+      "description": "Complete camera bypass",
       "assigned_role": "mastermind",
-      "location": "vault_chamber",
+      "location": "entrance_hall",
       "prerequisites": [
         {
           "type": "task",
           "id": "MM2"
-        },
-        {
-          "type": "task",
-          "id": "MM1"
         }
       ],
       "status": "locked",
       "detail_description": "",
-      "minigame_id": "wire_connecting"
+      "minigame_id": "camera_bypass"
     },
     {
-      "id": "MM4",
-      "type": "minigame",
-      "description": "Complete wire connecting",
+      "id": "MM5",
+      "type": "npc_llm",
+      "description": "Talk to Curator",
       "assigned_role": "mastermind",
-      "location": "security_office",
+      "location": "rooftop",
       "prerequisites": [
         {
           "type": "task",
@@ -382,14 +349,89 @@
       ],
       "status": "locked",
       "detail_description": "",
-      "minigame_id": "wire_connecting"
+      "npc_id": "curator",
+      "npc_name": "Curator",
+      "npc_personality": "Knowledgeable and proud",
+      "target_outcomes": [
+        "curator_info_1"
+      ]
     },
     {
-      "id": "MM5",
+      "id": "H1",
       "type": "minigame",
       "description": "Complete fingerprint matching",
-      "assigned_role": "mastermind",
-      "location": "entrance_hall",
+      "assigned_role": "hacker",
+      "location": "rooftop",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "fingerprint_matching"
+    },
+    {
+      "id": "H2",
+      "type": "minigame",
+      "description": "Complete camera bypass",
+      "assigned_role": "hacker",
+      "location": "exhibit_floor",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "camera_bypass"
+    },
+    {
+      "id": "H3",
+      "type": "npc_llm",
+      "description": "Talk to Receptionist",
+      "assigned_role": "hacker",
+      "location": "exhibit_floor",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H1"
+        },
+        {
+          "type": "task",
+          "id": "MM5"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "receptionist",
+      "npc_name": "Receptionist",
+      "npc_personality": "Professional and helpful",
+      "target_outcomes": [
+        "receptionist_info_1",
+        "receptionist_info_2"
+      ]
+    },
+    {
+      "id": "H4",
+      "type": "search",
+      "description": "Search Rooftop Access",
+      "assigned_role": "hacker",
+      "location": "rooftop",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "receptionist_info_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_5"
+      ]
+    },
+    {
+      "id": "H5",
+      "type": "npc_llm",
+      "description": "Talk to Curator",
+      "assigned_role": "hacker",
+      "location": "rooftop",
       "prerequisites": [
         {
           "type": "task",
@@ -398,162 +440,35 @@
       ],
       "status": "locked",
       "detail_description": "",
-      "minigame_id": "fingerprint_matching"
-    },
-    {
-      "id": "MM6",
-      "type": "minigame",
-      "description": "Complete camera bypass",
-      "assigned_role": "mastermind",
-      "location": "loading_dock",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "MM5"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "lock_picking"
-    },
-    {
-      "id": "H1",
-      "type": "search",
-      "description": "Search for items at Rooftop Access",
-      "assigned_role": "hacker",
-      "location": "rooftop",
-      "status": "locked",
-      "detail_description": "",
-      "search_items": [
-        "item_11"
-      ]
-    },
-    {
-      "id": "H2",
-      "type": "npc_llm",
-      "description": "Talk to IT Specialist",
-      "assigned_role": "hacker",
-      "location": "vault_chamber",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "MM2"
-        },
-        {
-          "type": "task",
-          "id": "H1"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "npc_id": "it_specialist",
-      "npc_name": "IT Specialist",
-      "npc_personality": "Technical and distracted",
+      "npc_id": "curator",
+      "npc_name": "Curator",
+      "npc_personality": "Knowledgeable and proud",
       "target_outcomes": [
-        "it_specialist_action_2"
-      ]
-    },
-    {
-      "id": "H3",
-      "type": "minigame",
-      "description": "Complete wire connecting",
-      "assigned_role": "hacker",
-      "location": "storage_room",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "H1"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "wire_connecting"
-    },
-    {
-      "id": "H4",
-      "type": "minigame",
-      "description": "Complete fingerprint matching",
-      "assigned_role": "hacker",
-      "location": "storage_room",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "H2"
-        },
-        {
-          "type": "task",
-          "id": "MM6"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "fingerprint_matching"
-    },
-    {
-      "id": "H5",
-      "type": "npc_llm",
-      "description": "Talk to Janitor",
-      "assigned_role": "hacker",
-      "location": "storage_room",
-      "prerequisites": [
-        {
-          "type": "task",
-          "id": "MM1"
-        },
-        {
-          "type": "task",
-          "id": "MM5"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "npc_id": "janitor",
-      "npc_name": "Janitor",
-      "npc_personality": "Friendly but observant",
-      "target_outcomes": [
-        "janitor_action_1",
-        "janitor_info_1"
+        "curator_action_1",
+        "curator_info_2"
       ]
     },
     {
       "id": "SC1",
-      "type": "search",
-      "description": "Search for items at Entrance Hall",
+      "type": "minigame",
+      "description": "Complete alarm disable",
       "assigned_role": "safe_cracker",
       "location": "entrance_hall",
       "status": "locked",
       "detail_description": "",
-      "search_items": [
-        "item_4"
-      ]
+      "minigame_id": "alarm_disable"
     },
     {
       "id": "SC2",
-      "type": "minigame",
-      "description": "Complete wire connecting",
+      "type": "npc_llm",
+      "description": "Talk to Receptionist",
       "assigned_role": "safe_cracker",
-      "location": "loading_dock",
+      "location": "exhibit_floor",
       "prerequisites": [
         {
-          "type": "task",
-          "id": "H2"
+          "type": "outcome",
+          "id": "curator_info_2"
         },
-        {
-          "type": "task",
-          "id": "MM4"
-        }
-      ],
-      "status": "locked",
-      "detail_description": "",
-      "minigame_id": "wire_connecting"
-    },
-    {
-      "id": "SC3",
-      "type": "search",
-      "description": "Search Loading Dock",
-      "assigned_role": "safe_cracker",
-      "location": "loading_dock",
-      "prerequisites": [
         {
           "type": "task",
           "id": "H4"
@@ -561,20 +476,65 @@
       ],
       "status": "locked",
       "detail_description": "",
-      "search_items": [
-        "item_3"
+      "npc_id": "receptionist",
+      "npc_name": "Receptionist",
+      "npc_personality": "Professional and helpful",
+      "target_outcomes": [
+        "receptionist_action_2"
       ]
+    },
+    {
+      "id": "SC3",
+      "type": "minigame",
+      "description": "Complete camera bypass",
+      "assigned_role": "safe_cracker",
+      "location": "rooftop",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "curator_action_1"
+        },
+        {
+          "type": "outcome",
+          "id": "receptionist_info_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "camera_bypass"
     },
     {
       "id": "SC4",
       "type": "npc_llm",
-      "description": "Talk to IT Specialist",
+      "description": "Talk to Curator",
       "assigned_role": "safe_cracker",
-      "location": "vault_chamber",
+      "location": "rooftop",
       "prerequisites": [
         {
           "type": "task",
-          "id": "MM6"
+          "id": "SC1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "curator",
+      "npc_name": "Curator",
+      "npc_personality": "Knowledgeable and proud",
+      "target_outcomes": [
+        "curator_action_1",
+        "curator_info_2"
+      ]
+    },
+    {
+      "id": "SC5",
+      "type": "npc_llm",
+      "description": "Talk to Receptionist",
+      "assigned_role": "safe_cracker",
+      "location": "exhibit_floor",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "receptionist_info_2"
         },
         {
           "type": "task",
@@ -583,12 +543,12 @@
       ],
       "status": "locked",
       "detail_description": "",
-      "npc_id": "it_specialist",
-      "npc_name": "IT Specialist",
-      "npc_personality": "Technical and distracted",
+      "npc_id": "receptionist",
+      "npc_name": "Receptionist",
+      "npc_personality": "Professional and helpful",
       "target_outcomes": [
-        "it_specialist_action_1",
-        "it_specialist_info_1"
+        "receptionist_info_2",
+        "receptionist_action_2"
       ]
     }
   ],
