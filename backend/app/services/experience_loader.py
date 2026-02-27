@@ -117,8 +117,8 @@ class ExperienceLoader:
         # Extract NPCs
         npcs = self._extract_npcs(content)
         
-        # Extract items
-        items_by_location = self._extract_items(content)
+        # Extract items (pass locations for name-to-ID mapping)
+        items_by_location = self._extract_items(content, locations)
         
         # Extract tasks for each role
         tasks = {}
@@ -246,6 +246,8 @@ class ExperienceLoader:
             # Extract location
             location_match = re.search(r'-\s*\*\*Location\*\*:\s*(.+)', block)
             location = location_match.group(1).strip() if location_match else "Unknown"
+            # Strip backticks from location IDs
+            location = location.strip('`')
             
             # Extract personality
             personality_match = re.search(r'-\s*\*\*Personality\*\*:\s*(.+)', block)
@@ -417,9 +419,20 @@ class ExperienceLoader:
         
         return covers
     
-    def _extract_items(self, content: str) -> Dict[str, List[Item]]:
-        """Extract items by location from ## Items by Location section"""
+    def _extract_items(self, content: str, locations: List[Location]) -> Dict[str, List[Item]]:
+        """Extract items by location from ## Items by Location section
+        
+        Args:
+            content: Markdown content
+            locations: Parsed locations list (for name-to-ID mapping)
+        
+        Returns:
+            Dict mapping location IDs to items
+        """
         items_by_location = {}
+        
+        # Build name-to-ID mapping for locations
+        location_name_to_id = {loc.name: loc.id for loc in locations}
         
         # Find the Items by Location section
         items_match = re.search(r'## Items by Location\s*\n(.*?)(?=\n## (?!#)|\Z)', content, re.DOTALL)
@@ -442,6 +455,11 @@ class ExperienceLoader:
                 continue
             
             location_name = location_match.group(1).strip()
+            # Strip backticks from location IDs
+            location_name = location_name.strip('`')
+            
+            # Convert location name to ID for consistent dictionary keys
+            location_id = location_name_to_id.get(location_name, location_name.lower().replace(' ', '_'))
             items = []
             
             # Parse each item (starts with - **ID**)
@@ -487,16 +505,16 @@ class ExperienceLoader:
                     name=name,
                     description=description,
                     visual=visual,
-                    location=location_name,
+                    location=location_id,
                     required_for=required_for,
                     hidden=hidden,
                     unlock_prerequisites=unlock_prerequisites
                 )
                 items.append(item)
-                logger.debug(f"Parsed item: {name} at {location_name}")
+                logger.debug(f"Parsed item: {name} at {location_id}")
             
             if items:
-                items_by_location[location_name] = items
+                items_by_location[location_id] = items
         
         return items_by_location
     
@@ -568,8 +586,8 @@ class ExperienceLoader:
             task_description = task_match.group(3).strip()
             task_details = task_match.group(4).strip()
             
-            # Try to extract explicit task ID from header (e.g., "MM1. 💬 NPC_LLM")
-            explicit_id_match = re.match(r'([A-Z]{1,3}\d+)\.\s+', task_emoji_and_type)
+            # Try to extract explicit task ID from header (e.g., "MM1. 💬 NPC_LLM" or "CL7a. 🎮 prepare_tools")
+            explicit_id_match = re.match(r'([A-Z]{1,3}\d+[a-z]?)\.\s+', task_emoji_and_type)
             if explicit_id_match:
                 task_id = explicit_id_match.group(1)
             else:
@@ -632,13 +650,13 @@ class ExperienceLoader:
                 # Extract items to find (new format: *Search Items:* item1, item2)
                 search_match = re.search(r'\*Search Items:\*\s*(.+?)(?:\n|$)', task_details)
                 if search_match:
-                    items = [item.strip() for item in search_match.group(1).split(',')]
+                    items = [item.strip().strip('`') for item in search_match.group(1).split(',')]
                     task.search_items = items
                 else:
                     # Fallback to old format: *Find: items*
                     find_match = re.search(r'\*Find:\s*(.+?)\*', task_details)
                     if find_match:
-                        items = [item.strip() for item in find_match.group(1).split(',')]
+                        items = [item.strip().strip('`') for item in find_match.group(1).split(',')]
                         task.search_items = items
             
             elif task_type == TaskType.HANDOFF:
@@ -658,12 +676,16 @@ class ExperienceLoader:
         logger.info(f"Extracted {len(tasks)} tasks for role: {role}")
         return tasks
     
-    def _extract_field(self, text: str, field_name: str) -> Optional[str]:
+    def _extract_field(self, text: str, field_name: str, strip_backticks: bool = True) -> Optional[str]:
         """Extract a metadata field from task details"""
         pattern = f'\\*{field_name}:\\*\\s*(.+?)(?:\\n|$)'
         match = re.search(pattern, text)
         if match:
-            return match.group(1).strip()
+            value = match.group(1).strip()
+            # Strip backticks from IDs (e.g., `study` -> study) - unless we need to parse them
+            if strip_backticks:
+                value = value.strip('`')
+            return value
         return None
     
     def _extract_prerequisites(self, text: str) -> List[Prerequisite]:
@@ -714,8 +736,8 @@ class ExperienceLoader:
             
             line = line.lstrip('- ').strip()
             
-            # Format: Type `id` (description)
-            prereq_line_match = re.match(r'(Task|Outcome|Item)\s+`(\w+)`\s*(?:\((.+?)\))?', line, re.IGNORECASE)
+            # Format: Type `id` (description) - support task IDs like CL7a, D4a
+            prereq_line_match = re.match(r'(Task|Outcome|Item)\s+`([A-Z]{1,3}\d+[a-z]?|\w+)`\s*(?:\((.+?)\))?', line, re.IGNORECASE)
             if prereq_line_match:
                 ptype = type_map.get(prereq_line_match.group(1).lower())
                 if ptype:
@@ -749,15 +771,15 @@ class ExperienceLoader:
         if "None" in deps_text or "Starting task" in deps_text.lower():
             return []
         
-        # Extract task IDs in backticks or parentheses
+        # Extract task IDs in backticks or parentheses (support letter suffixes like CL7a)
         dependencies = []
-        # Try backtick format first: `MM1`
-        for match in re.finditer(r'`([A-Z]{1,3}\d+)`', deps_text):
+        # Try backtick format first: `MM1` or `CL7a`
+        for match in re.finditer(r'`([A-Z]{1,3}\d+[a-z]?)`', deps_text):
             dependencies.append(match.group(1))
         
         if not dependencies:
-            # Fallback to parentheses format: (MM1)
-            for match in re.finditer(r'\(([A-Z]{1,3}\d+)\)', deps_text):
+            # Fallback to parentheses format: (MM1) or (CL7a)
+            for match in re.finditer(r'\(([A-Z]{1,3}\d+[a-z]?)\)', deps_text):
                 dependencies.append(match.group(1))
         
         return dependencies
@@ -767,7 +789,7 @@ class ExperienceLoader:
         
         Format: *Target Outcomes:* `vault_location`, `patrol_schedule`
         """
-        outcomes_text = self._extract_field(text, "Target Outcomes")
+        outcomes_text = self._extract_field(text, "Target Outcomes", strip_backticks=False)
         if not outcomes_text:
             return []
         
@@ -780,10 +802,14 @@ class ExperienceLoader:
     
     def _set_initial_statuses(self, tasks: Dict[str, Task]) -> None:
         """Set initial task statuses (tasks with no prerequisites/dependencies are AVAILABLE)"""
+        initially_available = []
         for task in tasks.values():
             has_prereqs = len(task.prerequisites) > 0 or len(task.dependencies) > 0
             if not has_prereqs:
                 task.status = TaskStatus.AVAILABLE
-                logger.debug(f"Task {task.id} is initially available")
+                initially_available.append(task.id)
+                logger.info(f"✅ Task {task.id} is initially available")
             else:
                 task.status = TaskStatus.LOCKED
+        
+        logger.info(f"🎬 Starting with {len(initially_available)} available tasks: {initially_available}")

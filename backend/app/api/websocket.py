@@ -296,35 +296,51 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
         game_state_manager = get_game_state_manager()
         game_state_manager.set_game_state(room_code, game_state)
         
-        # Notify players that images are generating
-        await ws_manager.broadcast_to_room(room_code, {
-            "type": "info",
-            "message": "🎨 Generating experience images... This may take a minute."
-        })
+        # Set all players to the starting location (first location in scenario)
+        if game_state.locations:
+            starting_location = game_state.locations[0].id
+            logger.info(f"🏠 Setting all players to starting location: {starting_location}")
+            for player in room.players.values():
+                player.location = starting_location
+                logger.info(f"  📍 {player.name} ({player.role}) → {starting_location}")
         
-        # Generate images synchronously (blocks until complete)
-        # Order: Rooms → Items → NPCs
-        from app.services.image_generator import generate_all_images_for_experience
-        experience_dict = {
-            'locations': [loc.model_dump() for loc in game_state.locations],
-            'items_by_location': {
-                loc: [item.model_dump() for item in items]
-                for loc, items in game_state.items_by_location.items()
-            },
-            'npcs': [npc.model_dump() for npc in game_state.npcs]
-        }
+        # Skip image generation if requested (for E2E testing)
+        skip_images = data.get("skip_images", False)
         
-        logger.info(f"🎨 Starting image generation for {scenario}...")
-        success = await generate_all_images_for_experience(scenario, experience_dict)
-        
-        if success:
-            logger.info(f"✅ Image generation complete for {scenario}")
+        if not skip_images:
+            # Notify players that images are generating
+            await ws_manager.broadcast_to_room(room_code, {
+                "type": "info",
+                "message": "🎨 Generating experience images... This may take a minute."
+            })
+            
+            # Generate images synchronously (blocks until complete)
+            # Order: Rooms → Items → NPCs
+            from app.services.image_generator import generate_all_images_for_experience
+            experience_dict = {
+                'locations': [loc.model_dump() for loc in game_state.locations],
+                'items_by_location': {
+                    loc: [item.model_dump() for item in items]
+                    for loc, items in game_state.items_by_location.items()
+                },
+                'npcs': [npc.model_dump() for npc in game_state.npcs]
+            }
+            
+            logger.info(f"🎨 Starting image generation for {scenario}...")
+            success = await generate_all_images_for_experience(scenario, experience_dict)
+            
+            if success:
+                logger.info(f"✅ Image generation complete for {scenario}")
+            else:
+                logger.warning(f"⚠️ Image generation had errors for {scenario}, continuing anyway")
         else:
-            logger.warning(f"⚠️ Image generation had errors for {scenario}, continuing anyway")
+            logger.info(f"⏭️  Skipping image generation (E2E testing mode)")
         
         # Send game started to each player with their specific tasks
         for pid, player in room.players.items():
             player_tasks = game_state.get_available_tasks_for_role(player.role)
+            task_ids = [t.id for t in player_tasks]
+            logger.info(f"📋 Player {player.role} starting with {len(task_ids)} tasks: {task_ids}")
             
             game_started = GameStartedMessage(
                 type="game_started",
@@ -332,9 +348,10 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
                 objective=game_state.objective,
                 your_tasks=[task.model_dump(mode='json') for task in player_tasks],
                 npcs=[npc.model_dump(mode='json') for npc in game_state.npcs],
-                locations=[loc.model_dump(mode='json') for loc in game_state.locations]
+                locations=[loc.model_dump(mode='json') for loc in game_state.locations],
+                starting_location=player.location
             )
-            logger.info(f"📍 Sending {len(game_state.locations)} locations to player {pid}")
+            logger.info(f"📍 Sending {len(game_state.locations)} locations to player {pid} (starting at {player.location})")
             await ws_manager.send_to_player(room_code, pid, game_started.model_dump(mode='json'))
         
         logger.info(f"🎮 Game started in room {room_code} - scenario: {scenario}")
@@ -361,7 +378,7 @@ async def handle_complete_task(room_code: str, player_id: str, data: Dict[str, A
     
     player = room.players[player_id]
     
-    # Validate and complete via GameStateManager
+    # Validate and complete via GameStateManager (auto-detects E2E mode)
     success, newly_available, error = game_state_manager.complete_task(
         room_code, task_id, player_id, room
     )
@@ -375,6 +392,24 @@ async def handle_complete_task(room_code: str, player_id: str, data: Dict[str, A
     
     # Broadcast task completed
     await _broadcast_task_completed(room_code, task_id, player_id, player.name, newly_available)
+    
+    # Also check for item-based unlocks (tasks that depend on items in inventory)
+    player_item_ids = {inv_item.id for inv_item in player.inventory}
+    game_state = game_state_manager.get_game_state(room_code)
+    if game_state:
+        item_unlocks = game_state.check_unlocks_with_items(player_item_ids)
+        for new_task_id in item_unlocks:
+            new_task = game_state.tasks.get(new_task_id)
+            if new_task:
+                for pid, p in room.players.items():
+                    if p.role == new_task.assigned_role:
+                        from app.models.websocket import TaskUnlockedMessage
+                        unlocked_msg = TaskUnlockedMessage(
+                            type="task_unlocked",
+                            task=new_task.model_dump(mode='json')
+                        )
+                        await ws_manager.send_to_player(room_code, pid, unlocked_msg.model_dump(mode='json'))
+                logger.info(f"🔓 Task {new_task_id} unlocked (ITEM prerequisite met after task {task_id} completion)")
 
 
 async def _broadcast_task_completed(
@@ -419,9 +454,59 @@ async def _broadcast_task_completed(
 
 async def handle_npc_message(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
     """Handle NPC conversation message"""
-    # TODO: Integrate with NPCConversationService
-    # For now, just acknowledge
-    pass
+    ws_manager = get_ws_manager()
+    room_manager = get_room_manager()
+    game_state_manager = get_game_state_manager()
+    
+    task_id = data.get("task_id")
+    npc_id = data.get("npc_id")
+    message = data.get("message", "")
+    
+    logger.info(f"💬 NPC message from {player_id} to {npc_id} for task {task_id}: {message[:50]}...")
+    
+    room = room_manager.get_room(room_code)
+    if not room or player_id not in room.players:
+        return
+    
+    player = room.players[player_id]
+    
+    # For player role NPCs (ending with _player), auto-complete the task
+    # In real game, this would involve actual NPC conversation logic
+    if npc_id and npc_id.endswith("_player"):
+        logger.info(f"📩 Player NPC task - auto-completing {task_id}")
+        
+        # Complete the task
+        success, newly_available, error = game_state_manager.complete_task(
+            room_code, task_id, player_id, room
+        )
+        
+        if success:
+            # Send acknowledgment
+            await ws_manager.send_to_player(room_code, player_id, {
+                "type": "npc_response",
+                "task_id": task_id,
+                "npc_id": npc_id,
+                "text": f"Got it! Let's proceed with the plan.",
+                "success": True
+            })
+            
+            # Broadcast task completion
+            await _broadcast_task_completed(room_code, task_id, player_id, player.name, newly_available)
+        else:
+            await ws_manager.send_to_player(room_code, player_id, {
+                "type": "error",
+                "message": error or f"Cannot complete NPC task {task_id}"
+            })
+    else:
+        # For AI NPCs, would integrate with NPCConversationService
+        # For now, just acknowledge
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "npc_response",
+            "task_id": task_id,
+            "npc_id": npc_id,
+            "text": "I understand.",
+            "success": False
+        })
 
 
 async def handle_move_location(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
@@ -433,7 +518,8 @@ async def handle_move_location(room_code: str, player_id: str, data: Dict[str, A
     
     room = room_manager.get_room(room_code)
     if room and player_id in room.players:
-        room.players[player_id].location = location
+        # Normalize location to lowercase for consistent comparison with task locations
+        room.players[player_id].location = location.lower() if location else location
         
         player_moved = PlayerMovedMessage(
             type="player_moved",
@@ -463,8 +549,8 @@ async def handle_handoff_item(room_code: str, player_id: str, data: Dict[str, An
     from_player = room.players[player_id]
     to_player = room.players[to_player_id]
     
-    # Check if both players are in same location
-    if from_player.location != to_player.location:
+    # Check if both players are in same location (case-insensitive)
+    if from_player.location.lower() != to_player.location.lower():
         await ws_manager.send_to_player(room_code, player_id, {
             "type": "error",
             "message": "Players must be in same location to transfer items"

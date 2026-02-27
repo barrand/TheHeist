@@ -156,9 +156,11 @@ class LLMDecisionMaker:
         # Format available tasks
         tasks_str = ""
         for i, task in enumerate(available_tasks, 1):
+            task_id = task.get("id", "unknown")
             task_type = task.get("type", "unknown")
             task_location = task.get("location", "unknown")
             task_desc = task.get("description", "")
+            npc_id = task.get("npc_id", "")
             prereqs = task.get("prerequisites", [])
             
             prereq_str = ""
@@ -167,7 +169,8 @@ class LLMDecisionMaker:
                 if prereq_items:
                     prereq_str = f" (needs: {', '.join([p['id'] for p in prereq_items])})"
             
-            tasks_str += f"{i}. [{task_type}] {task_desc} @ {task_location}{prereq_str}\n"
+            npc_str = f" NPC:{npc_id}" if npc_id else ""
+            tasks_str += f"{i}. ID:`{task_id}` [{task_type}] {task_desc} @ {task_location}{prereq_str}{npc_str}\n"
         
         if not tasks_str:
             tasks_str = "(no tasks available - possibly waiting for teammates)"
@@ -230,21 +233,28 @@ Choose the best next action to help complete the heist. Prioritize:
 5. If nothing else, wait for teammates to complete their prerequisites
 
 DECISION RULES:
-- If you have an available task at your current location → complete it
+- If task type is "npc_llm" → use "talk" action (set target_npc and target_task)
+- If task type is "minigame" or "info_share" → use "complete_task" action  
+- If you have an available task at your current location → complete it or talk to NPC
 - If you have an available task elsewhere → move to that location
 - If a task needs an item → search for it or wait for teammate to handoff
 - If stuck with no tasks → wait (teammates need to complete something first)
-- For NPC tasks, you'll have separate conversation handling
 
 OUTPUT FORMAT (JSON):
 {{
-  "action": "move" | "search" | "pickup" | "complete_task" | "handoff" | "wait",
+  "action": "move" | "search" | "pickup" | "talk" | "complete_task" | "handoff" | "wait",
   "reasoning": "Why you chose this action (1-2 sentences)",
   "target_location": "location_id" (if action=move),
   "target_item": "item_id" (if action=pickup),
-  "target_task": "task_id" (if action=complete_task),
-  "target_player": "role" (if action=handoff)
+  "target_npc": "npc_id from task NPC field" (if action=talk),
+  "target_task": "task ID from ID:`` field" (if action=talk or complete_task - use the ID, not description!),
+  "target_player": "role" (if action=handoff),
+  "message": "opening message" (if action=talk)
 }}
+
+⚠️ IMPORTANT: 
+- For target_task, use the task ID (e.g., "MM1"), NOT the description!
+- For npc_llm tasks, use "talk" action with NPC ID from task's NPC field!
 
 What should you do next?"""
         

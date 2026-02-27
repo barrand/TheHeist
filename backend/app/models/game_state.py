@@ -228,12 +228,17 @@ class GameState(BaseModel):
         If room is provided, checks each task against its assigned player's inventory.
         Otherwise item prerequisites are deferred to check_unlocks_with_items().
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         completed = self.get_completed_task_ids()
         
         # Gather all achieved outcomes (across all players)
         all_outcomes: set = set()
         for outcomes in self.achieved_outcomes.values():
             all_outcomes.update(outcomes)
+        
+        logger.info(f"🔍 _check_unlocks: completed={completed}, all_outcomes={all_outcomes}")
         
         # Build a role -> player_items mapping if room is available
         role_items: dict = {}
@@ -243,25 +248,36 @@ class GameState(BaseModel):
         
         newly_available = []
         for task in self.tasks.values():
+            if task.status == "locked":
+                logger.info(f"🔍 Checking locked task {task.id}: prerequisites={task.prerequisites}")
             # Use the assigned player's items for item prerequisites
             task_player_items = role_items.get(task.assigned_role, set()) if room else set()
             if task.unlock_if_ready(completed, all_outcomes, task_player_items):
+                logger.info(f"✅ Unlocked task {task.id}")
                 newly_available.append(task.id)
         
         return newly_available
     
     def check_unlocks_with_items(self, player_items: set) -> List[str]:
         """Re-check locked tasks considering a specific player's inventory."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         completed = self.get_completed_task_ids()
         
         all_outcomes: set = set()
         for outcomes in self.achieved_outcomes.values():
             all_outcomes.update(outcomes)
         
+        logger.info(f"🔍 check_unlocks_with_items: completed={completed}, outcomes={all_outcomes}, items={player_items}")
+        
         newly_available = []
         for task in self.tasks.values():
-            if task.unlock_if_ready(completed, all_outcomes, player_items):
-                newly_available.append(task.id)
+            if task.status == "locked":
+                logger.info(f"🔍 Checking task {task.id} (status={task.status}, role={task.assigned_role}): prereqs={task.prerequisites}")
+                if task.unlock_if_ready(completed, all_outcomes, player_items):
+                    logger.info(f"✅ Task {task.id} unlocked by items!")
+                    newly_available.append(task.id)
         
         return newly_available
     

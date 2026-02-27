@@ -15,6 +15,12 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+import sys
+
+# Import graph analysis and playability tools
+sys.path.insert(0, str(Path(__file__).parent))
+from scenario_graph_analyzer import ScenarioGraphAnalyzer, Task as GraphTask
+from scenario_playability_simulator import PlayabilitySimulator, Task as SimTask
 
 
 class ValidationLevel(str, Enum):
@@ -339,8 +345,9 @@ class ScenarioValidator:
         
         # Find all task blocks
         # Pattern: 1. **MM1. 💬 NPC_LLM** - Task Description
+        # Support letter suffixes like CL7a, D4a
         task_blocks = re.finditer(
-            r'\d+\.\s+\*\*([A-Z]+\d+)\.\s+([🎮💬🔍🤝🗣️])\s+(\w+)\*\*\s+-\s+(.+?)\n(.*?)(?=\n\d+\.\s+\*\*|\n### |\Z)',
+            r'\d+\.\s+\*\*([A-Z]+\d+[a-z]?)\.\s+([🎮💬🔍🤝🗣️])\s+(\w+)\*\*\s+-\s+(.+?)\n(.*?)(?=\n\d+\.\s+\*\*|\n### |\Z)',
             section_text,
             re.DOTALL
         )
@@ -357,7 +364,7 @@ class ScenarioValidator:
             role_text = role_match.group(2)
             
             task_blocks = re.finditer(
-                r'\d+\.\s+\*\*([A-Z]+\d+)\.\s+[🎮💬🔍🤝🗣️]\s+(\w+)\*\*\s+-\s+(.+?)\n(.*?)(?=\n\d+\.\s+\*\*|\Z)',
+                r'\d+\.\s+\*\*([A-Z]+\d+[a-z]?)\.\s+[🎮💬🔍🤝🗣]️?\s+(\w+)\*\*\s+-\s+(.+?)\n(.*?)(?=\n\d+\.\s+\*\*|\Z)',
                 role_text,
                 re.DOTALL
             )
@@ -372,7 +379,8 @@ class ScenarioValidator:
                 task_type = task_type_raw.lower().replace('_', '_')
                 
                 # Extract location (strip backticks for ID-only format)
-                location_match = re.search(r'- \*Location:\*\s+(.+)', task_text)
+                # Support both indented (4 spaces) and non-indented formats
+                location_match = re.search(r'^\s*-\s+\*Location:\*\s+(.+?)$', task_text, re.MULTILINE)
                 if location_match:
                     location = location_match.group(1).strip()
                     # Strip backticks if present (ID-only format: `bank_lobby`)
@@ -381,9 +389,9 @@ class ScenarioValidator:
                 else:
                     location = "Unknown"
                 
-                # Extract prerequisites
+                # Extract prerequisites (support indentation)
                 prerequisites = []
-                prereq_section = re.search(r'- \*Prerequisites:\*(.*?)(?=\n\s+- \*|\Z)', task_text, re.DOTALL)
+                prereq_section = re.search(r'^\s*-\s+\*Prerequisites:\*(.*?)(?=^\s*-\s+\*[A-Z]|\Z)', task_text, re.DOTALL | re.MULTILINE)
                 if prereq_section:
                     prereq_text = prereq_section.group(1)
                     
@@ -399,6 +407,10 @@ class ScenarioValidator:
                     for item_prereq in re.finditer(r'Item `([^`]+)`', prereq_text):
                         prerequisites.append({'type': 'item', 'id': item_prereq.group(1)})
                     
+                    # Info prerequisites (for INFO_SHARE tasks)
+                    for info_prereq in re.finditer(r'Info `([^`]+)`', prereq_text):
+                        prerequisites.append({'type': 'outcome', 'id': info_prereq.group(1)})
+                    
                     # Also check for "None" explicitly
                     if 'None' in prereq_text or 'starting task' in prereq_text.lower():
                         pass  # No prerequisites
@@ -411,16 +423,16 @@ class ScenarioValidator:
                     if minigame_match:
                         minigame_id = minigame_match.group(1)
                 
-                # Extract NPC ID for npc tasks
+                # Extract NPC ID for npc tasks (support indentation)
                 npc_id = None
                 target_outcomes = []
                 if task_type in ['npc_llm', 'npc']:
-                    npc_match = re.search(r'- \*NPC:\*\s+`([^`]+)`', task_text)
+                    npc_match = re.search(r'^\s*-\s+\*NPC:\*\s+`([^`]+)`', task_text, re.MULTILINE)
                     if npc_match:
                         npc_id = npc_match.group(1)
                     
-                    # Extract target outcomes
-                    outcomes_match = re.search(r'- \*Target Outcomes:\*\s+`([^`]+)`', task_text)
+                    # Extract target outcomes (support indentation)
+                    outcomes_match = re.search(r'^\s*-\s+\*Target Outcomes:\*\s+`([^`]+)`', task_text, re.MULTILINE)
                     if outcomes_match:
                         target_outcomes = [outcomes_match.group(1)]
                 
@@ -464,6 +476,15 @@ class ScenarioValidator:
         self.check_search_task_balance()  # Rule 24
         self.check_hidden_items_unlocks()  # Rule 25
         
+        # Dependency graph validation (NEW - Rules 26-30)
+        self.check_task_id_parser_compatibility()  # Rule 30
+        self.check_dependency_graph()  # Rules 26-29
+        
+        # Playability simulation (NEW - Rules 31-35)
+        # Run if we have parseable tasks (even if count/balance issues exist)
+        if len(self.tasks) > 0 and len(self.roles) > 0:
+            self.check_playability_simulation()  # Rules 31-35
+        
         return self.report
     
     # Validation check methods
@@ -489,9 +510,9 @@ class ScenarioValidator:
             ))
     
     def check_task_id_format(self):
-        """Rule 2: Check task ID format"""
+        """Rule 2: Check task ID format (supports letter suffixes like CL7a)"""
         invalid = []
-        valid_pattern = re.compile(r'^(MM|H|SC|D|I|G|M|L|F|CB|CL|PP)\d+$')
+        valid_pattern = re.compile(r'^(MM|H|SC|D|I|G|M|L|F|CB|CL|PP)\d+[a-z]?$')
         
         for task_id in self.tasks.keys():
             if not valid_pattern.match(task_id):
@@ -502,7 +523,7 @@ class ScenarioValidator:
                 rule_number=2,
                 level=ValidationLevel.CRITICAL,
                 title="Invalid Task ID Format",
-                message="Task IDs must follow format: ROLE_CODE + NUMBER (e.g., MM1, SC2)",
+                message="Task IDs must follow format: ROLE_CODE + NUMBER + optional letter (e.g., MM1, SC2, CL7a)",
                 details=invalid,
                 fix_suggestion="Rename tasks to follow proper format"
             ))
@@ -572,11 +593,38 @@ class ScenarioValidator:
             ))
     
     def check_npc_references(self):
-        """Rule 10: Check all NPC IDs in tasks exist"""
+        """Rule 10: Check all NPC IDs in tasks exist AND check for Player NPCs"""
         invalid = []
+        player_npcs = []
+        
+        # Check for "Player NPCs" (NPCs that reference player roles)
+        for npc_id, npc in self.npcs.items():
+            # Check if NPC ID contains "_player" or similar patterns
+            if "_player" in npc_id.lower() or npc_id.lower().endswith("_player"):
+                player_npcs.append(f"NPC '{npc_id}': Uses '_player' suffix (NPCs are AI characters, not player roles!)")
+            
+            # Check if NPC name matches a player role
+            npc_name_lower = npc.name.lower()
+            npc_role_lower = npc.role.lower() if hasattr(npc, 'role') else ""
+            for role in self.roles:
+                role_lower = role.lower().replace("_", " ")
+                if role_lower in npc_name_lower and "player" in npc_role_lower:
+                    player_npcs.append(f"NPC '{npc_id}' ('{npc.name}'): Appears to be a player role, not an AI character")
+        
+        # Check task NPC references exist
         for task_id, task in self.tasks.items():
             if task.npc_id and task.npc_id not in self.npcs:
                 invalid.append(f"{task_id}: references unknown NPC '{task.npc_id}'")
+        
+        if player_npcs:
+            self.report.add_issue(ValidationIssue(
+                rule_number=10,
+                level=ValidationLevel.CRITICAL,
+                title="Player NPCs Detected (Invalid!)",
+                message="Found NPCs that appear to be player roles. NPCs must be AI characters (guards, staff, civilians), not other players! Player-to-player communication uses INFO_SHARE tasks, NOT NPC_LLM tasks.",
+                details=player_npcs,
+                fix_suggestion="Remove Player NPCs and convert NPC_LLM tasks that reference them to INFO_SHARE tasks"
+            ))
         
         if invalid:
             self.report.add_issue(ValidationIssue(
@@ -641,9 +689,11 @@ class ScenarioValidator:
             ))
     
     def check_outcome_ids(self):
-        """Rule 13: Check outcome IDs in prerequisites exist in NPC definitions"""
-        invalid = []
+        """Rule 13: Check outcome IDs in prerequisites AND target outcomes exist in NPC definitions"""
+        invalid_prereqs = []
+        invalid_targets = []
         
+        # Check prerequisites referencing outcomes
         for task_id, task in self.tasks.items():
             for prereq in task.prerequisites:
                 if prereq['type'] == 'outcome':
@@ -656,16 +706,39 @@ class ScenarioValidator:
                             break
                     
                     if not found:
-                        invalid.append(f"{task_id}: requires outcome '{outcome_id}' which no NPC provides")
+                        invalid_prereqs.append(f"{task_id}: requires outcome '{outcome_id}' which no NPC provides")
+            
+            # CRITICAL: Check NPC tasks' target outcomes exist in the NPC definition
+            if task.type in ['npc_llm', 'npc'] and task.target_outcomes:
+                for target_outcome in task.target_outcomes:
+                    # Find the NPC this task references
+                    if task.npc_id:
+                        npc = self.npcs.get(task.npc_id)
+                        if npc:
+                            if target_outcome not in npc.outcomes:
+                                invalid_targets.append(f"{task_id}: target outcome '{target_outcome}' not found in NPC '{task.npc_id}' definition")
+                        # else: handled by check_npc_references
+                    else:
+                        invalid_targets.append(f"{task_id}: NPC task has target outcome '{target_outcome}' but no NPC specified")
         
-        if invalid:
+        if invalid_prereqs:
             self.report.add_issue(ValidationIssue(
                 rule_number=13,
                 level=ValidationLevel.CRITICAL,
-                title="Invalid Outcome IDs",
+                title="Invalid Outcome IDs in Prerequisites",
                 message="Tasks require outcomes that no NPC provides",
-                details=invalid,
+                details=invalid_prereqs,
                 fix_suggestion="Add outcome to NPC definition or correct outcome ID"
+            ))
+        
+        if invalid_targets:
+            self.report.add_issue(ValidationIssue(
+                rule_number=13,
+                level=ValidationLevel.CRITICAL,
+                title="Invalid Target Outcomes in NPC Tasks",
+                message="NPC tasks specify target outcomes that don't exist in the NPC's Information Known section",
+                details=invalid_targets,
+                fix_suggestion="Add target outcome to NPC's Information Known section with matching ID"
             ))
     
     def check_balanced_roles(self):
@@ -757,39 +830,228 @@ class ScenarioValidator:
     
     def check_hidden_items_unlocks(self):
         """Rule 25: Check hidden items have proper unlock conditions"""
-        issues = []
+        invalid_unlocks = []
+        impossible_items = []
         
         for item_id, item in self.items.items():
             # Check unlock task IDs are valid
             for unlock_task_id in item.unlock_tasks:
                 if unlock_task_id not in self.tasks:
-                    issues.append(f"Item '{item_id}': Unlock references unknown task '{unlock_task_id}'")
+                    invalid_unlocks.append(f"Item '{item_id}': Unlock references unknown task '{unlock_task_id}'")
             
-            # Check if item is required for a task but has no unlock condition
-            # (This would make the item immediately available, which might be intentional)
-            # We'll make this advisory since it might be intentional design
-            if item.required_for and item.required_for != "None":
-                task_ids = re.findall(r'[A-Z]+\d+', item.required_for)
-                for task_id in task_ids:
-                    if task_id in self.tasks:
-                        # Check if item has unlock conditions
-                        if not item.unlock_tasks and not item.hidden:
-                            # Item is immediately available - this is probably fine
-                            pass
-                        elif item.unlock_tasks:
-                            # Item has unlock - check unlock comes before task that needs it
-                            # This would require dependency graph analysis (complex)
-                            pass
+            # CRITICAL CHECK: Hidden items MUST have unlock conditions
+            # A hidden item with no unlock is IMPOSSIBLE to find!
+            if item.hidden and not item.unlock_tasks:
+                impossible_items.append(f"Item '{item_id}' is Hidden: true but has NO unlock conditions - will be IMPOSSIBLE to find!")
         
-        if issues:
+        if invalid_unlocks:
             self.report.add_issue(ValidationIssue(
                 rule_number=25,
                 level=ValidationLevel.CRITICAL,
                 title="Invalid Item Unlock References",
                 message="Items have unlock conditions referencing non-existent tasks",
-                details=issues,
+                details=invalid_unlocks,
                 fix_suggestion="Remove invalid unlock task references or add missing task definitions"
             ))
+        
+        if impossible_items:
+            self.report.add_issue(ValidationIssue(
+                rule_number=25,
+                level=ValidationLevel.CRITICAL,
+                title="Hidden Items Without Unlock Conditions",
+                message="Hidden items MUST have unlock conditions or they cannot be found",
+                details=impossible_items,
+                fix_suggestion="Either: (1) Set Hidden: false, OR (2) Add unlock prerequisites using **Unlock**: format"
+            ))
+    
+    def check_dependency_graph(self):
+        """Rules 26-29: Validate dependency graph structure"""
+        # Convert parsed tasks to graph format
+        graph_tasks = {}
+        for task_id, task in self.tasks.items():
+            graph_tasks[task_id] = GraphTask(
+                id=task_id,
+                prerequisites=task.prerequisites,
+                type=task.type
+            )
+        
+        # Run graph analysis
+        analyzer = ScenarioGraphAnalyzer(graph_tasks)
+        
+        # Rule 26: Check for cycles
+        cycles = analyzer.find_cycles()
+        if cycles:
+            for cycle in cycles:
+                cycle_str = ' -> '.join(cycle)
+                self.report.add_issue(ValidationIssue(
+                    rule_number=26,
+                    level=ValidationLevel.CRITICAL,
+                    title="Circular Dependency Detected",
+                    message=f"Tasks form a circular dependency: {cycle_str}",
+                    details=[cycle_str],
+                    fix_suggestion=f"Remove prerequisite from {cycle[-1]} to {cycle[0]} to break the cycle"
+                ))
+        
+        # Find start tasks
+        start_tasks = analyzer.find_start_tasks()
+        
+        # Rule 27: Check for orphaned tasks
+        orphans = analyzer.find_orphaned_tasks()
+        if orphans:
+            self.report.add_issue(ValidationIssue(
+                rule_number=27,
+                level=ValidationLevel.CRITICAL,
+                title="Orphaned Tasks (Unreachable)",
+                message=f"Found {len(orphans)} tasks that cannot be reached from any starting task",
+                details=orphans,
+                fix_suggestion="Add prerequisites to connect these tasks to the main flow, or mark them as starting tasks (Prerequisites: None)"
+            ))
+        
+        # Rule 28: Check for dead-end tasks (Important, not Critical)
+        dead_ends = analyzer.find_dead_end_tasks()
+        # Filter out final objective tasks (these are expected to be dead ends)
+        final_task_patterns = ['handoff', 'extraction', 'escape', 'deliver', 'complete']
+        non_final_dead_ends = [
+            tid for tid in dead_ends 
+            if not any(pattern in self.tasks[tid].description.lower() for pattern in final_task_patterns)
+        ]
+        
+        if non_final_dead_ends:
+            self.report.add_issue(ValidationIssue(
+                rule_number=28,
+                level=ValidationLevel.IMPORTANT,
+                title="Dead-End Tasks Detected",
+                message=f"Found {len(non_final_dead_ends)} tasks that don't unlock anything else (may reduce player engagement)",
+                details=non_final_dead_ends,
+                fix_suggestion="Add dependent tasks that unlock from these, or ensure they contribute to the main objective"
+            ))
+        
+        # Rule 29: Check each role has starting tasks
+        for role in self.roles:
+            role_tasks = [tid for tid, task in self.tasks.items() if task.role == role]
+            role_start_tasks = [tid for tid in start_tasks if tid in role_tasks]
+            
+            if not role_start_tasks:
+                self.report.add_issue(ValidationIssue(
+                    rule_number=29,
+                    level=ValidationLevel.CRITICAL,
+                    title=f"No Starting Tasks for Role: {role}",
+                    message=f"Role '{role}' has no tasks with 'Prerequisites: None (starting task)'. Players with this role cannot begin playing.",
+                    details=[f"Role {role} has {len(role_tasks)} tasks but none are starting tasks"],
+                    fix_suggestion=f"Change at least one {role} task to have 'Prerequisites: None (starting task)'"
+                ))
+    
+    def check_task_id_parser_compatibility(self):
+        """Rule 30: Ensure task IDs will parse correctly in experience_loader.py"""
+        # The backend parser uses this regex to extract task IDs
+        # We need to ensure all task IDs in the scenario match this pattern
+        parser_regex = r'^[A-Z]{1,3}\d+[a-z]?$'
+        
+        incompatible = []
+        for task_id in self.tasks.keys():
+            if not re.match(parser_regex, task_id):
+                incompatible.append(f"{task_id} (doesn't match {parser_regex})")
+        
+        if incompatible:
+            self.report.add_issue(ValidationIssue(
+                rule_number=30,
+                level=ValidationLevel.CRITICAL,
+                title="Parser-Incompatible Task IDs",
+                message="Task IDs use format that backend parser (experience_loader.py) cannot handle",
+                details=incompatible,
+                fix_suggestion="Use format: ROLE_CODE (1-3 uppercase letters) + NUMBER + optional lowercase letter (e.g., MM1, CL7a, D4a)"
+            ))
+    
+    def check_playability_simulation(self):
+        """Rules 31-35: Simulate gameplay to detect deadlocks and balance issues"""
+        # Convert parsed tasks to simulation format
+        sim_tasks = {}
+        for task_id, task in self.tasks.items():
+            sim_tasks[task_id] = SimTask(
+                id=task_id,
+                role=task.role,
+                prerequisites=task.prerequisites,
+                type=task.type
+            )
+        
+        # Run simulation
+        simulator = PlayabilitySimulator(sim_tasks, self.roles)
+        result = simulator.simulate(max_turns=500, strategy="round_robin")
+        
+        # Rule 31: Check for deadlocks
+        if not result.success:
+            for issue in result.issues:
+                if "Deadlock" in issue or "No players have available tasks" in issue:
+                    self.report.add_issue(ValidationIssue(
+                        rule_number=31,
+                        level=ValidationLevel.CRITICAL,
+                        title="Potential Deadlock Detected",
+                        message=issue,
+                        details=[],
+                        fix_suggestion="Review dependency chain - some tasks may have impossible prerequisites or missing outcomes/items"
+                    ))
+        
+        # Rule 32: Check for long idle periods
+        for role, max_idle in result.role_max_idle.items():
+            if max_idle > 5:  # More than 5 consecutive idle turns
+                self.report.add_issue(ValidationIssue(
+                    rule_number=32,
+                    level=ValidationLevel.IMPORTANT,
+                    title=f"Long Idle Period for {role}",
+                    message=f"Role '{role}' had {max_idle} consecutive turns with no available tasks",
+                    details=[],
+                    fix_suggestion=f"Add parallel tasks or adjust prerequisites to keep {role} engaged throughout the game"
+                ))
+        
+        # Rule 33: Check workload distribution (advisory)
+        if result.total_turns > 0:
+            for role, task_count in result.role_task_counts.items():
+                role_timeline = result.role_timeline.get(role, [])
+                if role_timeline:
+                    # Check if >50% of tasks happen in final 25% of game
+                    final_quarter = result.total_turns * 0.75
+                    late_tasks = sum(1 for turn in role_timeline if turn >= final_quarter)
+                    
+                    if task_count > 0 and late_tasks / task_count > 0.5:
+                        self.report.add_issue(ValidationIssue(
+                            rule_number=33,
+                            level=ValidationLevel.ADVISORY,
+                            title=f"Workload Imbalance for {role}",
+                            message=f"Role '{role}' has {late_tasks}/{task_count} tasks ({late_tasks/task_count*100:.0f}%) in final 25% of game",
+                            details=[],
+                            fix_suggestion=f"Redistribute {role}'s tasks more evenly across the game timeline"
+                        ))
+        
+        # Rule 34: Check early engagement (first 3 turns)
+        for role in self.roles:
+            role_timeline = result.role_timeline.get(role, [])
+            early_tasks = sum(1 for turn in role_timeline if turn <= 3)
+            
+            if early_tasks == 0 and result.role_task_counts.get(role, 0) > 0:
+                self.report.add_issue(ValidationIssue(
+                    rule_number=34,
+                    level=ValidationLevel.IMPORTANT,
+                    title=f"No Early Engagement for {role}",
+                    message=f"Role '{role}' has no tasks available in the first 3 turns of gameplay",
+                    details=[],
+                    fix_suggestion=f"Add starting tasks or reduce prerequisites to engage {role} earlier in the game"
+                ))
+        
+        # Rule 35: Check parallelism (advisory)
+        # Count how many turns had multiple players with work
+        if result.turns:
+            parallel_turns = sum(1 for turn_data in result.turns if len(turn_data.active_players) >= max(2, len(self.roles) // 2))
+            parallelism_ratio = parallel_turns / len(result.turns) if result.turns else 0
+            
+            if parallelism_ratio < 0.5 and len(self.roles) > 1:
+                self.report.add_issue(ValidationIssue(
+                    rule_number=35,
+                    level=ValidationLevel.ADVISORY,
+                    title="Limited Parallelism",
+                    message=f"Only {parallelism_ratio*100:.0f}% of turns had tasks available for multiple players (target: 50%+)",
+                    details=[],
+                    fix_suggestion="Add more parallel task branches to increase player engagement and reduce turn time"
+                ))
 
 
 def main():

@@ -113,6 +113,7 @@ class GameStartedMessage(BaseModel):
     your_tasks: List[Dict] = Field(..., description="Tasks assigned to this player")
     npcs: List[Dict] = Field(default_factory=list, description="All NPCs in the scenario")
     locations: List[Dict] = Field(default_factory=list, description="All locations in the scenario")
+    starting_location: str = Field(..., description="Player's starting location")
 
 
 class TaskUnlockedMessage(BaseModel):

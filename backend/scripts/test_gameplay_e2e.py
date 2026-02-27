@@ -42,7 +42,7 @@ def setup_logging(verbose: bool = False, show_progress: bool = True):
 logger = logging.getLogger(__name__)
 
 
-async def test_scenario(scenario_file: Path, difficulty: str, backend_url: str):
+async def test_scenario(scenario_file: Path, difficulty: str, backend_url: str, skip_npc: bool = False):
     """Run E2E test on a scenario"""
     
     logger.info("="  * 60)
@@ -50,12 +50,15 @@ async def test_scenario(scenario_file: Path, difficulty: str, backend_url: str):
     logger.info(f"Scenario: {scenario_file}")
     logger.info(f"Difficulty: {difficulty}")
     logger.info(f"Backend: {backend_url}")
+    if skip_npc:
+        logger.info(f"NPC Conversations: SKIPPED (auto-complete)")
     logger.info("=" * 60)
     
     # Create orchestrator
     orchestrator = GameplayTestOrchestrator(
         backend_url=backend_url,
-        max_turns=500
+        max_turns=500,
+        skip_npc_conversations=skip_npc
     )
     
     # Run test
@@ -107,6 +110,11 @@ def main():
         action="store_true",
         help="Enable verbose logging"
     )
+    parser.add_argument(
+        "--skip-npc",
+        action="store_true",
+        help="Skip NPC conversations (auto-complete with successful outcomes)"
+    )
     
     args = parser.parse_args()
     
@@ -121,7 +129,8 @@ def main():
     exit_code = asyncio.run(test_scenario(
         scenario_file=scenario_file,
         difficulty=args.difficulty,
-        backend_url=args.backend_url
+        backend_url=args.backend_url,
+        skip_npc=args.skip_npc
     ))
     
     return exit_code

@@ -92,15 +92,18 @@ class GameplayTestOrchestrator:
     def __init__(
         self,
         backend_url: str = "http://localhost:8000",
-        max_turns: int = 500
+        max_turns: int = 500,
+        skip_npc_conversations: bool = False
     ):
         self.backend_url = backend_url
         self.max_turns = max_turns
+        self.skip_npc_conversations = skip_npc_conversations
         
         self.decision_maker = LLMDecisionMaker()
         self.conversation_bot = NPCConversationBot(backend_url=backend_url)
         
-        logger.info(f"Orchestrator initialized (max turns: {max_turns})")
+        skip_msg = " (skipping NPC conversations)" if skip_npc_conversations else ""
+        logger.info(f"Orchestrator initialized (max turns: {max_turns}){skip_msg}")
     
     async def test_scenario(
         self, 
@@ -122,6 +125,31 @@ class GameplayTestOrchestrator:
         # Parse scenario to get roles and metadata
         validator = ScenarioValidator(scenario_file)
         validator.parse_file()
+        
+        # Validate scenario BEFORE testing - abort if critical issues found
+        logger.info("Validating scenario before E2E test...")
+        validator.validate()
+        
+        critical_issues = [issue for issue in validator.validation_issues if issue.severity == "critical"]
+        if critical_issues:
+            logger.error(f"")
+            logger.error(f"🛑 {'='*60}")
+            logger.error(f"   ABORTING E2E TEST: Scenario has {len(critical_issues)} CRITICAL validation issues")
+            logger.error(f"{'='*60}")
+            for issue in critical_issues:
+                logger.error(f"   • [{issue.rule_id}] {issue.title}")
+                if issue.details:
+                    for detail in issue.details[:3]:  # Show first 3 details
+                        logger.error(f"     - {detail}")
+            logger.error(f"")
+            logger.error(f"Fix the scenario generator to produce valid scenarios before E2E testing.")
+            logger.error(f"{'='*60}")
+            
+            result.status = "ERROR"
+            result.issues.append(f"Scenario validation failed with {len(critical_issues)} critical issues")
+            for issue in critical_issues:
+                result.issues.append(f"[{issue.rule_id}] {issue.title}")
+            return result
         
         # Extract roles from parsed data
         roles = validator.roles if validator.roles else []
@@ -206,11 +234,33 @@ class GameplayTestOrchestrator:
                 result.issues.append("Failed to start game")
                 return result
             
+            logger.info("Game started successfully, waiting for backend to initialize...")
             await asyncio.sleep(2)  # Give backend time to initialize game state
+            
+            logger.info("DEBUG: After sleep, checking bot tasks...")
+            
+            # Verify all bots received tasks
+            try:
+                logger.info(f"DEBUG: Checking {len(bots)} bots")
+                for i, bot in enumerate(bots):
+                    logger.info(f"DEBUG: Checking bot {i}: {bot.player_name}")
+                    task_count = len(bot.state.available_tasks)
+                    logger.info(f"  {bot.player_name} ({bot.role}): {task_count} available tasks")
+            except Exception as e:
+                logger.error(f"Error checking bot tasks: {e}", exc_info=True)
+                result.status = "ERROR"
+                result.issues.append(f"Failed to check bot tasks: {str(e)}")
+                return result
             
             # Main game loop
             logger.info("Starting main game loop...")
-            game_result = await self._run_game_loop(bots, result, max_turns=self.max_turns)
+            try:
+                game_result = await self._run_game_loop(bots, result, max_turns=self.max_turns)
+            except Exception as e:
+                logger.error(f"Error in game loop: {e}", exc_info=True)
+                result.status = "ERROR"
+                result.issues.append(f"Game loop error: {str(e)}")
+                return result
             
             # Cleanup
             logger.info("Disconnecting bots...")
@@ -239,6 +289,10 @@ class GameplayTestOrchestrator:
         """
         turn = 0
         idle_counts = {bot.role: 0 for bot in bots}
+        
+        # Track consecutive failures per bot to detect stuck loops
+        consecutive_failures = {bot.player_name: 0 for bot in bots}
+        MAX_CONSECUTIVE_FAILURES = 5
         
         while turn < max_turns:
             turn += 1
@@ -289,7 +343,9 @@ class GameplayTestOrchestrator:
             # Each active bot takes a turn
             for bot in active_bots:
                 try:
-                    await self._bot_take_turn(bot, result)
+                    should_abort = await self._bot_take_turn(bot, result, consecutive_failures, MAX_CONSECUTIVE_FAILURES)
+                    if should_abort:
+                        return result
                 except Exception as e:
                     logger.error(f"❌ Error during {bot.player_name} turn: {e}")
                     result.issues.append(f"Turn {turn}: {bot.player_name} error: {str(e)}")
@@ -306,9 +362,11 @@ class GameplayTestOrchestrator:
         
         return result
     
-    async def _bot_take_turn(self, bot: BotPlayer, result: GameplayTestResult):
+    async def _bot_take_turn(self, bot: BotPlayer, result: GameplayTestResult, consecutive_failures: dict, max_failures: int) -> bool:
         """
         Bot analyzes state and takes one action
+        
+        Returns True if test should abort due to repeated failures
         """
         # Get available tasks
         tasks = bot.get_available_tasks()
@@ -344,9 +402,24 @@ class GameplayTestOrchestrator:
         
         if success:
             logger.info(f"     ✅ Success")
+            consecutive_failures[bot.player_name] = 0  # Reset on success
         else:
             logger.warning(f"     ❌ Failed")
             result.issues.append(f"Turn {result.turns_taken}: {bot.player_name} {decision.action} failed")
+            
+            # Track consecutive failures
+            consecutive_failures[bot.player_name] += 1
+            if consecutive_failures[bot.player_name] >= max_failures:
+                logger.error(f"")
+                logger.error(f"🛑 {'='*60}")
+                logger.error(f"   ABORTING: {bot.player_name} failed {max_failures} times in a row")
+                logger.error(f"   This indicates the bot is stuck in an unproductive loop")
+                logger.error(f"{'='*60}")
+                result.status = "ERROR"
+                result.issues.append(f"Turn {result.turns_taken}: {bot.player_name} stuck in failure loop")
+                return True  # Signal abort
+        
+        return False  # Continue normally
     
     def _format_action(self, decision: ActionDecision) -> str:
         """Format action for display"""
@@ -356,6 +429,8 @@ class GameplayTestOrchestrator:
             return f"Search location"
         elif decision.action == "pickup":
             return f"Pickup {decision.target_item}"
+        elif decision.action == "talk":
+            return f"Talk to {decision.target_npc} for task {decision.target_task}"
         elif decision.action == "complete_task":
             return f"Complete task {decision.target_task}"
         elif decision.action == "handoff":
@@ -371,7 +446,11 @@ class GameplayTestOrchestrator:
         decision: ActionDecision,
         result: GameplayTestResult
     ) -> bool:
-        """Execute the chosen action"""
+        """Execute the chosen action
+        
+        For E2E testing, we force success on most actions to test dependency chains,
+        not player skill/failures
+        """
         
         if decision.action == "move":
             if decision.target_location:
@@ -399,6 +478,106 @@ class GameplayTestOrchestrator:
                         result.tasks_completed_per_role[bot.role] = 0
                     result.tasks_completed_per_role[bot.role] += 1
                 return success
+        
+        elif decision.action == "talk":
+            # Use proper NPC conversation flow (cover selection + quick responses)
+            if decision.target_task:
+                # Get task details to find NPC and cover options
+                task = bot.state.available_tasks.get(decision.target_task)
+                if not task:
+                    logger.error(f"Task {decision.target_task} not found in available tasks")
+                    return False
+                
+                # Get the NPC ID from the task
+                npc_id = task.get("npc_id")
+                if not npc_id:
+                    logger.error(f"Task {decision.target_task} has no npc_id field")
+                    return False
+                
+                # Skip NPC conversations if flag is set (for fast E2E testing)
+                if self.skip_npc_conversations:
+                    logger.info(f"{bot.player_name} auto-completing NPC task {decision.target_task} (skip_npc_conversations=True)")
+                    success = await bot.complete_task(decision.target_task)
+                    if success:
+                        if bot.role not in result.tasks_completed_per_role:
+                            result.tasks_completed_per_role[bot.role] = 0
+                        result.tasks_completed_per_role[bot.role] += 1
+                    return success
+                
+                logger.info(f"{bot.player_name} starting NPC conversation with {npc_id} for task {decision.target_task}")
+                
+                # Find NPC in game state to get cover options
+                npc = next((n for n in bot.state.npcs if n.get("id") == npc_id), None)
+                if not npc:
+                    logger.error(f"NPC {npc_id} not found in bot's NPC list")
+                    return False
+                
+                cover_options = npc.get("cover_options", [])
+                if not cover_options:
+                    logger.warning(f"NPC {npc_id} has no cover options, skipping conversation")
+                    return False
+                
+                # Choose first cover option (for E2E, we just pick first)
+                cover_id = cover_options[0].get("cover_id")
+                target_outcomes = task.get("target_outcomes", [])
+                
+                # Start conversation
+                logger.debug(f"     Starting conversation with cover: {cover_id}")
+                conv_data = await bot.start_npc_conversation(
+                    task_id=decision.target_task,
+                    npc_id=npc_id,
+                    cover_id=cover_id,
+                    target_outcomes=target_outcomes
+                )
+                
+                if not conv_data:
+                    logger.warning(f"     Failed to start conversation")
+                    return False
+                
+                # Conduct conversation turns (max 10 turns)
+                max_turns = 10
+                for turn in range(max_turns):
+                    quick_responses = conv_data.get("quick_responses", [])
+                    conversation_failed = conv_data.get("conversation_failed", False)
+                    suspicion = conv_data.get("suspicion", 0)
+                    
+                    logger.debug(f"     Turn {turn+1}: suspicion={suspicion}, responses={len(quick_responses)}, failed={conversation_failed}")
+                    
+                    if conversation_failed:
+                        logger.warning(f"     ❌ Conversation failed (too suspicious)")
+                        return False
+                    
+                    if not quick_responses:
+                        # Conversation ended successfully
+                        break
+                    
+                    # Choose a response (for E2E, pick first one)
+                    response_index = 0
+                    logger.debug(f"     Choosing response {response_index}: {quick_responses[response_index].get('text', '')[:50]}...")
+                    
+                    conv_data = await bot.send_npc_choice(npc_id, response_index)
+                    if not conv_data:
+                        logger.warning(f"     Failed to send choice")
+                        return False
+                    
+                    # Check if task completed
+                    if decision.target_task in bot.state.completed_tasks:
+                        logger.info(f"     ✅ NPC task completed after {turn+1} turns")
+                        if bot.role not in result.tasks_completed_per_role:
+                            result.tasks_completed_per_role[bot.role] = 0
+                        result.tasks_completed_per_role[bot.role] += 1
+                        return True
+                
+                # Check final state
+                if decision.target_task in bot.state.completed_tasks:
+                    logger.info(f"     ✅ NPC task completed")
+                    if bot.role not in result.tasks_completed_per_role:
+                        result.tasks_completed_per_role[bot.role] = 0
+                    result.tasks_completed_per_role[bot.role] += 1
+                    return True
+                else:
+                    logger.warning(f"     ❌ Conversation ended but task not completed")
+                    return False
         
         elif decision.action == "handoff":
             if decision.target_item and decision.target_player:

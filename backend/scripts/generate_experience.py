@@ -77,6 +77,39 @@ Generate a complete experience file with a **task dependency system** for this h
 
 {minigames_section}
 
+## 🔴 CRITICAL: GENERATION WORKFLOW (FOLLOW THIS ORDER!)
+
+To avoid validation errors, you MUST generate content in this exact order:
+
+**STEP 1: Define ALL Locations**
+- Create 6-9 locations for {len(roles)} players
+- Give each location a clear `ID` in snake_case format
+- Write them in the ## Locations section
+
+**STEP 2: Define ALL NPCs with their outcomes**
+- For each NPC, define exactly ONE outcome in Information Known or Actions Available
+- Give each outcome a clear `ID` in snake_case format
+- Write them in the ## NPCs section
+- **REMEMBER THE OUTCOME IDs YOU CREATE!** You'll need them in Step 4.
+
+**STEP 3: Define ALL Items**
+- Give each item a clear `ID` in snake_case format
+- If item is Hidden: true, it MUST have **Unlock** prerequisites
+- Write them under location headers in ## Items by Location section
+
+**STEP 4: Create Tasks that reference ONLY the IDs from Steps 1-3**
+- Task locations: ONLY use location IDs from Step 1 (in backticks: `location_id`)
+- Task NPCs: ONLY use NPC IDs from Step 2 (in backticks: `npc_id`)
+- Task Target Outcomes: ONLY use outcome IDs from Step 2 (in backticks: `outcome_id`)
+- Task Prerequisites: ONLY use IDs from Steps 1-4 (Task/Outcome/Item `id`)
+- **NEVER invent new IDs in Step 4 that weren't defined in Steps 1-3!**
+
+**BEFORE YOU FINISH:**
+- Review ALL task locations and verify each one exists in ## Locations
+- Review ALL task NPCs and verify each one exists in ## NPCs
+- Review ALL task target outcomes and verify they match the NPC's outcome
+- Review ALL hidden items and verify they have unlock conditions
+
 ## Design Guidelines
 
 {design_guide}
@@ -129,6 +162,38 @@ Your generated scenario MUST pass these validation rules:
 - **6-8 players**: 8-12 locations minimum
 - **9-12 players**: 10-15 locations minimum
 Include: preparation locations, entry points, public areas, restricted areas, target location, escape routes.
+
+**🔴 CRITICAL LOCATION WORKFLOW:**
+
+**STEP 1: Define ALL locations FIRST in ## Locations section**
+```markdown
+## Locations
+
+### Safe House (Starting Location)
+- **ID**: `safe_house`
+- **Name**: Safe House
+- **Description**: ...
+
+### Bank Lobby
+- **ID**: `bank_lobby`
+- **Name**: Bank Lobby
+- **Description**: ...
+```
+
+**STEP 2: In tasks, ONLY reference location IDs that you defined in STEP 1**
+```markdown
+**H1. 💬 NPC_LLM** - Talk to Guard
+- *Location:* `bank_lobby`  ← MUST match a location ID from Locations section!
+```
+
+**❌ COMMON MISTAKES:**
+1. Task references location `parking_garage` but Locations section only has `parking_lot` ← WRONG! ID doesn't match!
+2. Task references location `Bank Lobby` (name) instead of `bank_lobby` (ID) ← WRONG! Must use ID!
+3. Forgetting to define a location in Locations section ← WRONG! Define ALL locations first!
+
+**✅ VALIDATION CHECKLIST:**
+1. List ALL location IDs from ## Locations section
+2. For EACH task, verify the Location field uses an ID from that list (in backticks)
 
 ### Task Count (CRITICAL)
 - **3-7 players**: 30-40 tasks total
@@ -204,17 +269,28 @@ Start with clear objectives visible to ALL players:
 ### 2. Task Types
 Every task MUST be one of these types (using the matching emoji):
 - 🎮 **Minigame**: Player-controlled action (e.g., dial_rotation, wire_connecting)
-- 💬 **NPC_LLM**: Dialogue or interaction with AI-controlled character
+- 💬 **NPC_LLM**: Dialogue or interaction with **AI-controlled NPCs ONLY**
 - 🔍 **Search**: Player searches a location for items
 - 🤝 **Handoff**: Physical item transfer between players (tracked in inventory)
 - 🗣️ **Info Share**: Verbal information exchange between players (real-life conversation)
 
 **No other task types are allowed.** Every task a player sees must have a clear way to complete it:
 - Minigame → play the minigame
-- NPC_LLM → talk to the NPC and achieve the outcome
+- NPC_LLM → talk to an **AI NPC** and achieve the outcome
 - Search → go to the location and search for items
 - Handoff → transfer an item to another player
 - Info Share → tell another player the information, then confirm shared
+
+⚠️ **CRITICAL DISTINCTION: NPCs vs Players**
+- **NPCs** = AI-controlled characters (guards, staff, civilians) that players talk to using the conversation system
+- **Players** = Human players with assigned roles (Mastermind, Hacker, etc.)
+- **NEVER create "Player NPCs"!** Players talking to each other = 🗣️ **INFO_SHARE**, NOT 💬 NPC_LLM
+- **NPC_LLM is ONLY for AI NPCs**, not for player-to-player communication!
+
+Examples:
+- ✅ CORRECT: "Talk to the Security Guard" → 💬 NPC_LLM (AI character)
+- ✅ CORRECT: "Brief the Safe Cracker about the plan" → 🗣️ INFO_SHARE (player-to-player)
+- ❌ WRONG: "Talk to the Safe Cracker player" → NPC_LLM (players are NOT NPCs!)
 
 **Do NOT create tasks that are just "go to a location."** If a player needs to be somewhere, make it a prerequisite on the task they'll do there.
 
@@ -245,6 +321,11 @@ Every task MUST be one of these types (using the matching emoji):
 - Outcome prerequisites (one player's NPC success unlocks another player's task)
 
 ## NPC Conversation System Format (CRITICAL!)
+
+⚠️ **NPCs are AI-CONTROLLED CHARACTERS ONLY!**
+- Create NPCs for: guards, staff, civilians, officials, bystanders
+- **NEVER create NPCs for player roles!** Players (Mastermind, Hacker, etc.) are NOT NPCs!
+- Players communicate via 🗣️ INFO_SHARE tasks, NOT NPC_LLM tasks!
 
 Each NPC MUST include structured data for the conversation system:
 
@@ -285,6 +366,36 @@ Rules for NPCs:
 - Every NPC must be targeted by exactly one task with a matching Target Outcome
 - If you need more outcomes, add more NPCs -- don't overload one NPC
 - NARRATIVE CONSISTENCY (Story Context): Every NPC MUST have a Story Context field with immutable world facts. This prevents the AI playing the NPC from improvising contradictions (e.g., saying stolen items are "on display" when they're in a locked vault). Think carefully about: where key objects physically are and why, what is public vs secret knowledge, what this NPC would and would NOT volunteer to do, and how the scenario's setup constrains the NPC's behavior.
+
+**🔴 CRITICAL NPC-TO-TASK MATCHING WORKFLOW:**
+
+When creating NPCs and tasks, you MUST follow this exact workflow:
+
+**STEP 1: Define NPC with outcome**
+```markdown
+### Security Guard - Officer Mike
+- **ID**: `security_guard_mike`
+- **Information Known**:
+  - `camera_feeds_info` HIGH: Location of blind spots in camera coverage
+```
+
+**STEP 2: Create task that EXACTLY matches the outcome**
+```markdown
+**H1. 💬 NPC_LLM** - Get Camera Info from Guard
+- *NPC:* `security_guard_mike` (Officer Mike)
+- *Target Outcomes:* `camera_feeds_info`  ← MUST MATCH NPC'S OUTCOME ID EXACTLY!
+```
+
+**❌ COMMON MISTAKES TO AVOID:**
+1. NPC provides `camera_feeds_info` but task wants `guard_distracted` ← WRONG! Outcomes don't match!
+2. Task references NPC `informant_joe` but no NPC with that ID exists ← WRONG! NPC doesn't exist!
+3. Task D5 requires outcome `all_clear_signal` but no NPC provides it ← WRONG! Outcome doesn't exist!
+
+**✅ VALIDATION CHECKLIST BEFORE FINISHING:**
+1. List ALL outcome IDs from ALL NPCs (from Information Known and Actions Available)
+2. For EACH NPC task, verify the Target Outcome exists in that NPC's definition
+3. For EACH task prerequisite of type Outcome, verify it exists in SOME NPC's definition
+4. For EACH NPC, verify exactly ONE task references it with matching Target Outcome
 
 ### Task Format (ID-ONLY REFERENCES):
 ```markdown
@@ -334,6 +445,35 @@ Rules for Items:
 - Items without `**Unlock**` are always visible when a player searches that location
 - Use Unlock when an item should only appear AFTER something happens (e.g., jewels appear after vault is cracked, a key appears after a guard leaves)
 - The `**Hidden**` field is for items that require a thorough search to find (separate from unlock gating)
+
+**🔴 CRITICAL HIDDEN ITEM RULE:**
+
+**IF an item has `Hidden: true`, it MUST have `**Unlock**` prerequisites!**
+
+❌ WRONG - This item is IMPOSSIBLE to find:
+```markdown
+- **ID**: `secret_document`
+  - **Hidden**: true
+  - **Unlock**:  ← NO UNLOCK! Item can NEVER be found!
+    - None
+```
+
+✅ CORRECT - Hidden item with unlock:
+```markdown
+- **ID**: `secret_document`
+  - **Hidden**: true
+  - **Unlock**:
+    - Task `H1` (hack security first)
+    - Outcome `safe_opened` (safe must be open)
+```
+
+✅ CORRECT - Non-hidden item (no unlock needed):
+```markdown
+- **ID**: `security_badge`
+  - **Hidden**: false  ← Available immediately when player searches
+```
+
+**Rule:** Hidden: true + No Unlock = BROKEN SCENARIO (item is unfindable)
 
 ## Standard Requirements
 
@@ -559,6 +699,107 @@ def generate_experience(scenario_id, role_ids, output_file=None):
         sys.exit(1)
 
 
+def generate_experience_multistage(scenario_id, role_ids, output_file=None):
+    """
+    Generate experience using multi-stage pipeline
+    
+    Pipeline:
+    1. Story Generation - LLM creates semi-structured story
+    2. Structure Extraction - Parse story to JSON graph
+    3. Validation & Fixing - Validate and auto-fix graph
+    4. Markdown Rendering - Convert graph to final markdown
+    
+    Args:
+        scenario_id: Scenario ID
+        role_ids: List of role IDs
+        output_file: Output path (optional)
+    
+    Returns:
+        Path to generated markdown file
+    """
+    print(f"🚀 Multi-Stage Generation Pipeline")
+    print(f"={'='*60}")
+    print(f"Scenario: {scenario_id}")
+    print(f"Roles: {', '.join(role_ids)}")
+    print(f"{'='*60}\n")
+    
+    # Import stage modules
+    sys.path.insert(0, str(Path(__file__).parent / 'generators'))
+    from generators.story_generator import generate_story
+    from generators.structure_extractor import extract_structure
+    from generators.graph_validator_fixer import validate_and_fix_graph
+    from generators.markdown_renderer import render_markdown
+    
+    # Stage 1: Generate story
+    print(f"📖 Stage 1: Story Generation")
+    print(f"-" * 60)
+    story = generate_story(
+        scenario_id=scenario_id,
+        role_ids=role_ids,
+        api_key=GEMINI_API_KEY,
+        model=GEMINI_EXPERIENCE_MODEL,
+        data_dir=DATA_DIR
+    )
+    print(f"✅ Generated story ({len(story.split())} words)\n")
+    
+    # Save story for debugging
+    story_path = Path('output/stories') / f"{scenario_id}_{'_'.join(role_ids[:2])}_story.txt"
+    story_path.parent.mkdir(parents=True, exist_ok=True)
+    story_path.write_text(story)
+    print(f"💾 Story saved to: {story_path}\n")
+    
+    # Stage 2: Extract structure
+    print(f"📊 Stage 2: Structure Extraction")
+    print(f"-" * 60)
+    graph = extract_structure(story, scenario_id, role_ids)
+    print(f"✅ Extracted structure:")
+    print(f"   - {len(graph.locations)} locations")
+    print(f"   - {len(graph.items)} items")
+    print(f"   - {len(graph.npcs)} NPCs")
+    print(f"   - {len(graph.tasks)} tasks\n")
+    
+    # Stage 3: Validate and fix
+    print(f"🔧 Stage 3: Validation & Fixing")
+    print(f"-" * 60)
+    fixed_graph, validation_result = validate_and_fix_graph(graph, max_iterations=5)
+    
+    if not validation_result.is_valid:
+        print(f"\n❌ Validation failed after fixes:")
+        for error in validation_result.errors:
+            print(f"   - {error}")
+        raise RuntimeError("Failed to generate valid scenario")
+    
+    if validation_result.fixes_applied:
+        print(f"✅ Applied {len(validation_result.fixes_applied)} fixes\n")
+    else:
+        print(f"✅ No fixes needed\n")
+    
+    # Stage 4: Render markdown
+    print(f"📝 Stage 4: Markdown Rendering")
+    print(f"-" * 60)
+    markdown = render_markdown(fixed_graph)
+    print(f"✅ Rendered markdown ({len(markdown.split())} words)\n")
+    
+    # Save final output
+    if output_file:
+        output_path = Path(output_file)
+    else:
+        roles_str = '_'.join(role_ids[:3])
+        if len(role_ids) > 3:
+            roles_str += f'_plus{len(role_ids)-3}'
+        output_path = Path('backend/scripts/output') / f"{scenario_id}_{roles_str}.md"
+    
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(markdown)
+    
+    print(f"{'='*60}")
+    print(f"✅ Multi-stage generation complete!")
+    print(f"💾 Saved to: {output_path}")
+    print(f"{'='*60}\n")
+    
+    return str(output_path)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Generate a complete heist experience for a scenario',
@@ -568,6 +809,7 @@ Examples:
   python generate_experience.py --scenario museum_gala_vault --roles mastermind hacker safe_cracker
   python generate_experience.py --scenario train_robbery_car --roles mastermind muscle cat_burglar driver
   python generate_experience.py --scenario museum_gala_vault --roles mastermind fence hacker insider --output backend/experiences/my_heist.md
+  python generate_experience.py --scenario museum_gala_vault --roles mastermind hacker --legacy  (use old single-stage)
         """
     )
     
@@ -590,6 +832,12 @@ Examples:
     )
     
     parser.add_argument(
+        '--legacy',
+        action='store_true',
+        help='Use legacy single-stage generation (for comparison)'
+    )
+    
+    parser.add_argument(
         '--validate',
         action='store_true',
         help='Run validation checks after generation'
@@ -597,12 +845,21 @@ Examples:
     
     args = parser.parse_args()
     
-    # Generate the heist experience
-    output_path = generate_experience(
-        scenario_id=args.scenario,
-        role_ids=args.roles,
-        output_file=args.output
-    )
+    # Choose generation method
+    if args.legacy:
+        print("⚠️  Using legacy single-stage generation\n")
+        output_path = generate_experience(
+            scenario_id=args.scenario,
+            role_ids=args.roles,
+            output_file=args.output
+        )
+    else:
+        print("🚀 Using multi-stage generation pipeline\n")
+        output_path = generate_experience_multistage(
+            scenario_id=args.scenario,
+            role_ids=args.roles,
+            output_file=args.output
+        )
     
     # Run validation if requested
     if args.validate:

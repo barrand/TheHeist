@@ -152,9 +152,38 @@ All references in tasks MUST use IDs with backticks, NOT display names.
 
 ---
 
+## NPCs vs Players (CRITICAL DISTINCTION!)
+
+⚠️ **DO NOT CONFUSE NPCs WITH PLAYERS!**
+
+**NPCs (AI-Controlled Characters):**
+- AI characters in the game world: guards, curators, drivers, staff, civilians, officials
+- Examples: `security_guard_frank`, `museum_director_elena`, `getaway_driver_carlos`
+- Players interact with NPCs using 💬 **NPC_LLM** tasks (conversation system with cover stories, quick responses, suspicion)
+
+**Players (Human Game Participants):**
+- Real people playing the heist with assigned roles: Mastermind, Hacker, Safe Cracker, etc.
+- Players coordinate via 🗣️ **INFO_SHARE** tasks (real-life conversation)
+- **Players do NOT appear in the NPCs section!**
+
+**❌ ABSOLUTELY FORBIDDEN: "Player NPCs"**
+- ❌ WRONG: NPC with ID `safe_cracker_player`, `mastermind_npc`, `hacker_player`
+- ❌ WRONG: NPC with Role "Safe Cracker" or "Mastermind" (these are player roles!)
+- ❌ WRONG: Task "Brief the Safe Cracker" → 💬 NPC_LLM with NPC: `safe_cracker_player`
+- ✅ CORRECT: Task "Brief the Safe Cracker" → 🗣️ INFO_SHARE (player-to-player)
+- ✅ CORRECT: Task "Distract the Guard" → 💬 NPC_LLM with NPC: `security_guard_frank`
+
+**Decision Tree:**
+- Need players to coordinate/share info? → 🗣️ **INFO_SHARE**
+- Need player to talk to guard/staff/civilian? → 💬 **NPC_LLM**
+
+---
+
 ## NPC Format
 
-NPCs (Non-Player Characters) are AI-controlled characters that players interact with through conversation. Each NPC must have complete specifications for image generation, AI conversation, and gameplay.
+NPCs (Non-Player Characters) are **AI-controlled characters** that players interact with through conversation. Each NPC must have complete specifications for image generation, AI conversation, and gameplay.
+
+**Remember: NPCs are AI characters (guards, staff, etc.), NOT other players!**
 
 ### NPC Definition Template
 
@@ -759,6 +788,91 @@ All scenarios must pass these validation checks before deployment. These rules e
 - Items required for tasks should have proper unlock chains
 - **Check**: Verify unlock task IDs are valid
 - **Impact**: Broken unlock references make items unavailable
+
+### CRITICAL: Integrated Dependency Graph Analysis (NEW)
+
+**26. Circular Dependencies (CRITICAL)**
+- Tasks cannot form circular dependency chains (A→B→C→A)
+- **Check**: Run cycle detection on task dependency graph
+- **Detection**: DFS-based cycle detection in graph analyzer
+- **Impact**: Makes tasks impossible to complete
+- **Fix**: Editor agent removes one prerequisite to break the cycle
+- **Example**: If MM2 depends on CL4, and CL4 depends on MM2, remove one dependency
+
+**27. Orphaned Tasks (CRITICAL)**
+- All tasks must be reachable from at least one starting task
+- **Check**: BFS from all starting tasks, find unreachable nodes
+- **Detection**: Graph analyzer identifies tasks with no path from start
+- **Impact**: Tasks can never be unlocked or completed
+- **Fix**: Editor agent adds prerequisite chain or marks task as starting
+- **Example**: If CL7a requires an outcome that is never created, it's orphaned
+
+**28. Dead-End Tasks (IMPORTANT)**
+- Non-final tasks should unlock other tasks or contribute to objectives
+- **Check**: Find tasks with no dependents
+- **Detection**: Graph analyzer identifies tasks that don't unlock anything
+- **Impact**: Reduces player engagement, wasted effort
+- **Fix**: Editor agent adds dependent tasks or clarifies final objective
+- **Exceptions**: Final handoffs, extraction tasks, completion tasks are expected dead-ends
+
+**29. No Starting Tasks for Role (CRITICAL)**
+- Each role must have at least one task with "Prerequisites: None"
+- **Check**: Verify each role has starting tasks
+- **Detection**: Graph analyzer finds start tasks per role
+- **Impact**: Players cannot begin playing their role
+- **Fix**: Editor agent changes one task to have "Prerequisites: None (starting task)"
+- **Example**: Cleaner role needs CL1 or CL2 marked as starting task
+
+**30. Parser-Compatible Task IDs (CRITICAL)**
+- Task IDs must match backend parser regex: `[A-Z]{1-3}\d+[a-z]?`
+- **Check**: Validate all task IDs against parser regex
+- **Detection**: Regex match in validator
+- **Impact**: Backend cannot parse tasks, they become invisible
+- **Fix**: Editor agent renames tasks to proper format
+- **Valid Examples**: `MM1`, `CL7a`, `D4a`, `SC2`
+- **Invalid Examples**: `Master1` (too long), `CL-7` (hyphen), `cl1` (lowercase)
+
+### IMPORTANT: Integrated Playability Simulation (NEW)
+
+**31. Potential Deadlock (CRITICAL)**
+- Gameplay simulation must complete all tasks without deadlocking
+- **Check**: Run playability simulator with round-robin strategy
+- **Detection**: Simulator detects when no players have available tasks but tasks remain
+- **Impact**: Game becomes impossible to complete
+- **Fix**: Editor agent reviews prerequisite chains, adds parallel paths
+- **Example**: If all players waiting for outcome that is never created
+
+**32. Long Idle Periods (IMPORTANT)**
+- No role should have >5 consecutive turns with no available tasks
+- **Check**: Track idle turns per role during simulation
+- **Detection**: Simulator records max consecutive idle turns
+- **Impact**: Players get bored, feel excluded
+- **Fix**: Editor agent adds parallel tasks or adjusts prerequisites
+- **Example**: Driver waits 8 turns for Cleaner to finish chain
+
+**33. Workload Imbalance (ADVISORY)**
+- No role should have >50% of tasks in final 25% of game
+- **Check**: Analyze task completion timeline distribution
+- **Detection**: Simulator tracks when each role's tasks are completed
+- **Impact**: Some players idle early, others overwhelmed late
+- **Fix**: Editor agent redistributes prerequisites more evenly
+- **Example**: Mastermind has 5/7 tasks in final quarter
+
+**34. No Early Engagement (IMPORTANT)**
+- Each role must complete at least one task in first 3 turns
+- **Check**: Verify each role has work in early game
+- **Detection**: Simulator tracks task completion timeline
+- **Impact**: Players wait too long before participating
+- **Fix**: Editor agent adds starting tasks or reduces prerequisites
+- **Example**: Hacker has no tasks until turn 5
+
+**35. Limited Parallelism (ADVISORY)**
+- At least 50% of turns should have tasks for multiple players
+- **Check**: Count turns with concurrent availability
+- **Detection**: Simulator tracks active players per turn
+- **Impact**: Increases wait time, reduces engagement
+- **Fix**: Editor agent adds more parallel task branches
+- **Example**: Only 30% of turns have work for 2+ players
 
 ---
 
