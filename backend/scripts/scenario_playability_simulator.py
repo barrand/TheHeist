@@ -27,6 +27,8 @@ class Task:
     role: str
     prerequisites: List[Dict[str, str]]  # [{type: task|outcome|item, id: xxx}]
     type: str
+    target_outcomes: List[str] = field(default_factory=list)
+    search_items: List[str] = field(default_factory=list)
 
 
 @dataclass

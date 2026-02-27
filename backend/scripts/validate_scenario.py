@@ -979,7 +979,9 @@ class ScenarioValidator:
                 id=task_id,
                 role=task.role,
                 prerequisites=task.prerequisites,
-                type=task.type
+                type=task.type,
+                target_outcomes=getattr(task, 'target_outcomes', []),
+                search_items=getattr(task, 'search_items', []),
             )
         
         # Run simulation

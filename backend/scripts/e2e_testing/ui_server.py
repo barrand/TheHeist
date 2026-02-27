@@ -23,7 +23,16 @@ CORS(app)
 
 # Paths
 BACKEND_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = BACKEND_ROOT.parent
 EXPERIENCES_DIR = BACKEND_ROOT / "experiences"
+ROLES_JSON = PROJECT_ROOT / "shared_data" / "roles.json"
+
+# Role codes for task IDs (must match experience_loader.py)
+ROLE_CODES = {
+    "mastermind": "MM", "hacker": "H", "safe_cracker": "SC", "insider": "I",
+    "driver": "D", "grifter": "G", "muscle": "M", "lookout": "L",
+    "fence": "F", "cat_burglar": "CB", "cleaner": "CL", "pickpocket": "PP",
+}
 BACKEND_LOG = Path("/tmp/heist_logs/backend.log")
 E2E_LOG = Path("/tmp/heist_logs/e2e_test.log")
 
@@ -153,15 +162,15 @@ def generate_scenario():
             yield _progress(f"Graph: {len(graph.tasks)} tasks, {len(graph.locations)} locations")
 
             yield _progress("Validating and fixing graph...")
-            fixed_graph, validation_result = validate_and_fix_graph(graph, max_iterations=5)
+            fixed_graph, validation_result = validate_and_fix_graph(graph, max_iterations=10)
             if not validation_result.is_valid:
                 yield _line({
                     "type": "result", "success": False,
                     "error": "Graph validation failed",
-                    "errors": validation_result.errors[:5]
+                    "errors": validation_result.errors
                 })
                 return
-            fixed_count = len([e for e in validation_result.errors])
+            fixed_count = len(validation_result.fixes_applied)
             yield _progress(f"Graph valid" + (f" ({fixed_count} issues auto-fixed)" if fixed_count else ""))
 
             yield _progress("Exporting to JSON and markdown...")
@@ -371,16 +380,24 @@ def stream_e2e_log():
 
 @app.route("/api/config/roles")
 def get_available_roles():
-    """Get list of available player roles"""
-    return jsonify([
-        {"id": "mastermind", "name": "Mastermind", "code": "MM"},
-        {"id": "hacker", "name": "Hacker", "code": "H"},
-        {"id": "safe_cracker", "name": "Safe Cracker", "code": "SC"},
-        {"id": "insider", "name": "Insider", "code": "I"},
-        {"id": "driver", "name": "Driver", "code": "D"},
-        {"id": "grifter", "name": "Grifter", "code": "G"},
-        {"id": "muscle", "name": "Muscle", "code": "M"},
-    ])
+    """Get list of available player roles from shared_data/roles.json"""
+    try:
+        data = json.load(open(ROLES_JSON))
+        roles = []
+        for r in data.get("roles", []):
+            role_id = r.get("role_id", "")
+            name = r.get("name", role_id.replace("_", " ").title())
+            code = ROLE_CODES.get(role_id, role_id[:2].upper() if len(role_id) >= 2 else "X")
+            roles.append({"id": role_id, "name": name, "code": code})
+        return jsonify(roles)
+    except Exception as e:
+        print(f"Error loading roles from {ROLES_JSON}: {e}")
+        # Fallback to minimal set
+        return jsonify([
+            {"id": "mastermind", "name": "Mastermind", "code": "MM"},
+            {"id": "hacker", "name": "Hacker", "code": "H"},
+            {"id": "safe_cracker", "name": "Safe Cracker", "code": "SC"},
+        ])
 
 
 @app.route("/api/config/scenario_types")

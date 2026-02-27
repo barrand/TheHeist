@@ -58,7 +58,7 @@ class GraphValidator:
             self._validate_task_balance()
 
             if not self.errors:
-                print(f"✅ Validation passed!")
+                print(f"✅ Validation passed on iteration {iteration + 1}!")
                 return ValidationResult(
                     is_valid=True,
                     warnings=self.warnings,
@@ -68,18 +68,12 @@ class GraphValidator:
             print(f"   Found {len(self.errors)} errors, attempting fixes...")
             fixes_made = self._apply_fixes()
 
-            # Fixes may have resolved all remaining errors in this iteration
-            if not self.errors:
-                print(f"✅ All errors resolved by fixes!")
-                return ValidationResult(
-                    is_valid=True,
-                    warnings=self.warnings,
-                    fixes_applied=self.fixes
-                )
-
             if not fixes_made:
                 print(f"❌ Could not fix remaining errors")
                 break
+            # Always run another full validation pass after fixes —
+            # fixing one error (e.g. removing a location) can introduce new ones
+            # (tasks that referenced that location become invalid).
 
         return ValidationResult(
             is_valid=False,
@@ -116,17 +110,13 @@ class GraphValidator:
             self.errors.append(f"location_count: {count} (expected {min_loc}-{max_loc})")
     
     def _validate_task_count(self):
-        """Check task count is in valid range"""
+        """Check task count is reasonable (advisory — procedural generator controls this)"""
         count = len(self.graph.tasks)
         player_count = self._player_count
-        
-        if 3 <= player_count <= 7:
-            min_tasks, max_tasks = 30, 40
-        else:
-            min_tasks, max_tasks = 40, 50
-        
-        if not (min_tasks <= count <= max_tasks):
-            self.errors.append(f"task_count: {count} (expected {min_tasks}-{max_tasks})")
+        min_tasks = max(4, player_count * 2)
+
+        if count < min_tasks:
+            self.warnings.append(f"task_count_low: {count} (expected min {min_tasks})")
     
     def _npc_outcome_ids(self, npc: NPC) -> List[str]:
         """Return all outcome IDs provided by an NPC"""
@@ -138,7 +128,14 @@ class GraphValidator:
         item_ids = {item.id for item in self.graph.items}
         npc_ids = {npc.id for npc in self.graph.npcs}
         task_ids = {task.id for task in self.graph.tasks}
-        outcome_ids = {oid for npc in self.graph.npcs for oid in self._npc_outcome_ids(npc)}
+        # Only outcomes that are actually targeted by an npc_llm task are reachable.
+        # An outcome in an NPC's information_known that no task targets can never be unlocked.
+        outcome_ids = {
+            oid
+            for task in self.graph.tasks
+            if task.type == "npc_llm"
+            for oid in task.target_outcomes
+        }
 
         # Check task locations
         for task in self.graph.tasks:
@@ -295,22 +292,11 @@ class GraphValidator:
                         new_loc = Location(
                             id=f"extra_location_{i + 1}",
                             name=f"Extra Location {i + 1}",
-                            description="Additional location for scenario"
+                            description="Additional location for scenario",
+                            category="interior",
                         )
                         self.graph.locations.append(new_loc)
                     self.fixes.append(f"Added {min_loc - current} locations to reach minimum")
-                    return True
-        
-        # Fix: Task count out of range
-        if error_type == 'task_count':
-            match = re.search(r'(\d+) \(expected (\d+)-(\d+)\)', details)
-            if match:
-                current = int(match.group(1))
-                min_tasks = int(match.group(2))
-                
-                if current < min_tasks:
-                    # Mark as warning instead - adding tasks is complex
-                    self.warnings.append(f"Task count low: {current} (need {min_tasks})")
                     return True
         
         # Fix: Hidden item without unlock
