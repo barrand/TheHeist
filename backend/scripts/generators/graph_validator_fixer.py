@@ -11,9 +11,8 @@ from pathlib import Path
 from typing import List, Dict, Set, Tuple
 from dataclasses import dataclass, field
 
-# Import graph structures from Stage 2
 sys.path.insert(0, str(Path(__file__).parent))
-from structure_extractor import ScenarioGraph, Task, Location, Item, NPC
+from procedural_generator import ScenarioGraph, Task, Location, Item, NPC, Prerequisite
 
 
 @dataclass
@@ -122,62 +121,71 @@ class GraphValidator:
         if not (min_tasks <= count <= max_tasks):
             self.errors.append(f"task_count: {count} (expected {min_tasks}-{max_tasks})")
     
+    def _npc_outcome_ids(self, npc: NPC) -> List[str]:
+        """Return all outcome IDs provided by an NPC"""
+        return [info.info_id for info in npc.information_known if info.info_id]
+
     def _validate_references(self):
         """Validate all ID references exist"""
-        # Build ID sets
         location_ids = {loc.id for loc in self.graph.locations}
         item_ids = {item.id for item in self.graph.items}
         npc_ids = {npc.id for npc in self.graph.npcs}
         task_ids = {task.id for task in self.graph.tasks}
-        outcome_ids = {npc.outcome_provided for npc in self.graph.npcs}
-        
+        outcome_ids = {oid for npc in self.graph.npcs for oid in self._npc_outcome_ids(npc)}
+
         # Check task locations
         for task in self.graph.tasks:
             if task.location not in location_ids and task.location != 'any':
                 self.errors.append(f"task_{task.id}_invalid_location: {task.location}")
-        
+
         # Check task NPC references
         for task in self.graph.tasks:
             if task.npc_id and task.npc_id not in npc_ids:
                 self.errors.append(f"task_{task.id}_invalid_npc: {task.npc_id}")
-        
+
         # Check item locations
         for item in self.graph.items:
             if item.location not in location_ids:
                 self.errors.append(f"item_{item.id}_invalid_location: {item.location}")
-        
-        # Check task prerequisites
+
+        # Check task prerequisites (List[Prerequisite])
         for task in self.graph.tasks:
             for prereq in task.prerequisites:
-                prereq_type = prereq['type']
-                prereq_id = prereq['id']
-                
+                prereq_type = prereq.type
+                prereq_id = prereq.id
                 if prereq_type == 'task' and prereq_id not in task_ids:
                     self.errors.append(f"task_{task.id}_invalid_prereq_task: {prereq_id}")
                 elif prereq_type == 'item' and prereq_id not in item_ids:
                     self.errors.append(f"task_{task.id}_invalid_prereq_item: {prereq_id}")
                 elif prereq_type == 'outcome' and prereq_id not in outcome_ids:
                     self.errors.append(f"task_{task.id}_invalid_prereq_outcome: {prereq_id}")
-        
-        # Check item unlock references
+
+        # Check item unlock prerequisites (List[Prerequisite])
         for item in self.graph.items:
-            for unlock_task in item.unlock_prerequisites:
-                if unlock_task not in task_ids:
-                    self.errors.append(f"item_{item.id}_invalid_unlock_task: {unlock_task}")
+            for prereq in item.unlock_prerequisites:
+                if prereq.type == 'task' and prereq.id not in task_ids:
+                    self.errors.append(f"item_{item.id}_invalid_unlock_task: {prereq.id}")
     
     def _validate_npc_task_matching(self):
         """Validate NPC tasks' target outcomes match NPC definitions"""
-        outcome_to_npc = {npc.outcome_provided: npc.id for npc in self.graph.npcs}
-        
+        # Map outcome_id → npc_id for quick lookup
+        outcome_to_npc: Dict[str, str] = {}
+        for npc in self.graph.npcs:
+            for oid in self._npc_outcome_ids(npc):
+                outcome_to_npc[oid] = npc.id
+
         for task in self.graph.tasks:
-            if task.type == 'npc_llm' and task.target_outcome:
-                if task.target_outcome not in outcome_to_npc:
-                    self.errors.append(f"task_{task.id}_target_outcome_not_found: {task.target_outcome}")
-                elif task.npc_id:
-                    # Check that the target outcome belongs to the specified NPC
-                    expected_npc = outcome_to_npc[task.target_outcome]
-                    if task.npc_id != expected_npc:
-                        self.errors.append(f"task_{task.id}_outcome_npc_mismatch: wants {task.target_outcome} from {task.npc_id} but outcome belongs to {expected_npc}")
+            if task.type == 'npc_llm':
+                for outcome in task.target_outcomes:
+                    if outcome not in outcome_to_npc:
+                        self.errors.append(f"task_{task.id}_target_outcome_not_found: {outcome}")
+                    elif task.npc_id:
+                        expected_npc = outcome_to_npc[outcome]
+                        if task.npc_id != expected_npc:
+                            self.errors.append(
+                                f"task_{task.id}_outcome_npc_mismatch: wants {outcome} from "
+                                f"{task.npc_id} but outcome belongs to {expected_npc}"
+                            )
     
     def _validate_hidden_items(self):
         """Validate hidden items have unlock conditions"""
@@ -187,25 +195,23 @@ class GraphValidator:
     
     def _validate_starting_tasks(self):
         """Validate each role has at least one starting task"""
-        tasks_by_role = {}
+        tasks_by_role: Dict[str, List[Task]] = {}
         for task in self.graph.tasks:
-            if task.role not in tasks_by_role:
-                tasks_by_role[task.role] = []
-            tasks_by_role[task.role].append(task)
-        
-        for role in self.graph.roles:
+            tasks_by_role.setdefault(task.assigned_role, []).append(task)
+
+        all_roles = {t.assigned_role for t in self.graph.tasks}
+        for role in all_roles:
             role_tasks = tasks_by_role.get(role, [])
             starting_tasks = [t for t in role_tasks if not t.prerequisites]
-            
             if not starting_tasks:
                 self.errors.append(f"role_{role}_no_starting_tasks")
-    
+
     def _validate_task_balance(self):
         """Validate tasks are balanced across roles"""
-        tasks_by_role = {}
+        tasks_by_role: Dict[str, int] = {}
         for task in self.graph.tasks:
-            tasks_by_role[task.role] = tasks_by_role.get(task.role, 0) + 1
-        
+            tasks_by_role[task.assigned_role] = tasks_by_role.get(task.assigned_role, 0) + 1
+
         for role, count in tasks_by_role.items():
             if count < 2:
                 self.errors.append(f"role_{role}_too_few_tasks: {count}")
@@ -357,9 +363,8 @@ class GraphValidator:
         # Fix: Missing starting task for role
         if 'no_starting_tasks' in error_type:
             role = error_type.replace('role_', '').replace('_no_starting_tasks', '')
-            # Find first task for this role and remove its prerequisites
             for task in self.graph.tasks:
-                if task.role == role:
+                if task.assigned_role == role:
                     task.prerequisites = []
                     self.fixes.append(f"Made {task.id} a starting task for {role}")
                     return True
@@ -371,27 +376,27 @@ class GraphValidator:
                 task_id = parts[1]
                 prereq_type = parts[3]  # task, item, or outcome
                 invalid_id = details
-                
+
                 task = next((t for t in self.graph.tasks if t.id == task_id), None)
                 if task:
-                    # Remove the invalid prerequisite
-                    task.prerequisites = [p for p in task.prerequisites if p['id'] != invalid_id]
+                    task.prerequisites = [p for p in task.prerequisites if p.id != invalid_id]
                     self.fixes.append(f"Removed invalid {prereq_type} prerequisite from {task_id}: {invalid_id}")
                     return True
         
-        # Fix: NPC-outcome mismatch
+        # Fix: NPC-outcome mismatch — point task at the NPC's first outcome
         if 'outcome_npc_mismatch' in error_type:
             task_id = error_type.split('_')[1]
             task = next((t for t in self.graph.tasks if t.id == task_id), None)
             if task and task.npc_id:
-                # Find the NPC's actual outcome
                 npc = next((n for n in self.graph.npcs if n.id == task.npc_id), None)
                 if npc:
-                    task.target_outcome = npc.outcome_provided
-                    self.fixes.append(f"Fixed {task_id} target outcome to match NPC {task.npc_id}: {npc.outcome_provided}")
-                    return True
-        
-        # Fix: Target outcome not found - remove task if can't fix
+                    npc_outcomes = self._npc_outcome_ids(npc)
+                    if npc_outcomes:
+                        task.target_outcomes = [npc_outcomes[0]]
+                        self.fixes.append(f"Fixed {task_id} target outcomes to match NPC {task.npc_id}: {npc_outcomes[0]}")
+                        return True
+
+        # Fix: Target outcome not found — use NPC's first outcome, or remove task
         if 'target_outcome_not_found' in error_type:
             task_id = error_type.split('_')[1]
             task = next((t for t in self.graph.tasks if t.id == task_id), None)
@@ -399,26 +404,26 @@ class GraphValidator:
                 if task.npc_id:
                     npc = next((n for n in self.graph.npcs if n.id == task.npc_id), None)
                     if npc:
-                        task.target_outcome = npc.outcome_provided
-                        self.fixes.append(f"Set {task_id} target outcome to {npc.outcome_provided}")
-                        return True
-                
-                # Can't fix - remove the task
+                        npc_outcomes = self._npc_outcome_ids(npc)
+                        if npc_outcomes:
+                            task.target_outcomes = [npc_outcomes[0]]
+                            self.fixes.append(f"Set {task_id} target outcomes to {npc_outcomes[0]}")
+                            return True
+
                 self.graph.tasks.remove(task)
                 self.fixes.append(f"Removed task {task_id} (target outcome not found: {details})")
                 return True
-        
+
         # Fix: Invalid unlock task reference for item
         if 'invalid_unlock_task' in error_type:
             parts = error_type.split('_')
             item_id = parts[1]
             invalid_task = details
-            
+
             item = next((i for i in self.graph.items if i.id == item_id), None)
             if item:
-                # Remove the invalid unlock task
-                item.unlock_prerequisites = [t for t in item.unlock_prerequisites if t != invalid_task]
-                self.fixes.append(f"Removed invalid unlock task from {item_id}: {invalid_task}")
+                item.unlock_prerequisites = [p for p in item.unlock_prerequisites if p.id != invalid_task]
+                self.fixes.append(f"Removed invalid unlock prerequisite from {item_id}: {invalid_task}")
                 return True
         
         return False
@@ -444,34 +449,70 @@ def validate_and_fix_graph(graph: ScenarioGraph, max_iterations: int = 5) -> Tup
 if __name__ == '__main__':
     import argparse
     import json
-    from structure_extractor import ScenarioGraph
-    
+    from procedural_generator import (
+        ScenarioGraph, Location, Item, NPC, NPCInfoItem, Task, Prerequisite
+    )
+
     parser = argparse.ArgumentParser(description="Validate and fix scenario graph (Stage 3)")
     parser.add_argument("graph_file", help="Path to JSON graph file")
     parser.add_argument("--output", help="Output JSON file path")
     parser.add_argument("--max-iterations", type=int, default=5, help="Max fix iterations")
-    
+
     args = parser.parse_args()
-    
+
     print(f"🔧 Validating and fixing graph...")
     print(f"   Graph: {args.graph_file}")
     print()
-    
-    # Load graph
+
     graph_path = Path(args.graph_file)
     if not graph_path.exists():
         print(f"❌ Graph file not found: {graph_path}")
         sys.exit(1)
-    
+
     graph_data = json.loads(graph_path.read_text())
-    
-    # Reconstruct ScenarioGraph from dict
-    # (Simple reconstruction - in production, add proper deserialization)
+
+    # Minimal reconstruction from exported JSON for CLI use
+    def _prereqs(raw: list) -> List[Prerequisite]:
+        return [Prerequisite(type=p['type'], id=p['id']) for p in (raw or [])]
+
+    tasks = [
+        Task(
+            id=t['id'], type=t['type'], description=t.get('description', ''),
+            assigned_role=t.get('assigned_role', t.get('role', '')),
+            location=t.get('location', ''),
+            prerequisites=_prereqs(t.get('prerequisites', [])),
+            npc_id=t.get('npc_id'), target_outcomes=t.get('target_outcomes', []),
+            search_items=t.get('search_items', []),
+        )
+        for t in graph_data.get('tasks', [])
+    ]
+    locations = [
+        Location(id=l['id'], name=l['name'], description=l.get('description', ''), category=l.get('category', ''))
+        for l in graph_data.get('locations', [])
+    ]
+    items = [
+        Item(
+            id=i['id'], name=i['name'], description=i.get('description', ''),
+            location=i.get('location', ''), hidden=i.get('hidden', False),
+            unlock_prerequisites=_prereqs(i.get('unlock_prerequisites', [])),
+        )
+        for i in graph_data.get('items', [])
+    ]
+    npcs = [
+        NPC(
+            id=n['id'], name=n['name'], role=n.get('role', ''),
+            personality=n.get('personality', ''), location=n.get('location', ''),
+            information_known=[
+                NPCInfoItem(info_id=info.get('info_id'), confidence=info.get('confidence', 'HIGH'), description=info.get('description', ''))
+                for info in n.get('information_known', [])
+            ],
+        )
+        for n in graph_data.get('npcs', [])
+    ]
     graph = ScenarioGraph(
         scenario_id=graph_data['scenario_id'],
-        objective=graph_data['objective'],
-        player_count=graph_data['player_count'],
-        roles=graph_data['roles']
+        objective=graph_data.get('objective', ''),
+        locations=locations, items=items, npcs=npcs, tasks=tasks,
     )
     
     # Validate and fix
@@ -502,7 +543,8 @@ if __name__ == '__main__':
     else:
         output_path = graph_path.with_stem(graph_path.stem + '_fixed')
     
-    output_path.write_text(fixed_graph.to_json())
+    import dataclasses
+    output_path.write_text(json.dumps(dataclasses.asdict(fixed_graph), indent=2))
     print(f"\n💾 Saved to: {output_path}")
     
     sys.exit(0 if result.is_valid else 1)
