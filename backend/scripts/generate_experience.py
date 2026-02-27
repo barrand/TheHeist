@@ -439,6 +439,8 @@ Rules for Tasks:
     - Task `SC2` (vault must be cracked first)
 ```
 
+**CRITICAL**: Every item MUST use `- **ID**: \`snake_case_id\`` and `- **Name**: Display Name`. NEVER use `- **Item 1** (\`item_1\`)` or similar - that format breaks the game. Task Search Items must reference the exact IDs from Items by Location.
+
 Rules for Items:
 - Every item needs an ID, Name, Description, and Visual field
 - Use `**Unlock**` to gate items behind prerequisites (same format as task prerequisites: Task, Outcome, Item)

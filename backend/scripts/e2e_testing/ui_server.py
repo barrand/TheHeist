@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Optional, Dict, List
 from dataclasses import dataclass, asdict
 
-from flask import Flask, render_template, jsonify, request, Response
+from flask import Flask, render_template, jsonify, request, Response, stream_with_context
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -86,52 +86,138 @@ def list_scenarios():
     return jsonify([asdict(s) for s in scenarios])
 
 
+@app.route("/api/scenarios/<scenario_id>", methods=["DELETE"])
+def delete_scenario(scenario_id):
+    """Delete a single scenario (both .md and .json files)"""
+    deleted = []
+    try:
+        for f in EXPERIENCES_DIR.glob(f"*{scenario_id}*.json"):
+            f.unlink()
+            deleted.append(f.name)
+        for f in EXPERIENCES_DIR.glob(f"*{scenario_id}*.md"):
+            if not f.name.startswith("README") and not f.name.endswith("_FORMAT.md"):
+                f.unlink()
+                deleted.append(f.name)
+        return jsonify({"success": True, "deleted": deleted})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/scenarios", methods=["DELETE"])
+def delete_all_scenarios():
+    """Delete all generated scenario files"""
+    deleted = []
+    protected = {"README.md", "NPC_FORMAT.md", "INVENTORY_FORMAT.md"}
+    try:
+        for f in EXPERIENCES_DIR.glob("generated_*.md"):
+            f.unlink()
+            deleted.append(f.name)
+        for f in EXPERIENCES_DIR.glob("*.json"):
+            f.unlink()
+            deleted.append(f.name)
+        return jsonify({"success": True, "deleted": deleted, "count": len(deleted)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/api/generate", methods=["POST"])
 def generate_scenario():
-    """Generate a new scenario"""
+    """Generate a new scenario — streams NDJSON progress lines"""
     data = request.json
     scenario_id = data.get("scenario_id", "custom_heist")
     roles = data.get("roles", ["mastermind", "hacker"])
     seed = data.get("seed")
-    
-    try:
-        # Import generator
+
+    def _line(payload: dict) -> str:
+        return json.dumps(payload) + "\n"
+
+    def _progress(msg: str) -> str:
+        return _line({"type": "progress", "message": msg})
+
+    def generate():
         import sys
         sys.path.insert(0, str(BACKEND_ROOT / "scripts"))
-        
-        from generators.procedural_generator import generate_scenario_graph, GeneratorConfig
-        from generators.graph_validator import validate_graph
-        from generators.json_exporter import export_to_json
-        from generators.markdown_renderer import export_to_markdown
-        
-        # Generate
-        config = GeneratorConfig(seed=seed if seed else None)
-        graph = generate_scenario_graph(scenario_id, roles, config)
-        
-        # Validate
-        result = validate_graph(graph)
-        
-        if not result.valid:
-            return jsonify({
-                "success": False,
-                "error": "Validation failed",
-                "errors": [f"{e.severity}: {e.message}" for e in result.errors]
+
+        try:
+            yield _progress(f"Starting generation: {scenario_id} with {len(roles)} roles")
+
+            yield _progress("Loading generators...")
+            from generators.procedural_generator import generate_scenario_graph, GeneratorConfig
+            from generators.graph_validator_fixer import validate_and_fix_graph
+            from generators.json_exporter import export_to_json
+            from generators.markdown_renderer import export_to_markdown
+
+            yield _progress("Generating scenario graph...")
+            config = GeneratorConfig(seed=seed if seed else None)
+            graph = generate_scenario_graph(scenario_id, roles, config)
+            yield _progress(f"Graph: {len(graph.tasks)} tasks, {len(graph.locations)} locations")
+
+            yield _progress("Validating and fixing graph...")
+            fixed_graph, validation_result = validate_and_fix_graph(graph, max_iterations=5)
+            if not validation_result.is_valid:
+                yield _line({
+                    "type": "result", "success": False,
+                    "error": "Graph validation failed",
+                    "errors": validation_result.errors[:5]
+                })
+                return
+            fixed_count = len([e for e in validation_result.errors])
+            yield _progress(f"Graph valid" + (f" ({fixed_count} issues auto-fixed)" if fixed_count else ""))
+
+            yield _progress("Exporting to JSON and markdown...")
+            export_to_json(fixed_graph)
+            export_to_markdown(fixed_graph)
+            player_count = len(roles)
+            exported_filename = f"generated_{scenario_id}_{player_count}players.md"
+            yield _progress(f"Exported: {exported_filename}")
+
+            yield _progress("Validating scenario markdown...")
+            from validate_scenario import ScenarioValidator, ValidationLevel
+            md_path = EXPERIENCES_DIR / exported_filename
+            validator = ScenarioValidator(md_path)
+            report = validator.validate_all()
+            critical_issues = [i for i in report.issues if i.level == ValidationLevel.CRITICAL]
+            important_count = sum(1 for i in report.issues if i.level == ValidationLevel.IMPORTANT)
+            yield _progress(
+                f"Markdown validation: {len(critical_issues)} critical, {important_count} important"
+            )
+
+            if critical_issues:
+                yield _progress(f"Running editor to fix {len(critical_issues)} critical issue(s)...")
+                from scenario_editor_agent import ScenarioEditorAgent
+                agent = ScenarioEditorAgent()
+                for idx, issue in enumerate(critical_issues, 1):
+                    yield _progress(f"  Fixing [{idx}/{len(critical_issues)}]: {issue.title}")
+                results = agent.fix_issues(md_path, critical_issues)
+                fixed_count = sum(1 for r in results if r.success)
+                yield _progress(f"Editor done: {fixed_count}/{len(critical_issues)} fixed")
+            else:
+                yield _progress("✅ Markdown validation passed, no edits needed")
+
+            yield _line({
+                "type": "result",
+                "success": True,
+                "scenario_id": scenario_id,
+                "player_count": player_count,
+                "tasks": len(fixed_graph.tasks),
+                "locations": len(fixed_graph.locations),
+                "items": len(fixed_graph.items),
             })
-        
-        # Export
-        export_to_json(graph)
-        export_to_markdown(graph)
-        
-        return jsonify({
-            "success": True,
-            "scenario_id": scenario_id,
-            "tasks": len(graph.tasks),
-            "locations": len(graph.locations),
-            "items": len(graph.items)
-        })
-        
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+
+        except Exception as e:
+            import traceback
+            yield _line({
+                "type": "result",
+                "success": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            })
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="application/x-ndjson",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+    )
 
 
 @app.route("/api/test/start", methods=["POST"])
@@ -312,12 +398,15 @@ def get_scenario_types():
 
 
 if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("E2E_PORT", "5555"))
+    
     print("\n" + "="*60)
     print("🎮 E2E Testing UI Server")
     print("="*60)
     print(f"Backend root: {BACKEND_ROOT}")
     print(f"Scenarios: {EXPERIENCES_DIR}")
-    print(f"Opening at: http://localhost:5555")
+    print(f"Opening at: http://localhost:{port}")
     print("="*60 + "\n")
     
     # Open browser automatically
@@ -326,8 +415,8 @@ if __name__ == "__main__":
     def open_browser():
         import time
         time.sleep(1)
-        webbrowser.open("http://localhost:5555")
+        webbrowser.open(f"http://localhost:{port}")
     
     threading.Thread(target=open_browser, daemon=True).start()
     
-    app.run(host="localhost", port=5555, debug=False, threaded=True)
+    app.run(host="localhost", port=port, debug=False, threaded=True)

@@ -630,22 +630,28 @@ class ExperienceLoader:
             location_id = location_name_to_id.get(location_name, location_name.lower().replace(' ', '_'))
             items = []
             
-            # Parse each item (starts with - **ID**)
-            item_blocks = re.split(r'(?=- \*\*ID\*\*)', block)
+            # Parse each item - support both canonical (- **ID**: `id`) and generated (- **Item N** (`id`)) formats
+            item_blocks = re.split(r'(?=- \*\*(?:ID\*\*:\s*`|Item\s+\d+\*\*\s*\())', block)
             
             for item_block in item_blocks:
-                if not item_block.strip() or '**ID**' not in item_block:
+                if not item_block.strip():
                     continue
                 
-                # Extract ID
+                # Extract ID - canonical format: - **ID**: `item_id`
                 id_match = re.search(r'-\s*\*\*ID\*\*:\s*`([^`]+)`', item_block)
+                if not id_match:
+                    # Fallback: generated format - **Item N** (`item_id`)
+                    id_match = re.search(r'-\s*\*\*Item\s+\d+\*\*\s*\(`([^`]+)`\)', item_block)
                 if not id_match:
                     continue
                 item_id = id_match.group(1)
                 
-                # Extract Name
+                # Extract Name - canonical has **Name**:; generated has **Item N** as display
                 name_match = re.search(r'-\s*\*\*Name\*\*:\s*(.+)', item_block)
-                name = name_match.group(1).strip() if name_match else item_id
+                item_label_match = re.search(r'-\s*\*\*Item\s+(\d+)\*\*', item_block)
+                name = (name_match.group(1).strip() if name_match else
+                        f"Item {item_label_match.group(1)}" if item_label_match else
+                        item_id)
                 
                 # Extract Description
                 desc_match = re.search(r'-\s*\*\*Description\*\*:\s*(.+)', item_block)

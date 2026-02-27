@@ -398,15 +398,13 @@ class ProceduralGraphGenerator:
         # Get all NPC outcomes (these exist from the start)
         npc_outcomes = self._get_all_npc_outcomes(npcs)
         
-        # Build items_by_location mapping and track assigned items
-        # Only include non-hidden items (hidden items can't be assigned to search tasks)
+        # Build items_by_location mapping (ALL items - hidden and non-hidden)
         items_by_location = {}
         items_by_id = {item.id: item for item in items}
         for item in items:
-            if not item.hidden:  # Only non-hidden items can be searched for
-                if item.location not in items_by_location:
-                    items_by_location[item.location] = []
-                items_by_location[item.location].append(item.id)
+            if item.location not in items_by_location:
+                items_by_location[item.location] = []
+            items_by_location[item.location].append(item.id)
         
         assigned_items: Set[str] = set()
         
@@ -440,9 +438,16 @@ class ProceduralGraphGenerator:
                 if task.type == TaskType.SEARCH.value:
                     location_items = items_by_location.get(task.location, [])
                     available_location_items = [
-                        item_id for item_id in location_items 
+                        item_id for item_id in location_items
                         if item_id not in assigned_items
                     ]
+                    # Starting search tasks (no prerequisites) can only use non-hidden items
+                    # - no "earlier" tasks exist to unlock hidden items
+                    if not task.prerequisites:
+                        available_location_items = [
+                            item_id for item_id in available_location_items
+                            if not items_by_id[item_id].hidden
+                        ]
                     
                     if available_location_items:
                         num_items = min(random.randint(1, 2), len(available_location_items))
@@ -467,8 +472,8 @@ class ProceduralGraphGenerator:
                 if task.type == TaskType.SEARCH.value and task.search_items:
                     available_items.update(task.search_items)
         
-        # Link hidden items to task prerequisites
-        self._link_hidden_items_to_tasks(items, list(available_task_ids))
+        # Link hidden items to task prerequisites (avoid circular: unlock tasks must not include search task for this item)
+        self._link_hidden_items_to_tasks(items, tasks)
         
         return tasks
     
@@ -702,15 +707,36 @@ class ProceduralGraphGenerator:
         
         return prerequisites
     
-    def _link_hidden_items_to_tasks(self, items: List[Item], task_ids: List[str]) -> None:
-        """Ensure hidden items have unlock prerequisites"""
+    def _link_hidden_items_to_tasks(self, items: List[Item], tasks: List[Task]) -> None:
+        """Ensure hidden items have unlock prerequisites without circular dependencies.
+        
+        A hidden item's unlock_prerequisites must NOT include the search task that
+        looks for it (would create circular: task needs item, item needs task).
+        """
+        # Build map: item_id -> set of task_ids that search for this item
+        tasks_searching_for_item: Dict[str, Set[str]] = {}
+        for task in tasks:
+            if task.type == TaskType.SEARCH.value:
+                for item_id in task.search_items:
+                    if item_id not in tasks_searching_for_item:
+                        tasks_searching_for_item[item_id] = set()
+                    tasks_searching_for_item[item_id].add(task.id)
+        
+        all_task_ids = {t.id for t in tasks}
         
         for item in items:
             if item.hidden and not item.unlock_prerequisites:
-                # Hidden items need a prerequisite
-                # Pick 1-2 random tasks as prerequisites
-                prereq_count = random.randint(1, min(2, len(task_ids)))
-                selected_tasks = random.sample(task_ids, prereq_count)
+                # Forbidden: tasks that search for this item (would create circular dependency)
+                forbidden_tasks = tasks_searching_for_item.get(item.id, set())
+                valid_tasks = list(all_task_ids - forbidden_tasks)
+                
+                if not valid_tasks:
+                    # Cannot create valid chain - make item visible instead
+                    item.hidden = False
+                    continue
+                
+                prereq_count = random.randint(1, min(2, len(valid_tasks)))
+                selected_tasks = random.sample(valid_tasks, prereq_count)
                 
                 for task_id in selected_tasks:
                     item.unlock_prerequisites.append(Prerequisite(

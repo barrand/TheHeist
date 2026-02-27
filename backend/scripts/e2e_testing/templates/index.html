@@ -14,7 +14,7 @@
             color: #d4d4d4;
             padding: 12px;
             border-radius: 6px;
-            height: 400px;
+            height: 300px;
             overflow-y: auto;
             white-space: pre-wrap;
             word-wrap: break-word;
@@ -35,14 +35,17 @@
         </div>
 
         <!-- Actions Bar -->
-        <div class="bg-gray-800 rounded-lg p-4 mb-6 flex gap-4">
+        <div class="bg-gray-800 rounded-lg p-4 mb-6 flex gap-4 flex-wrap items-center">
             <button onclick="showGenerateModal()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold">
                 ✨ Generate New Scenario
             </button>
             <button onclick="refreshScenarios()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">
                 🔄 Refresh
             </button>
-            <div class="ml-auto flex gap-2">
+            <button onclick="deleteAllScenarios()" class="bg-red-800 hover:bg-red-700 px-4 py-2 rounded text-sm">
+                🗑 Delete All
+            </button>
+            <div class="ml-auto flex gap-2 items-center">
                 <span id="testStatus" class="px-3 py-2 bg-gray-700 rounded text-sm">No test running</span>
                 <button id="stopTestBtn" onclick="stopTest()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded hidden">
                     ⏹ Stop Test
@@ -55,6 +58,17 @@
             <h2 class="text-2xl font-bold mb-4">📋 Available Scenarios</h2>
             <div id="scenariosList" class="space-y-3">
                 <div class="text-gray-400 text-center py-8">Loading scenarios...</div>
+            </div>
+        </div>
+
+        <!-- Generation Log -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xl font-bold">✨ Generation Log</h3>
+                <button onclick="clearGenLog()" class="text-sm text-gray-400 hover:text-white">Clear</button>
+            </div>
+            <div id="generationLog" class="log-viewer">
+                <div class="text-gray-500 log-line">Click "Generate New Scenario" to see progress here.</div>
             </div>
         </div>
 
@@ -111,10 +125,12 @@
             </div>
 
             <div class="flex gap-3 mt-6">
-                <button onclick="generateScenario()" class="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold">
+                <button type="button" id="generateBtn" onclick="generateScenario()"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold">
                     Generate
                 </button>
-                <button onclick="hideGenerateModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">
+                <button type="button" onclick="hideGenerateModal()"
+                        class="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">
                     Cancel
                 </button>
             </div>
@@ -125,6 +141,7 @@
         let backendLogSource = null;
         let e2eLogSource = null;
         let scenarios = [];
+        let generating = false;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -173,6 +190,10 @@
                                 class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold">
                             ▶ Run E2E Test
                         </button>
+                        <button onclick="deleteScenario('${s.id}')"
+                                class="bg-red-700 hover:bg-red-600 px-3 py-2 rounded text-sm">
+                            🗑
+                        </button>
                     </div>
                 </div>
             `).join('');
@@ -187,37 +208,143 @@
             document.getElementById('generateModal').classList.add('hidden');
         }
 
+        // Append a line to the generation log
+        function appendGenLog(msg, isError = false) {
+            const logEl = document.getElementById('generationLog');
+            // Remove placeholder on first real message
+            const placeholder = logEl.querySelector('.text-gray-500');
+            if (placeholder) placeholder.remove();
+
+            const line = document.createElement('div');
+            line.className = 'log-line' + (isError ? ' log-error' : (msg.includes('✅') ? ' log-info' : ''));
+            line.textContent = msg;
+            logEl.appendChild(line);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function clearGenLog() {
+            const logEl = document.getElementById('generationLog');
+            logEl.innerHTML = '<div class="text-gray-500 log-line">Click "Generate New Scenario" to see progress here.</div>';
+        }
+
         // Generate scenario
         async function generateScenario() {
+            if (generating) return;
+
             const scenarioType = document.getElementById('genScenarioType').value;
             const selectedRoles = Array.from(document.querySelectorAll('input[name="role"]:checked'))
                 .map(cb => cb.value);
             const seed = document.getElementById('genSeed').value;
-            
+
             if (selectedRoles.length === 0) {
                 alert('Please select at least one role');
                 return;
             }
-            
+
+            generating = true;
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
             hideGenerateModal();
-            
-            const resp = await fetch('/api/generate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    scenario_id: scenarioType,
-                    roles: selectedRoles,
-                    seed: seed ? parseInt(seed) : null
-                })
-            });
-            
+
+            // Reset and prime the generation log
+            clearGenLog();
+            appendGenLog(`Scenario: ${scenarioType}, Roles: ${selectedRoles.join(', ')}`);
+            appendGenLog('Connecting to server...');
+
+            try {
+                const resp = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scenario_id: scenarioType,
+                        roles: selectedRoles,
+                        seed: seed ? parseInt(seed) : null
+                    })
+                });
+
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        try {
+                            const msg = JSON.parse(line);
+                            if (msg.type === 'progress') {
+                                appendGenLog(msg.message);
+                            } else if (msg.type === 'result') {
+                                if (msg.success) {
+                                    appendGenLog(`✅ Done! ${msg.tasks} tasks, ${msg.locations} locations, ${msg.items} items`);
+                                    await refreshScenarios();
+                                } else {
+                                    appendGenLog(`❌ Failed: ${msg.error}`, true);
+                                    if (msg.traceback) {
+                                        appendGenLog(msg.traceback, true);
+                                    }
+                                }
+                            }
+                        } catch (parseErr) {
+                            appendGenLog(`[parse error] ${line}`, true);
+                        }
+                    }
+                }
+
+                // Handle any remaining buffer
+                if (buffer.trim()) {
+                    try {
+                        const msg = JSON.parse(buffer);
+                        if (msg.type === 'progress') appendGenLog(msg.message);
+                        else if (msg.type === 'result') {
+                            if (msg.success) {
+                                appendGenLog(`✅ Done! ${msg.tasks} tasks, ${msg.locations} locations`);
+                                await refreshScenarios();
+                            } else {
+                                appendGenLog(`❌ Failed: ${msg.error}`, true);
+                            }
+                        }
+                    } catch (_) {}
+                }
+
+            } catch (err) {
+                appendGenLog(`❌ Connection error: ${err.message}`, true);
+            } finally {
+                generating = false;
+                btn.disabled = false;
+                btn.textContent = 'Generate';
+            }
+        }
+
+        // Delete a single scenario
+        async function deleteScenario(scenarioId) {
+            if (!confirm(`Delete scenario "${scenarioId}"?`)) return;
+            const resp = await fetch(`/api/scenarios/${scenarioId}`, { method: 'DELETE' });
             const result = await resp.json();
-            
             if (result.success) {
-                alert(`✅ Generated ${result.scenario_id}!\n${result.tasks} tasks, ${result.locations} locations, ${result.items} items`);
-                refreshScenarios();
+                await refreshScenarios();
             } else {
-                alert(`❌ Generation failed: ${result.error}`);
+                alert(`Delete failed: ${result.error}`);
+            }
+        }
+
+        // Delete all scenarios
+        async function deleteAllScenarios() {
+            if (!confirm('Delete ALL generated scenarios? This cannot be undone.')) return;
+            const resp = await fetch('/api/scenarios', { method: 'DELETE' });
+            const result = await resp.json();
+            if (result.success) {
+                await refreshScenarios();
+            } else {
+                alert(`Delete failed: ${result.error}`);
             }
         }
 
@@ -301,7 +428,6 @@
             const logId = type === 'backend' ? 'backendLog' : 'e2eLog';
             const logEl = document.getElementById(logId);
             
-            // Determine log level from line content
             let className = 'log-line';
             if (line.includes('ERROR') || line.includes('❌')) className += ' log-error';
             else if (line.includes('WARNING') || line.includes('⚠️')) className += ' log-warn';
@@ -312,11 +438,8 @@
             lineEl.className = className;
             lineEl.textContent = line;
             logEl.appendChild(lineEl);
-            
-            // Auto-scroll to bottom
             logEl.scrollTop = logEl.scrollHeight;
             
-            // Limit to last 500 lines
             while (logEl.children.length > 500) {
                 logEl.removeChild(logEl.firstChild);
             }
@@ -328,7 +451,5 @@
             document.getElementById(logId).innerHTML = '';
         }
     </script>
-</head>
-<body>
 </body>
 </html>
