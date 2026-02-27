@@ -231,6 +231,19 @@ class BotPlayer:
         
         return False
     
+    async def drop_item(self, item_id: str) -> bool:
+        """Drop an item at the current location (places it on the floor for others to pick up)"""
+        await self._send({
+            "type": "drop_item",
+            "item_id": item_id
+        })
+        msg = await self._wait_for_message("item_dropped", timeout=3)
+        if msg and msg.get("item_id") == item_id:
+            self.state.inventory = [i for i in self.state.inventory if i.get("id") != item_id]
+            logger.info(f"Bot {self.player_name} dropped {item_id} at {self.state.current_location}")
+            return True
+        return False
+
     async def handoff_item(self, item_id: str, to_player_id: str) -> bool:
         """Hand off item to another player"""
         await self._send({

@@ -22,7 +22,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 @dataclass
 class ActionDecision:
     """A decision about what action to take"""
-    action: Literal["move", "search", "pickup", "talk", "complete_task", "handoff", "wait"]
+    action: Literal["move", "search", "pickup", "talk", "complete_task", "handoff", "request_item", "wait"]
     reasoning: str
     
     # Action-specific parameters
@@ -30,7 +30,7 @@ class ActionDecision:
     target_item: Optional[str] = None
     target_task: Optional[str] = None
     target_npc: Optional[str] = None
-    target_player: Optional[str] = None
+    target_player: Optional[str] = None  # role name, e.g. "hacker"
     message: Optional[str] = None  # For NPC conversations
 
 
@@ -185,12 +185,36 @@ class LLMDecisionMaker:
             npc_role = npc.get("role", "")
             npcs_str += f"- {npc_name} ({npc_role})\n"
         
-        # Format team status
+        # Format team status — rich info about each teammate
         team_str = ""
         if team_status:
             for player_role, status in team_status.items():
-                team_str += f"- {player_role}: {status}\n"
-        
+                if isinstance(status, dict):
+                    loc = status.get("location", "unknown")
+                    inv = status.get("inventory", [])
+                    inv_names = ", ".join(inv) if inv else "nothing"
+                    done = status.get("tasks_completed", 0)
+                    team_str += f"- {player_role}: at {loc}, carrying [{inv_names}], {done} tasks done\n"
+                else:
+                    team_str += f"- {player_role}: {status}\n"
+
+        # Highlight items teammates have that YOU might need
+        needed_items_str = ""
+        if team_status:
+            my_task_items = set()
+            for task in available_tasks:
+                for prereq in task.get("prerequisites", []):
+                    if prereq.get("type") == "item":
+                        my_task_items.add(prereq["id"])
+                for si in task.get("search_items", []):
+                    my_task_items.add(si)
+            for player_role, status in team_status.items():
+                if isinstance(status, dict):
+                    their_items = set(status.get("inventory_ids", []))
+                    overlap = my_task_items & their_items
+                    if overlap:
+                        needed_items_str += f"- {player_role} has items you need: {', '.join(overlap)}\n"
+
         prompt = f"""You are playing as the {role.upper()} in a heist scenario.
 
 SCENARIO OBJECTIVE:
@@ -214,8 +238,11 @@ ALL LOCATIONS:
 NPCs IN SCENARIO:
 {npcs_str}
 
-TEAM STATUS:
+TEAMMATES:
 {team_str if team_str else "(no info about teammates)"}
+
+ITEMS YOU NEED THAT TEAMMATES ARE HOLDING:
+{needed_items_str if needed_items_str else "(none — all needed items are in the world or already yours)"}
 
 TASK TYPES:
 - minigame: Complete task directly (you will auto-succeed)
@@ -230,31 +257,34 @@ Choose the best next action to help complete the heist. Prioritize:
 2. Tasks you can complete NOW (you have all prerequisites)
 3. Gathering items needed for upcoming tasks
 4. Moving to locations where you need to be
-5. If nothing else, wait for teammates to complete their prerequisites
+5. If a teammate has an item you need → request it from them
+6. If nothing else, wait for teammates to complete their prerequisites
 
 DECISION RULES:
 - If task type is "npc_llm" → use "talk" action (set target_npc and target_task)
 - If task type is "minigame" or "info_share" → use "complete_task" action  
 - If you have an available task at your current location → complete it or talk to NPC
 - If you have an available task elsewhere → move to that location
-- If a task needs an item → search for it or wait for teammate to handoff
+- If a task needs an item that a TEAMMATE IS HOLDING → use "request_item" to ask them to drop it
+- If a task needs an item that is in the world (not held by anyone) → search the correct location
 - If stuck with no tasks → wait (teammates need to complete something first)
 
 OUTPUT FORMAT (JSON):
 {{
-  "action": "move" | "search" | "pickup" | "talk" | "complete_task" | "handoff" | "wait",
+  "action": "move" | "search" | "pickup" | "talk" | "complete_task" | "handoff" | "request_item" | "wait",
   "reasoning": "Why you chose this action (1-2 sentences)",
-  "target_location": "location_id" (if action=move),
-  "target_item": "item_id" (if action=pickup),
+  "target_location": "location_id" (if action=move or request_item — where to meet),
+  "target_item": "item_id" (if action=pickup or request_item),
   "target_npc": "npc_id from task NPC field" (if action=talk),
   "target_task": "task ID from ID:`` field" (if action=talk or complete_task - use the ID, not description!),
-  "target_player": "role" (if action=handoff),
+  "target_player": "role name e.g. hacker" (if action=handoff or request_item),
   "message": "opening message" (if action=talk)
 }}
 
 ⚠️ IMPORTANT: 
 - For target_task, use the task ID (e.g., "MM1"), NOT the description!
 - For npc_llm tasks, use "talk" action with NPC ID from task's NPC field!
+- For request_item: set target_player=the role holding the item, target_item=item_id, target_location=where you want them to drop it (use your current location)
 
 What should you do next?"""
         

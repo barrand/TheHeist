@@ -357,7 +357,7 @@ class GameplayTestOrchestrator:
             # Each active bot takes a turn
             for bot in active_bots:
                 try:
-                    should_abort = await self._bot_take_turn(bot, result, consecutive_failures, MAX_CONSECUTIVE_FAILURES)
+                    should_abort = await self._bot_take_turn(bot, result, consecutive_failures, MAX_CONSECUTIVE_FAILURES, all_bots=bots)
                     if should_abort:
                         return result
                 except Exception as e:
@@ -383,7 +383,7 @@ class GameplayTestOrchestrator:
         
         return result
     
-    async def _bot_take_turn(self, bot: BotPlayer, result: GameplayTestResult, consecutive_failures: dict, max_failures: int) -> bool:
+    async def _bot_take_turn(self, bot: BotPlayer, result: GameplayTestResult, consecutive_failures: dict, max_failures: int, all_bots: List[BotPlayer] = None) -> bool:
         """
         Bot analyzes state and takes one action
         
@@ -399,6 +399,18 @@ class GameplayTestOrchestrator:
         logger.info(f"  👤 {bot.role} @ {bot.state.current_location}")
         logger.debug(f"     Available tasks: {len(tasks)}")
         
+        # Build rich team status so LLM knows what teammates are carrying
+        all_bots = all_bots or []
+        team_status = {
+            other.role: {
+                "location": other.state.current_location,
+                "inventory": [i.get("name", i.get("id")) for i in other.state.inventory],
+                "inventory_ids": [i.get("id") for i in other.state.inventory if i],
+                "tasks_completed": len(other.state.completed_tasks),
+            }
+            for other in all_bots if other.player_name != bot.player_name
+        }
+
         # Use LLM to decide action
         decision = await self.decision_maker.decide_action(
             role=bot.role,
@@ -410,7 +422,7 @@ class GameplayTestOrchestrator:
             npcs=bot.state.npcs,
             locations=bot.state.locations,
             scenario_objective="Complete the heist",
-            team_status=None  # TODO: Could add team status
+            team_status=team_status
         )
         
         # Format action nicely
@@ -419,7 +431,7 @@ class GameplayTestOrchestrator:
         logger.debug(f"     Reasoning: {decision.reasoning}")
         
         # Execute action
-        success = await self._execute_action(bot, decision, result)
+        success = await self._execute_action(bot, decision, result, all_bots=all_bots)
         
         if success:
             logger.info(f"     ✅ Success")
@@ -456,6 +468,8 @@ class GameplayTestOrchestrator:
             return f"Complete task {decision.target_task}"
         elif decision.action == "handoff":
             return f"Handoff {decision.target_item} to {decision.target_player}"
+        elif decision.action == "request_item":
+            return f"💬 Ask {decision.target_player} to drop {decision.target_item} at {decision.target_location or 'current location'}"
         elif decision.action == "wait":
             return f"Wait (no available actions)"
         else:
@@ -465,7 +479,8 @@ class GameplayTestOrchestrator:
         self, 
         bot: BotPlayer, 
         decision: ActionDecision,
-        result: GameplayTestResult
+        result: GameplayTestResult,
+        all_bots: List[BotPlayer] = None
     ) -> bool:
         """Execute the chosen action
         
@@ -480,11 +495,17 @@ class GameplayTestOrchestrator:
         elif decision.action == "search":
             items = await bot.search_location()
             if items:
-                # Pick up first item
+                # Pick up first item found
                 item_id = items[0].get("id")
                 if item_id:
-                    return await bot.pickup_item(item_id)
-            return len(items) > 0
+                    picked_up = await bot.pickup_item(item_id)
+                    return picked_up  # True = found and picked up an item
+            # Empty search is NOT a failure — the room is simply empty.
+            # The LLM should choose a different action next turn.
+            # Return True so consecutive-failure counter isn't incremented.
+            if not items:
+                logger.info(f"     (search returned 0 items — room is empty)")
+            return True
         
         elif decision.action == "pickup":
             if decision.target_item:
@@ -602,9 +623,70 @@ class GameplayTestOrchestrator:
         
         elif decision.action == "handoff":
             if decision.target_item and decision.target_player:
-                # TODO: Find player_id from role
-                pass
+                # Find player_id from role name
+                target_bot = next((b for b in (all_bots or []) if b.role == decision.target_player), None)
+                if target_bot:
+                    return await bot.handoff_item(decision.target_item, target_bot.state.player_id)
         
+        elif decision.action == "request_item":
+            # Bot A requests that Bot B drops an item so A can pick it up.
+            # Flow: B moves to meeting location → B drops item → A moves there → A picks it up
+            item_id = decision.target_item
+            provider_role = decision.target_player
+            meet_location = decision.target_location or bot.state.current_location
+
+            if not item_id or not provider_role:
+                logger.warning(f"request_item missing item_id or target_player")
+                return False
+
+            # Find the bot that holds the item
+            provider_bot = next(
+                (b for b in (all_bots or []) if b.role == provider_role), None
+            )
+            if not provider_bot:
+                logger.warning(f"request_item: no bot with role '{provider_role}' found")
+                return False
+
+            # Confirm provider actually has the item
+            has_item = any(i.get("id") == item_id for i in provider_bot.state.inventory)
+            if not has_item:
+                logger.warning(f"request_item: {provider_role} doesn't have {item_id}")
+                return False
+
+            logger.info(f"💬 {bot.player_name} → {provider_bot.player_name}: 'Can you drop {item_id} at {meet_location}?'")
+            logger.info(f"💬 {provider_bot.player_name}: 'Sure, heading there now.'")
+
+            # Step 1: Provider moves to meeting location (if not already there)
+            if provider_bot.state.current_location != meet_location:
+                moved = await provider_bot.move_to_location(meet_location)
+                if not moved:
+                    logger.warning(f"request_item: {provider_role} couldn't move to {meet_location}")
+                    return False
+                logger.info(f"   {provider_bot.player_name} arrived at {meet_location}")
+
+            # Step 2: Provider drops the item
+            dropped = await provider_bot.drop_item(item_id)
+            if not dropped:
+                logger.warning(f"request_item: {provider_role} failed to drop {item_id}")
+                return False
+            logger.info(f"   {provider_bot.player_name} dropped {item_id} at {meet_location}")
+
+            # Step 3: Requester moves to meeting location (if not already there)
+            if bot.state.current_location != meet_location:
+                moved = await bot.move_to_location(meet_location)
+                if not moved:
+                    logger.warning(f"request_item: {bot.player_name} couldn't move to {meet_location}")
+                    return False
+
+            # Step 4: Requester picks up the item
+            picked_up = await bot.pickup_item(item_id)
+            if picked_up:
+                logger.info(f"   {bot.player_name} picked up {item_id} ✅")
+                return True
+            else:
+                logger.warning(f"request_item: {bot.player_name} failed to pick up {item_id}")
+                return False
+
         elif decision.action == "wait":
             logger.info(f"{bot.player_name} waiting")
             return True
