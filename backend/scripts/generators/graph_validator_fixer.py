@@ -82,10 +82,20 @@ class GraphValidator:
             fixes_applied=self.fixes
         )
     
+    @property
+    def _player_count(self) -> int:
+        """Derive player count from unique roles in tasks (supports both field names)"""
+        roles = set()
+        for t in self.graph.tasks:
+            role = getattr(t, "assigned_role", None) or getattr(t, "role", None)
+            if role:
+                roles.add(role)
+        return len(roles)
+
     def _validate_location_count(self):
         """Check location count is in valid range"""
         count = len(self.graph.locations)
-        player_count = self.graph.player_count
+        player_count = self._player_count
         
         if 2 <= player_count <= 3:
             min_loc, max_loc = 4, 6
@@ -102,7 +112,7 @@ class GraphValidator:
     def _validate_task_count(self):
         """Check task count is in valid range"""
         count = len(self.graph.tasks)
-        player_count = self.graph.player_count
+        player_count = self._player_count
         
         if 3 <= player_count <= 7:
             min_tasks, max_tasks = 30, 40
