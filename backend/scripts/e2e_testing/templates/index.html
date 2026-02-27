@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E2E Testing Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .log-viewer {
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 6px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .log-line { margin: 0; }
+        .log-info { color: #4ade80; }
+        .log-warn { color: #fbbf24; }
+        .log-error { color: #f87171; }
+        .log-debug { color: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div class="container mx-auto p-6 max-w-7xl">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-2">🎮 E2E Testing Dashboard</h1>
+            <p class="text-gray-400">Manage scenario generation and end-to-end testing</p>
+        </div>
+
+        <!-- Actions Bar -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6 flex gap-4">
+            <button onclick="showGenerateModal()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold">
+                ✨ Generate New Scenario
+            </button>
+            <button onclick="refreshScenarios()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">
+                🔄 Refresh
+            </button>
+            <div class="ml-auto flex gap-2">
+                <span id="testStatus" class="px-3 py-2 bg-gray-700 rounded text-sm">No test running</span>
+                <button id="stopTestBtn" onclick="stopTest()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded hidden">
+                    ⏹ Stop Test
+                </button>
+            </div>
+        </div>
+
+        <!-- Scenarios List -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4">📋 Available Scenarios</h2>
+            <div id="scenariosList" class="space-y-3">
+                <div class="text-gray-400 text-center py-8">Loading scenarios...</div>
+            </div>
+        </div>
+
+        <!-- Log Viewers -->
+        <div class="grid grid-cols-2 gap-6">
+            <!-- Backend Log -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xl font-bold">📡 Backend Log</h3>
+                    <button onclick="clearLog('backend')" class="text-sm text-gray-400 hover:text-white">Clear</button>
+                </div>
+                <div id="backendLog" class="log-viewer"></div>
+            </div>
+
+            <!-- E2E Test Log -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xl font-bold">🤖 E2E Test Log</h3>
+                    <button onclick="clearLog('e2e')" class="text-sm text-gray-400 hover:text-white">Clear</button>
+                </div>
+                <div id="e2eLog" class="log-viewer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generate Modal -->
+    <div id="generateModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-2xl w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6">✨ Generate New Scenario</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Scenario Type</label>
+                    <select id="genScenarioType" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
+                        <option value="museum_heist">Museum Heist</option>
+                        <option value="bank_vault">Bank Vault</option>
+                        <option value="office_infiltration">Office Infiltration</option>
+                        <option value="casino_heist">Casino Heist</option>
+                        <option value="art_gallery">Art Gallery</option>
+                        <option value="mansion_safe">Mansion Safe</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Player Roles</label>
+                    <div id="rolesSelector" class="grid grid-cols-2 gap-2"></div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Random Seed (optional)</label>
+                    <input id="genSeed" type="number" placeholder="Leave empty for random" 
+                           class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button onclick="generateScenario()" class="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold">
+                    Generate
+                </button>
+                <button onclick="hideGenerateModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let backendLogSource = null;
+        let e2eLogSource = null;
+        let scenarios = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRoles();
+            refreshScenarios();
+            startLogStreaming();
+            checkTestStatus();
+        });
+
+        // Load available roles
+        async function loadRoles() {
+            const resp = await fetch('/api/config/roles');
+            const roles = await resp.json();
+            
+            const container = document.getElementById('rolesSelector');
+            container.innerHTML = roles.map(role => `
+                <label class="flex items-center gap-2 bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600">
+                    <input type="checkbox" name="role" value="${role.id}" class="w-4 h-4">
+                    <span>${role.name}</span>
+                </label>
+            `).join('');
+        }
+
+        // Refresh scenarios list
+        async function refreshScenarios() {
+            const resp = await fetch('/api/scenarios');
+            scenarios = await resp.json();
+            
+            const container = document.getElementById('scenariosList');
+            
+            if (scenarios.length === 0) {
+                container.innerHTML = '<div class="text-gray-400 text-center py-8">No scenarios found. Generate one!</div>';
+                return;
+            }
+            
+            container.innerHTML = scenarios.map(s => `
+                <div class="bg-gray-700 rounded-lg p-4 flex items-center justify-between hover:bg-gray-600 transition">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold">${s.name}</h3>
+                        <p class="text-sm text-gray-400">
+                            ${s.player_count} players (${s.roles.join(', ')}) • ${s.task_count} tasks
+                        </p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="runTest('${s.id}', ${s.player_count})" 
+                                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold">
+                            ▶ Run E2E Test
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Show/hide generate modal
+        function showGenerateModal() {
+            document.getElementById('generateModal').classList.remove('hidden');
+        }
+
+        function hideGenerateModal() {
+            document.getElementById('generateModal').classList.add('hidden');
+        }
+
+        // Generate scenario
+        async function generateScenario() {
+            const scenarioType = document.getElementById('genScenarioType').value;
+            const selectedRoles = Array.from(document.querySelectorAll('input[name="role"]:checked'))
+                .map(cb => cb.value);
+            const seed = document.getElementById('genSeed').value;
+            
+            if (selectedRoles.length === 0) {
+                alert('Please select at least one role');
+                return;
+            }
+            
+            hideGenerateModal();
+            
+            const resp = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    scenario_id: scenarioType,
+                    roles: selectedRoles,
+                    seed: seed ? parseInt(seed) : null
+                })
+            });
+            
+            const result = await resp.json();
+            
+            if (result.success) {
+                alert(`✅ Generated ${result.scenario_id}!\n${result.tasks} tasks, ${result.locations} locations, ${result.items} items`);
+                refreshScenarios();
+            } else {
+                alert(`❌ Generation failed: ${result.error}`);
+            }
+        }
+
+        // Run E2E test
+        async function runTest(scenarioId, playerCount) {
+            const scenarioFile = `experiences/generated_${scenarioId}_${playerCount}players.md`;
+            
+            const resp = await fetch('/api/test/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    scenario_file: scenarioFile,
+                    difficulty: 'easy',
+                    skip_npc: true
+                })
+            });
+            
+            const result = await resp.json();
+            
+            if (result.success) {
+                document.getElementById('testStatus').textContent = `Running: ${scenarioId} (PID ${result.pid})`;
+                document.getElementById('stopTestBtn').classList.remove('hidden');
+                clearLog('e2e');
+            } else {
+                alert(`Failed to start test: ${result.error}`);
+            }
+        }
+
+        // Stop test
+        async function stopTest() {
+            const resp = await fetch('/api/test/stop', {method: 'POST'});
+            const result = await resp.json();
+            
+            if (result.success) {
+                document.getElementById('testStatus').textContent = 'Test stopped';
+                document.getElementById('stopTestBtn').classList.add('hidden');
+            }
+        }
+
+        // Check test status periodically
+        function checkTestStatus() {
+            setInterval(async () => {
+                const resp = await fetch('/api/test/status');
+                const status = await resp.json();
+                
+                if (status.running) {
+                    document.getElementById('stopTestBtn').classList.remove('hidden');
+                } else {
+                    document.getElementById('stopTestBtn').classList.add('hidden');
+                    if (status.exit_code !== null) {
+                        const statusText = status.exit_code === 0 ? '✅ Test passed' : '❌ Test failed';
+                        document.getElementById('testStatus').textContent = statusText;
+                    }
+                }
+            }, 2000);
+        }
+
+        // Start log streaming
+        function startLogStreaming() {
+            // Backend log
+            backendLogSource = new EventSource('/api/logs/backend/stream');
+            backendLogSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.line) {
+                    appendLog('backend', data.line);
+                }
+            };
+
+            // E2E log
+            e2eLogSource = new EventSource('/api/logs/e2e/stream');
+            e2eLogSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.line) {
+                    appendLog('e2e', data.line);
+                }
+            };
+        }
+
+        // Append log line
+        function appendLog(type, line) {
+            const logId = type === 'backend' ? 'backendLog' : 'e2eLog';
+            const logEl = document.getElementById(logId);
+            
+            // Determine log level from line content
+            let className = 'log-line';
+            if (line.includes('ERROR') || line.includes('❌')) className += ' log-error';
+            else if (line.includes('WARNING') || line.includes('⚠️')) className += ' log-warn';
+            else if (line.includes('INFO') || line.includes('✅')) className += ' log-info';
+            else if (line.includes('DEBUG')) className += ' log-debug';
+            
+            const lineEl = document.createElement('div');
+            lineEl.className = className;
+            lineEl.textContent = line;
+            logEl.appendChild(lineEl);
+            
+            // Auto-scroll to bottom
+            logEl.scrollTop = logEl.scrollHeight;
+            
+            // Limit to last 500 lines
+            while (logEl.children.length > 500) {
+                logEl.removeChild(logEl.firstChild);
+            }
+        }
+
+        // Clear log
+        function clearLog(type) {
+            const logId = type === 'backend' ? 'backendLog' : 'e2eLog';
+            document.getElementById(logId).innerHTML = '';
+        }
+    </script>
+</head>
+<body>
+</body>
+</html>
