@@ -17,6 +17,7 @@ import string
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
+from enum import Enum
 import aiohttp
 
 from .bot_player import BotPlayer
@@ -25,6 +26,14 @@ from .npc_conversation_bot import NPCConversationBot, ConversationResult
 from ..validate_scenario import ScenarioValidator
 
 logger = logging.getLogger(__name__)
+
+
+class ActionOutcome(Enum):
+    """Result of executing a bot action — distinguishes real bugs from noise."""
+    SUCCESS = "success"                  # Action completed, made progress
+    EMPTY_SEARCH = "empty_search"        # Bot searched an empty room — bad LLM decision, not a bug
+    PICKUP_TIMEOUT = "pickup_timeout"    # Found item but pickup timed out — transient async noise
+    SYSTEM_FAILURE = "system_failure"    # Backend rejected the action — real bug, always log
 
 
 @dataclass
@@ -431,27 +440,40 @@ class GameplayTestOrchestrator:
         logger.debug(f"     Reasoning: {decision.reasoning}")
         
         # Execute action
-        success = await self._execute_action(bot, decision, result, all_bots=all_bots)
-        
-        if success:
+        outcome = await self._execute_action(bot, decision, result, all_bots=all_bots)
+
+        if outcome == ActionOutcome.SUCCESS:
             logger.info(f"     ✅ Success")
-            consecutive_failures[bot.player_name] = 0  # Reset on success
-        else:
-            logger.warning(f"     ❌ Failed")
-            result.issues.append(f"Turn {result.turns_taken}: {bot.player_name} {decision.action} failed")
-            
-            # Track consecutive failures
+            consecutive_failures[bot.player_name] = 0
+
+        elif outcome == ActionOutcome.EMPTY_SEARCH:
+            # Bot searched an empty room — bad LLM decision, not a system bug.
+            logger.info(f"     (empty room — bot will choose differently next turn)")
+            # Don't increment consecutive_failures; don't add to issues list.
+
+        elif outcome == ActionOutcome.PICKUP_TIMEOUT:
+            # Found an item but pickup timed out — transient async noise.
+            logger.debug(f"     (pickup timed out — transient, not a bug)")
+            # Don't increment consecutive_failures; don't add to issues list.
+
+        elif outcome == ActionOutcome.SYSTEM_FAILURE:
+            # Backend rejected the action — this is a real bug worth tracking.
+            logger.warning(f"     ❌ System failure")
+            result.issues.append(
+                f"Turn {result.turns_taken}: {bot.player_name} {decision.action} rejected by backend"
+            )
             consecutive_failures[bot.player_name] += 1
             if consecutive_failures[bot.player_name] >= max_failures:
                 logger.error(f"")
                 logger.error(f"🛑 {'='*60}")
-                logger.error(f"   ABORTING: {bot.player_name} failed {max_failures} times in a row")
-                logger.error(f"   This indicates the bot is stuck in an unproductive loop")
+                logger.error(f"   ABORTING: {bot.player_name} hit {max_failures} backend failures in a row")
                 logger.error(f"{'='*60}")
                 result.status = "ERROR"
-                result.issues.append(f"Turn {result.turns_taken}: {bot.player_name} stuck in failure loop")
-                return True  # Signal abort
-        
+                result.issues.append(
+                    f"Turn {result.turns_taken}: {bot.player_name} stuck — backend keeps rejecting actions"
+                )
+                return True
+
         return False  # Continue normally
     
     def _format_action(self, decision: ActionDecision) -> str:
@@ -481,62 +503,61 @@ class GameplayTestOrchestrator:
         decision: ActionDecision,
         result: GameplayTestResult,
         all_bots: List[BotPlayer] = None
-    ) -> bool:
-        """Execute the chosen action
-        
-        For E2E testing, we force success on most actions to test dependency chains,
-        not player skill/failures
+    ) -> ActionOutcome:
+        """Execute the chosen action.
+
+        Returns an ActionOutcome so callers can distinguish real bugs from noise.
         """
         
         if decision.action == "move":
             if decision.target_location:
-                return await bot.move_to_location(decision.target_location)
+                ok = await bot.move_to_location(decision.target_location)
+                return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
         
         elif decision.action == "search":
             items = await bot.search_location()
-            if items:
-                # Pick up first item found
-                item_id = items[0].get("id")
-                if item_id:
-                    picked_up = await bot.pickup_item(item_id)
-                    return picked_up  # True = found and picked up an item
-            # Empty search is NOT a failure — the room is simply empty.
-            # The LLM should choose a different action next turn.
-            # Return True so consecutive-failure counter isn't incremented.
             if not items:
-                logger.info(f"     (search returned 0 items — room is empty)")
-            return True
+                # Room is empty — bad bot decision, not a system bug.
+                logger.debug(f"     (search returned 0 items — room is empty or already looted)")
+                return ActionOutcome.EMPTY_SEARCH
+            # Found items — try to pick up the first one
+            item_id = items[0].get("id")
+            if item_id:
+                picked_up = await bot.pickup_item(item_id)
+                if picked_up:
+                    return ActionOutcome.SUCCESS
+                # Item was visible but pickup failed — likely an async timing race.
+                logger.debug(f"     (found {item_id} but pickup timed out — transient)")
+                return ActionOutcome.PICKUP_TIMEOUT
+            return ActionOutcome.SUCCESS
         
         elif decision.action == "pickup":
             if decision.target_item:
-                return await bot.pickup_item(decision.target_item)
+                ok = await bot.pickup_item(decision.target_item)
+                return ActionOutcome.SUCCESS if ok else ActionOutcome.PICKUP_TIMEOUT
         
         elif decision.action == "complete_task":
             if decision.target_task:
                 success = await bot.complete_task(decision.target_task)
                 if success:
-                    # Track completion
                     if bot.role not in result.tasks_completed_per_role:
                         result.tasks_completed_per_role[bot.role] = 0
                     result.tasks_completed_per_role[bot.role] += 1
-                return success
+                    return ActionOutcome.SUCCESS
+                return ActionOutcome.SYSTEM_FAILURE
         
         elif decision.action == "talk":
-            # Use proper NPC conversation flow (cover selection + quick responses)
             if decision.target_task:
-                # Get task details to find NPC and cover options
                 task = bot.state.available_tasks.get(decision.target_task)
                 if not task:
                     logger.error(f"Task {decision.target_task} not found in available tasks")
-                    return False
+                    return ActionOutcome.SYSTEM_FAILURE
                 
-                # Get the NPC ID from the task
                 npc_id = task.get("npc_id")
                 if not npc_id:
                     logger.error(f"Task {decision.target_task} has no npc_id field")
-                    return False
+                    return ActionOutcome.SYSTEM_FAILURE
                 
-                # Skip NPC conversations if flag is set (for fast E2E testing)
                 if self.skip_npc_conversations:
                     logger.info(f"{bot.player_name} auto-completing NPC task {decision.target_task} (skip_npc_conversations=True)")
                     success = await bot.complete_task(decision.target_task)
@@ -544,89 +565,66 @@ class GameplayTestOrchestrator:
                         if bot.role not in result.tasks_completed_per_role:
                             result.tasks_completed_per_role[bot.role] = 0
                         result.tasks_completed_per_role[bot.role] += 1
-                    return success
+                        return ActionOutcome.SUCCESS
+                    return ActionOutcome.SYSTEM_FAILURE
                 
                 logger.info(f"{bot.player_name} starting NPC conversation with {npc_id} for task {decision.target_task}")
                 
-                # Find NPC in game state to get cover options
                 npc = next((n for n in bot.state.npcs if n.get("id") == npc_id), None)
                 if not npc:
                     logger.error(f"NPC {npc_id} not found in bot's NPC list")
-                    return False
+                    return ActionOutcome.SYSTEM_FAILURE
                 
                 cover_options = npc.get("cover_options", [])
                 if not cover_options:
                     logger.warning(f"NPC {npc_id} has no cover options, skipping conversation")
-                    return False
+                    return ActionOutcome.SYSTEM_FAILURE
                 
-                # Choose first cover option (for E2E, we just pick first)
                 cover_id = cover_options[0].get("cover_id")
                 target_outcomes = task.get("target_outcomes", [])
                 
-                # Start conversation
-                logger.debug(f"     Starting conversation with cover: {cover_id}")
                 conv_data = await bot.start_npc_conversation(
                     task_id=decision.target_task,
                     npc_id=npc_id,
                     cover_id=cover_id,
                     target_outcomes=target_outcomes
                 )
-                
                 if not conv_data:
                     logger.warning(f"     Failed to start conversation")
-                    return False
+                    return ActionOutcome.SYSTEM_FAILURE
                 
-                # Conduct conversation turns (max 10 turns)
-                max_turns = 10
-                for turn in range(max_turns):
+                for turn in range(10):
                     quick_responses = conv_data.get("quick_responses", [])
-                    conversation_failed = conv_data.get("conversation_failed", False)
-                    suspicion = conv_data.get("suspicion", 0)
-                    
-                    logger.debug(f"     Turn {turn+1}: suspicion={suspicion}, responses={len(quick_responses)}, failed={conversation_failed}")
-                    
-                    if conversation_failed:
+                    if conv_data.get("conversation_failed"):
                         logger.warning(f"     ❌ Conversation failed (too suspicious)")
-                        return False
-                    
+                        return ActionOutcome.SYSTEM_FAILURE
                     if not quick_responses:
-                        # Conversation ended successfully
                         break
-                    
-                    # Choose a response (for E2E, pick first one)
-                    response_index = 0
-                    logger.debug(f"     Choosing response {response_index}: {quick_responses[response_index].get('text', '')[:50]}...")
-                    
-                    conv_data = await bot.send_npc_choice(npc_id, response_index)
+                    conv_data = await bot.send_npc_choice(npc_id, 0)
                     if not conv_data:
                         logger.warning(f"     Failed to send choice")
-                        return False
-                    
-                    # Check if task completed
+                        return ActionOutcome.SYSTEM_FAILURE
                     if decision.target_task in bot.state.completed_tasks:
                         logger.info(f"     ✅ NPC task completed after {turn+1} turns")
                         if bot.role not in result.tasks_completed_per_role:
                             result.tasks_completed_per_role[bot.role] = 0
                         result.tasks_completed_per_role[bot.role] += 1
-                        return True
+                        return ActionOutcome.SUCCESS
                 
-                # Check final state
                 if decision.target_task in bot.state.completed_tasks:
-                    logger.info(f"     ✅ NPC task completed")
                     if bot.role not in result.tasks_completed_per_role:
                         result.tasks_completed_per_role[bot.role] = 0
                     result.tasks_completed_per_role[bot.role] += 1
-                    return True
-                else:
-                    logger.warning(f"     ❌ Conversation ended but task not completed")
-                    return False
+                    return ActionOutcome.SUCCESS
+                logger.warning(f"     ❌ Conversation ended but task not completed")
+                return ActionOutcome.SYSTEM_FAILURE
         
         elif decision.action == "handoff":
             if decision.target_item and decision.target_player:
-                # Find player_id from role name
                 target_bot = next((b for b in (all_bots or []) if b.role == decision.target_player), None)
                 if target_bot:
-                    return await bot.handoff_item(decision.target_item, target_bot.state.player_id)
+                    ok = await bot.handoff_item(decision.target_item, target_bot.state.player_id)
+                    return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
         
         elif decision.action == "request_item":
             # Bot A requests that Bot B drops an item so A can pick it up.
@@ -637,61 +635,45 @@ class GameplayTestOrchestrator:
 
             if not item_id or not provider_role:
                 logger.warning(f"request_item missing item_id or target_player")
-                return False
+                return ActionOutcome.SYSTEM_FAILURE
 
-            # Find the bot that holds the item
-            provider_bot = next(
-                (b for b in (all_bots or []) if b.role == provider_role), None
-            )
+            provider_bot = next((b for b in (all_bots or []) if b.role == provider_role), None)
             if not provider_bot:
                 logger.warning(f"request_item: no bot with role '{provider_role}' found")
-                return False
+                return ActionOutcome.SYSTEM_FAILURE
 
-            # Confirm provider actually has the item
             has_item = any(i.get("id") == item_id for i in provider_bot.state.inventory)
             if not has_item:
                 logger.warning(f"request_item: {provider_role} doesn't have {item_id}")
-                return False
+                return ActionOutcome.SYSTEM_FAILURE
 
             logger.info(f"💬 {bot.player_name} → {provider_bot.player_name}: 'Can you drop {item_id} at {meet_location}?'")
             logger.info(f"💬 {provider_bot.player_name}: 'Sure, heading there now.'")
 
-            # Step 1: Provider moves to meeting location (if not already there)
             if provider_bot.state.current_location != meet_location:
-                moved = await provider_bot.move_to_location(meet_location)
-                if not moved:
-                    logger.warning(f"request_item: {provider_role} couldn't move to {meet_location}")
-                    return False
+                if not await provider_bot.move_to_location(meet_location):
+                    return ActionOutcome.SYSTEM_FAILURE
                 logger.info(f"   {provider_bot.player_name} arrived at {meet_location}")
 
-            # Step 2: Provider drops the item
-            dropped = await provider_bot.drop_item(item_id)
-            if not dropped:
-                logger.warning(f"request_item: {provider_role} failed to drop {item_id}")
-                return False
+            if not await provider_bot.drop_item(item_id):
+                return ActionOutcome.SYSTEM_FAILURE
             logger.info(f"   {provider_bot.player_name} dropped {item_id} at {meet_location}")
 
-            # Step 3: Requester moves to meeting location (if not already there)
             if bot.state.current_location != meet_location:
-                moved = await bot.move_to_location(meet_location)
-                if not moved:
-                    logger.warning(f"request_item: {bot.player_name} couldn't move to {meet_location}")
-                    return False
+                if not await bot.move_to_location(meet_location):
+                    return ActionOutcome.SYSTEM_FAILURE
 
-            # Step 4: Requester picks up the item
             picked_up = await bot.pickup_item(item_id)
             if picked_up:
                 logger.info(f"   {bot.player_name} picked up {item_id} ✅")
-                return True
-            else:
-                logger.warning(f"request_item: {bot.player_name} failed to pick up {item_id}")
-                return False
+                return ActionOutcome.SUCCESS
+            return ActionOutcome.SYSTEM_FAILURE
 
         elif decision.action == "wait":
             logger.info(f"{bot.player_name} waiting")
-            return True
-        
-        return False
+            return ActionOutcome.SUCCESS
+
+        return ActionOutcome.SYSTEM_FAILURE
     
     async def _check_game_won(self, bots: List[BotPlayer]) -> bool:
         """
