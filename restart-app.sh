@@ -32,10 +32,11 @@ echo ""
 # Start backend server
 echo -e "${YELLOW}2. Starting backend server...${NC}"
 cd "$SCRIPT_DIR/backend"
-python3 run.py > /tmp/theheist-backend.log 2>&1 &
+mkdir -p /tmp/heist_logs
+python3 run.py > /tmp/heist_logs/backend.log 2>&1 &
 BACKEND_PID=$!
 echo -e "${GREEN}   ✓ Backend starting (PID: $BACKEND_PID)${NC}"
-echo -e "     Logs: tail -f /tmp/theheist-backend.log"
+echo -e "     Logs: tail -f /tmp/heist_logs/backend.log"
 sleep 3
 echo ""
 
@@ -45,22 +46,22 @@ if curl -s http://localhost:8000/health > /dev/null 2>&1; then
     echo -e "${GREEN}   ✓ Backend is healthy${NC}"
 else
     echo -e "${RED}   ✗ Backend failed to start!${NC}"
-    echo -e "     Check logs: tail -f /tmp/theheist-backend.log"
+    echo -e "     Check logs: tail -f /tmp/heist_logs/backend.log"
     exit 1
 fi
 echo ""
 
-# Clean Flutter build
-echo -e "${YELLOW}4. Cleaning Flutter build...${NC}"
+# Get Flutter packages (skip clean — incremental builds are ~10x faster)
+# Pass --clean flag to force a full rebuild when needed: ./restart-app.sh --clean
+echo -e "${YELLOW}4. Updating Flutter packages...${NC}"
 cd "$SCRIPT_DIR/frontend"
-flutter clean > /dev/null 2>&1
-echo -e "${GREEN}   ✓ Flutter cleaned${NC}"
-echo ""
-
-# Get Flutter packages
-echo -e "${YELLOW}5. Getting Flutter packages...${NC}"
-flutter pub get
-echo -e "${GREEN}   ✓ Packages updated${NC}"
+if [[ "$*" == *"--clean"* ]]; then
+    echo -e "   Running flutter clean (--clean flag passed)..."
+    flutter clean > /dev/null 2>&1
+    echo -e "${GREEN}   ✓ Flutter cleaned${NC}"
+fi
+flutter pub get > /dev/null 2>&1
+echo -e "${GREEN}   ✓ Packages ready${NC}"
 echo ""
 
 # Start E2E portal
@@ -76,7 +77,7 @@ echo ""
 # Start Flutter web app (single instance, multiple browser tabs)
 echo -e "${YELLOW}7. Starting Flutter web app...${NC}"
 echo -e "   Running on port 8087"
-echo -e "   This may take 30-60 seconds..."
+echo -e "   Incremental build — usually ready in 10-20s (first run after --clean may take longer)"
 echo ""
 
 # Start Flutter instance with web-server (doesn't auto-open browser)
@@ -113,7 +114,7 @@ echo -e "    2. Browser 2: Click 🔐 Test as Safe Cracker → Enter room code"
 echo -e "    3. Host clicks Start Game"
 echo ""
 echo -e "  Logs:"
-echo -e "    Backend:  tail -f /tmp/theheist-backend.log"
+echo -e "    Backend:  tail -f /tmp/heist_logs/backend.log"
 echo -e "    Flutter:  tail -f /tmp/theheist-flutter.log"
 echo -e "    E2E:      tail -f /tmp/heist_logs/e2e_portal.log"
 echo ""

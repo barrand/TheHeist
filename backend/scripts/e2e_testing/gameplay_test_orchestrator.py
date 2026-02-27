@@ -302,6 +302,13 @@ class GameplayTestOrchestrator:
         # Track consecutive failures per bot to detect stuck loops
         consecutive_failures = {bot.player_name: 0 for bot in bots}
         MAX_CONSECUTIVE_FAILURES = 5
+
+        # Track how many times each bot has searched each location with no items found.
+        # After SEARCH_DEPLETED_THRESHOLD tries, hide the search task from the LLM so it
+        # stops spinning. After SEARCH_FAILURE_THRESHOLD tries, report it as a system issue.
+        empty_search_counts: Dict[str, Dict[str, int]] = {bot.player_name: {} for bot in bots}
+        SEARCH_DEPLETED_THRESHOLD = 3   # Hide task from LLM after this many empty searches
+        SEARCH_FAILURE_THRESHOLD = 10   # Report as a real issue after this many
         
         while turn < max_turns:
             turn += 1
@@ -366,7 +373,13 @@ class GameplayTestOrchestrator:
             # Each active bot takes a turn
             for bot in active_bots:
                 try:
-                    should_abort = await self._bot_take_turn(bot, result, consecutive_failures, MAX_CONSECUTIVE_FAILURES, all_bots=bots)
+                    should_abort = await self._bot_take_turn(
+                        bot, result, consecutive_failures, MAX_CONSECUTIVE_FAILURES,
+                        all_bots=bots,
+                        empty_search_counts=empty_search_counts,
+                        search_depleted_threshold=SEARCH_DEPLETED_THRESHOLD,
+                        search_failure_threshold=SEARCH_FAILURE_THRESHOLD,
+                    )
                     if should_abort:
                         return result
                 except Exception as e:
@@ -392,11 +405,21 @@ class GameplayTestOrchestrator:
         
         return result
     
-    async def _bot_take_turn(self, bot: BotPlayer, result: GameplayTestResult, consecutive_failures: dict, max_failures: int, all_bots: List[BotPlayer] = None) -> bool:
+    async def _bot_take_turn(
+        self,
+        bot: BotPlayer,
+        result: GameplayTestResult,
+        consecutive_failures: dict,
+        max_failures: int,
+        all_bots: List[BotPlayer] = None,
+        empty_search_counts: Dict[str, Dict[str, int]] = None,
+        search_depleted_threshold: int = 3,
+        search_failure_threshold: int = 10,
+    ) -> bool:
         """
-        Bot analyzes state and takes one action
+        Bot analyzes state and takes one action.
         
-        Returns True if test should abort due to repeated failures
+        Returns True if test should abort due to repeated failures.
         """
         # Get available tasks
         tasks = bot.get_available_tasks()
@@ -404,6 +427,22 @@ class GameplayTestOrchestrator:
         if not tasks:
             logger.debug(f"  {bot.role}: (no available tasks)")
             return
+
+        # Filter out search tasks at locations that have been searched multiple times
+        # with no items found — the LLM would just keep looping otherwise.
+        bot_search_counts = (empty_search_counts or {}).get(bot.player_name, {})
+        depleted_locations = {
+            loc for loc, count in bot_search_counts.items()
+            if count >= search_depleted_threshold
+        }
+        if depleted_locations:
+            filtered = [
+                t for t in tasks
+                if not (t.get("type") == "search" and t.get("location") in depleted_locations)
+            ]
+            if filtered:
+                tasks = filtered
+                logger.debug(f"     Filtered depleted search tasks at: {depleted_locations}")
         
         logger.info(f"  👤 {bot.role} @ {bot.state.current_location}")
         logger.debug(f"     Available tasks: {len(tasks)}")
@@ -447,9 +486,30 @@ class GameplayTestOrchestrator:
             consecutive_failures[bot.player_name] = 0
 
         elif outcome == ActionOutcome.EMPTY_SEARCH:
-            # Bot searched an empty room — bad LLM decision, not a system bug.
-            logger.info(f"     (empty room — bot will choose differently next turn)")
-            # Don't increment consecutive_failures; don't add to issues list.
+            # Bot searched an empty room. Track how many times this has happened at
+            # this location so we can stop the LLM from looping on a depleted room.
+            loc = bot.state.current_location
+            if empty_search_counts is not None:
+                counts = empty_search_counts.setdefault(bot.player_name, {})
+                counts[loc] = counts.get(loc, 0) + 1
+                count = counts[loc]
+                if count == search_depleted_threshold:
+                    logger.warning(
+                        f"     ⚠️  Searched {loc} {count} times with no items — "
+                        f"marking as depleted, will try other tasks"
+                    )
+                elif count >= search_failure_threshold:
+                    issue = (
+                        f"Turn {result.turns_taken}: {bot.player_name} searched {loc} "
+                        f"{count} times with no items — item is likely missing (scenario bug)"
+                    )
+                    if issue not in result.issues:
+                        logger.error(f"     ❌ {issue}")
+                        result.issues.append(issue)
+                else:
+                    logger.info(f"     (empty room — bot will try differently next turn)")
+            else:
+                logger.info(f"     (empty room — bot will try differently next turn)")
 
         elif outcome == ActionOutcome.PICKUP_TIMEOUT:
             # Found an item but pickup timed out — transient async noise.
