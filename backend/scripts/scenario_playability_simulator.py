@@ -209,11 +209,13 @@ class PlayabilitySimulator:
             
             # Simulate outcomes/items from task completion
             if task.type == 'npc_llm':
-                # NPC tasks might provide outcomes (simplified: assume they do)
-                global_outcomes.add(f"outcome_from_{task_id}")
+                # Add the real outcome IDs this task unlocks
+                for outcome_id in getattr(task, 'target_outcomes', []):
+                    global_outcomes.add(outcome_id)
             if task.type == 'search':
-                # Search tasks might provide items
-                global_items.add(f"item_from_{task_id}")
+                # Add items discovered by this search task
+                for item_id in getattr(task, 'search_items', []):
+                    global_items.add(item_id)
             
             # Track idle turns for other players
             for role, player in players.items():

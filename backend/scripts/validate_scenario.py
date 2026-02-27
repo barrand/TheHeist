@@ -231,6 +231,14 @@ class ScenarioValidator:
             name = match.group(2).strip()
             if loc_id not in self.locations:  # Don't overwrite pattern 1 matches
                 self.locations[loc_id] = ParsedLocation(id=loc_id, name=name)
+
+        # Pattern 3: - **Location Name** (`loc_id`): description  (markdown_renderer.py format)
+        location_blocks_3 = re.finditer(r'- \*\*(.+?)\*\* \(`([^`]+)`\)', section_text)
+        for match in location_blocks_3:
+            name = match.group(1).strip()
+            loc_id = match.group(2)
+            if loc_id not in self.locations:
+                self.locations[loc_id] = ParsedLocation(id=loc_id, name=name)
     
     def _parse_items(self):
         """Parse items section"""
@@ -314,17 +322,17 @@ class ScenarioValidator:
             location = match.group(3)
             npc_text = match.group(4)
             
-            # Extract outcomes from Information Known (HIGH level with ID)
+            # Extract outcomes from Information Known (any confidence level)
             outcomes = []
             info_section = re.search(r'- \*\*Information Known\*\*:(.*?)(?=\n- \*\*|\Z)', npc_text, re.DOTALL)
             if info_section:
-                for outcome_match in re.finditer(r'- `([^`]+)` HIGH:', info_section.group(1)):
+                for outcome_match in re.finditer(r'- `([^`]+)` (?:VERY HIGH|HIGH|MEDIUM|LOW):', info_section.group(1)):
                     outcomes.append(outcome_match.group(1))
-            
-            # Extract outcomes from Actions Available (HIGH level with ID)
+
+            # Extract outcomes from Actions Available (any confidence level)
             actions_section = re.search(r'- \*\*Actions Available\*\*:(.*?)(?=\n- \*\*|\Z)', npc_text, re.DOTALL)
             if actions_section:
-                for action_match in re.finditer(r'- `([^`]+)` HIGH:', actions_section.group(1)):
+                for action_match in re.finditer(r'- `([^`]+)` (?:VERY HIGH|HIGH|MEDIUM|LOW):', actions_section.group(1)):
                     outcomes.append(action_match.group(1))
             
             self.npcs[npc_id] = ParsedNPC(
@@ -544,27 +552,27 @@ class ScenarioValidator:
             ))
     
     def check_task_count_ranges(self):
-        """Rule 4: Check task count is appropriate for player count"""
+        """Rule 4: Check task count is appropriate for player count (min 3 tasks/role)"""
         total_tasks = len(self.tasks)
-        
-        if 3 <= self.player_count <= 7:
-            if not (30 <= total_tasks <= 40):
-                self.report.add_issue(ValidationIssue(
-                    rule_number=4,
-                    level=ValidationLevel.CRITICAL,
-                    title="Task Count Out of Range",
-                    message=f"For {self.player_count} players, expected 30-40 tasks, found {total_tasks}",
-                    fix_suggestion="Add or remove tasks to reach target range"
-                ))
-        elif 8 <= self.player_count <= 12:
-            if not (40 <= total_tasks <= 50):
-                self.report.add_issue(ValidationIssue(
-                    rule_number=4,
-                    level=ValidationLevel.CRITICAL,
-                    title="Task Count Out of Range",
-                    message=f"For {self.player_count} players, expected 40-50 tasks, found {total_tasks}",
-                    fix_suggestion="Add or remove tasks to reach target range"
-                ))
+        min_tasks = max(6, self.player_count * 3)
+        max_tasks = self.player_count * 12
+
+        if total_tasks < min_tasks:
+            self.report.add_issue(ValidationIssue(
+                rule_number=4,
+                level=ValidationLevel.IMPORTANT,
+                title="Task Count Out of Range",
+                message=f"For {self.player_count} players, expected {min_tasks}-{max_tasks} tasks, found {total_tasks}",
+                fix_suggestion="Add tasks to reach target range"
+            ))
+        elif total_tasks > max_tasks:
+            self.report.add_issue(ValidationIssue(
+                rule_number=4,
+                level=ValidationLevel.IMPORTANT,
+                title="Task Count Out of Range",
+                message=f"For {self.player_count} players, expected {min_tasks}-{max_tasks} tasks, found {total_tasks}",
+                fix_suggestion="Remove tasks to reach target range"
+            ))
     
     def check_location_count(self):
         """Rule 5: Check location count (scales with player count)"""
