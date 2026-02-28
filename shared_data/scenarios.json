@@ -10,24 +10,7 @@
       "theme": "museum_gala",
       "objective": "Steal the jewels from the museum vault during a black-tie event.",
       "summary": "Infiltrate a gala, secure access, crack the vault, and escape unnoticed.",
-      "roles_required": ["mastermind", "safe_cracker"],
-      "locations": [
-        "Crew Hideout",
-        "Gas Station",
-        "Museum Front Steps",
-        "Museum Side Entrance",
-        "Rooftop Across Street",
-        "Grand Hall",
-        "Coat Check Room",
-        "Loading Dock",
-        "Service Area",
-        "Security Room",
-        "Janitorial Closet",
-        "Maintenance Room",
-        "Curator's Office",
-        "Vault Room",
-        "Getaway Vehicle"
-      ]
+      "roles_required": ["mastermind", "safe_cracker"]
     },
     {
       "scenario_id": "mansion_panic_room",
