@@ -52,6 +52,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   // Loading state for image generation
   bool _isGeneratingImages = false;
   int _loadingMessageIndex = 0;
+  String _generationProgressMessage = '';
   
   @override
   void initState() {
@@ -145,14 +146,26 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       });
     });
     
+    // Listen for on-the-fly scenario generation progress
+    widget.wsService.scenarioGenerating.listen((message) {
+      final msg = message['message'] as String? ?? '';
+      if (!_isGeneratingImages) {
+        setState(() { _isGeneratingImages = true; });
+        _showImageGenerationModal(title: '🎲 Building Your Scenario', progressMessage: msg);
+      } else {
+        // Update the progress message shown in the modal
+        setState(() { _generationProgressMessage = msg; });
+      }
+    });
+
     // Listen for image generation start
     widget.wsService.info.listen((message) {
       final infoMessage = message['message'] as String?;
       if (infoMessage != null && infoMessage.contains('Generating experience images')) {
-        setState(() {
-          _isGeneratingImages = true;
-        });
-        _showImageGenerationModal();
+        if (!_isGeneratingImages) {
+          setState(() { _isGeneratingImages = true; });
+          _showImageGenerationModal();
+        }
       }
     });
     
@@ -165,6 +178,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         Navigator.of(context).pop(); // Close modal
         setState(() {
           _isGeneratingImages = false;
+          _generationProgressMessage = '';
         });
       }
       
@@ -289,7 +303,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
     }
   }
   
-  void _showImageGenerationModal() {
+  void _showImageGenerationModal({String? title, String? progressMessage}) {
     final heistMessages = [
       '🚗 Prepping the getaway car...',
       '🔍 Investigating the premises...',
@@ -302,13 +316,26 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       '⏰ Synchronizing watches...',
       '🎨 Setting the scene...',
     ];
+
+    final dialogTitle = title ?? '🎬 Creating Your Experience';
+    if (progressMessage != null) {
+      _generationProgressMessage = progressMessage;
+    }
     
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => PopScope(
         canPop: false,
-        child: Dialog(
+        child: StatefulBuilder(
+          builder: (context, setModalState) {
+            // Keep modal in sync when _generationProgressMessage changes
+            widget.wsService.scenarioGenerating.listen((msg) {
+              setModalState(() {
+                _generationProgressMessage = msg['message'] as String? ?? _generationProgressMessage;
+              });
+            });
+            return Dialog(
           backgroundColor: AppColors.bgPrimary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
@@ -321,7 +348,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
               children: [
                 // Title
                 Text(
-                  '🎬 Creating Your Experience',
+                  dialogTitle,
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -336,8 +363,14 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                 ),
                 SizedBox(height: AppDimensions.spaceLG),
                 
-                // Rotating message
-                StreamBuilder<int>(
+                // Show live progress if available, else rotating flavor text
+                _generationProgressMessage.isNotEmpty
+                    ? Text(
+                        _generationProgressMessage,
+                        style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                        textAlign: TextAlign.center,
+                      )
+                    : StreamBuilder<int>(
                   stream: Stream.periodic(Duration(seconds: 2), (i) => i % heistMessages.length),
                   builder: (context, snapshot) {
                     final index = snapshot.data ?? 0;
@@ -358,7 +391,10 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
               ],
             ),
           ),
+        );
+          },
         ),
+      ),
       ),
     );
   }

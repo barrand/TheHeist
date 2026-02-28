@@ -284,12 +284,34 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
         })
         return
     
-    # Load experience
+    # Load experience — generate on the fly if the file doesn't exist yet
     room = room_manager.get_room(room_code)
     selected_roles = room.get_selected_roles()
     
     try:
         loader = ExperienceLoader(experiences_dir="experiences")
+
+        # Check if the experience file exists; generate it if not
+        player_count = len(selected_roles)
+        md_file = loader.experiences_dir / f"generated_{scenario}_{player_count}players.md"
+        json_file = loader.experiences_dir / f"{scenario}.json"
+        if not md_file.exists() and not json_file.exists():
+            from app.services.scenario_generator_service import generate_scenario
+
+            async def _broadcast(msg: str):
+                await ws_manager.broadcast_to_room(room_code, {
+                    "type": "scenario_generating",
+                    "message": msg
+                })
+
+            ok = await generate_scenario(scenario, selected_roles, _broadcast)
+            if not ok:
+                await ws_manager.send_to_player(room_code, player_id, {
+                    "type": "error",
+                    "message": "Scenario generation failed. Please try again."
+                })
+                return
+
         game_state = loader.load_experience(scenario, selected_roles)
         
         # Store game state in game state manager

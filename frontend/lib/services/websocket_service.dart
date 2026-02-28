@@ -30,6 +30,7 @@ class WebSocketService {
   final _itemTransferredController = StreamController<Map<String, dynamic>>.broadcast();
   final _infoController = StreamController<Map<String, dynamic>>.broadcast();
   final _errorController = StreamController<Map<String, dynamic>>.broadcast();
+  final _scenarioGeneratingController = StreamController<Map<String, dynamic>>.broadcast();
   
   // Store the latest room state for late subscribers
   Map<String, dynamic>? _latestRoomState;
@@ -45,6 +46,7 @@ class WebSocketService {
   Stream<Map<String, dynamic>> get itemTransferred => _itemTransferredController.stream;
   Stream<Map<String, dynamic>> get info => _infoController.stream;
   Stream<Map<String, dynamic>> get errors => _errorController.stream;
+  Stream<Map<String, dynamic>> get scenarioGenerating => _scenarioGeneratingController.stream;
   
   // Get the latest room state (useful for late subscribers)
   Map<String, dynamic>? get latestRoomState => _latestRoomState;
@@ -262,6 +264,10 @@ class WebSocketService {
           // Item was dropped - currently just logged
           debugPrint('📦 Item dropped: ${message['item_name']} in ${message['location']}');
           break;
+        case 'scenario_generating':
+          _scenarioGeneratingController.add(message);
+          debugPrint('🎲 Scenario generating: ${message['message']}');
+          break;
         case 'info':
           _infoController.add(message);
           debugPrint('ℹ️ Info: ${message['message']}');
@@ -299,5 +305,6 @@ class WebSocketService {
     _itemTransferredController.close();
     _infoController.close();
     _errorController.close();
+    _scenarioGeneratingController.close();
   }
 }
