@@ -1,12 +1,18 @@
 """
 Procedural Graph Generator
-Generates valid scenario graphs using deterministic algorithms
+Generates valid scenario graphs using deterministic algorithms.
+Structure (tasks, prerequisites, unlock chains) is procedural.
+Names and descriptions are enriched with a single LLM call at the end.
 """
 
+import json
+import logging
 import random
 from dataclasses import dataclass, field
 from typing import List, Dict, Set, Tuple, Optional
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 
 class TaskType(str, Enum):
@@ -200,6 +206,9 @@ class ProceduralGraphGenerator:
             tasks=tasks,
             timeline_minutes=self.config.timeline_minutes
         )
+        
+        # 6. Enrich names/descriptions with a single LLM call
+        _enrich_graph_with_llm(graph, role_ids)
         
         return graph
     
@@ -795,6 +804,94 @@ class ProceduralGraphGenerator:
             return "Steal confidential documents from the executive suite"
         else:
             return "Complete the heist successfully"
+
+
+def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str]) -> None:
+    """
+    Replace placeholder item/NPC/task names with scenario-specific ones via a single LLM call.
+    Mutates the graph in-place. Silently falls back to placeholders if the call fails.
+    """
+    try:
+        from config import GEMINI_API_KEY, GEMINI_EXPERIENCE_MODEL
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel(
+            model_name=GEMINI_EXPERIENCE_MODEL,
+            generation_config={"temperature": 0.8, "response_mime_type": "application/json"}
+        )
+    except Exception as e:
+        logger.warning(f"LLM enrichment skipped (import failed): {e}")
+        return
+
+    scenario_id = graph.scenario_id
+    location_names = {loc.id: loc.name for loc in graph.locations}
+    roles_str = ", ".join(role_ids)
+
+    # Build compact context for the LLM
+    items_ctx = [
+        {"id": item.id, "location": location_names.get(item.location, item.location), "hidden": item.hidden}
+        for item in graph.items
+    ]
+    npcs_ctx = [
+        {"id": npc.id, "role": npc.role, "location": location_names.get(npc.location, npc.location)}
+        for npc in graph.npcs
+    ]
+    tasks_ctx = [
+        {"id": t.id, "type": t.type, "role": t.assigned_role, "location": location_names.get(t.location, t.location)}
+        for t in graph.tasks
+    ]
+
+    prompt = f"""You are a heist game writer. Given the structure below, write compelling names and descriptions.
+
+SCENARIO: {scenario_id.replace("_", " ")}
+ROLES: {roles_str}
+LOCATIONS: {", ".join(location_names.values())}
+
+ITEMS (give each a name, short description, and visual description for image generation):
+{json.dumps(items_ctx, indent=2)}
+
+NPCS (give each a first name appropriate to their role and location):
+{json.dumps(npcs_ctx, indent=2)}
+
+TASKS (give each a short action-oriented description, 5-8 words):
+{json.dumps(tasks_ctx, indent=2)}
+
+Return ONLY this JSON (no markdown):
+{{
+  "items": [{{"id": "item_1", "name": "...", "description": "...", "visual": "..."}}],
+  "npcs": [{{"id": "security_guard", "name": "..."}}],
+  "tasks": [{{"id": "MM1", "description": "..."}}]
+}}"""
+
+    try:
+        response = model.generate_content(prompt)
+        data = json.loads(response.text)
+
+        # Apply item enrichment (keep IDs, only update display fields)
+        item_map = {i["id"]: i for i in data.get("items", [])}
+        for item in graph.items:
+            if item.id in item_map:
+                enriched = item_map[item.id]
+                item.name = enriched.get("name", item.name)
+                item.description = enriched.get("description", item.description)
+                item.visual = enriched.get("visual", item.visual)
+
+        # Apply NPC name enrichment
+        npc_map = {n["id"]: n for n in data.get("npcs", [])}
+        for npc in graph.npcs:
+            if npc.id in npc_map:
+                npc.name = npc_map[npc.id].get("name", npc.name)
+
+        # Apply task description enrichment
+        task_map = {t["id"]: t for t in data.get("tasks", [])}
+        for task in graph.tasks:
+            if task.id in task_map:
+                task.description = task_map[task.id].get("description", task.description)
+
+        logger.info(f"[enrichment] Enriched {len(item_map)} items, {len(npc_map)} NPCs, {len(task_map)} tasks")
+
+    except Exception as e:
+        logger.warning(f"[enrichment] LLM enrichment failed, keeping placeholders: {e}")
 
 
 def generate_scenario_graph(
