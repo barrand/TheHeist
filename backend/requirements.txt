@@ -8,3 +8,5 @@ tenacity
 pydantic==2.10.3
 pydantic-settings==2.7.1
 requests
+flask>=3.0
+flask-cors>=4.0

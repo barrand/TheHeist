@@ -162,30 +162,30 @@ ROLE_CODES = {
     "fence": "F", "cat_burglar": "CB", "cleaner": "CL", "pickpocket": "PP",
 }
 
-# Available minigames
-MINIGAMES = [
-    "wire_connecting",
-    "lock_picking",
-    "fingerprint_matching",
-    "safe_cracking",
-    "camera_bypass",
-    "alarm_disable",
-]
-
-
 def _load_role_minigames() -> Dict[str, List[str]]:
-    """Load per-role minigame lists from shared_data/roles.json."""
+    """Load per-role minigame lists from shared_data/roles.json.
+
+    Returns a dict mapping role_id -> [minigame_id, ...].
+    Also stores a '_all' key with every valid minigame ID across all roles,
+    used as a last-resort fallback in _pick_minigame.
+    """
     try:
         roles_path = Path(__file__).parent.parent.parent.parent / "shared_data" / "roles.json"
         with open(roles_path) as f:
             data = json.load(f)
-        return {
+        role_map = {
             role["role_id"]: [mg["id"] for mg in role.get("minigames", [])]
             for role in data.get("roles", [])
         }
+        # Derive a global fallback from the union of all per-role minigames.
+        # This guarantees the fallback only contains IDs that exist in roles.json.
+        all_valid = list({mg for ids in role_map.values() for mg in ids})
+        role_map["_all"] = all_valid
+        return role_map
     except Exception as e:
-        logger.warning(f"[minigames] Could not load roles.json, using global fallback: {e}")
-        return {}
+        logger.warning(f"[minigames] Could not load roles.json: {e}")
+        # Absolute last resort — wire_connecting exists for hacker and is broadly safe
+        return {"_all": ["wire_connecting"]}
 
 
 class ProceduralGraphGenerator:
@@ -198,12 +198,18 @@ class ProceduralGraphGenerator:
         self._role_minigames: Dict[str, List[str]] = _load_role_minigames()
 
     def _pick_minigame(self, role: str) -> str:
-        """Return a valid minigame ID for a given role, falling back to the global list."""
+        """Return a valid minigame ID for the given role.
+
+        Uses the role-specific list from roles.json. Falls back to the union
+        of all valid minigame IDs (_all) if the role has no specific list.
+        Never uses hardcoded IDs that aren't in roles.json.
+        """
         role_mgs = self._role_minigames.get(role, [])
         if role_mgs:
             return random.choice(role_mgs)
-        # Fallback: use the global list but only IDs that could plausibly exist
-        return random.choice(MINIGAMES)
+        # Role not found or no minigames — use union of all valid IDs
+        all_mgs = self._role_minigames.get("_all", ["wire_connecting"])
+        return random.choice(all_mgs)
 
     def _role_can_do_minigame(self, role: str) -> bool:
         """Return False for roles (like Mastermind) that have no minigames in roles.json."""
@@ -213,11 +219,12 @@ class ProceduralGraphGenerator:
             return False
         return True
     
-    def generate(self, scenario_id: str, role_ids: List[str]) -> ScenarioGraph:
+    def generate(self, scenario_id: str, role_ids: List[str], progress_fn=None) -> ScenarioGraph:
         """Generate a complete scenario graph"""
+        _p = progress_fn or (lambda msg: None)  # no-op if no callback provided
 
         # 1. LLM generates the creative setting: locations, objective, and NPC placement.
-        #    Falls back to templates if the LLM call fails.
+        _p(f"Generating setting with LLM (locations, objective, NPC placement)...")
         llm_setting = _generate_setting_with_llm(scenario_id, role_ids, self.config)
 
         # 2. Use LLM locations if available, else fall back to templates
@@ -233,14 +240,17 @@ class ProceduralGraphGenerator:
                 for loc in llm_setting["locations"]
             ]
             objective = llm_setting.get("objective") or self._generate_objective(scenario_id)
+            _p(f"Setting generated: {len(locations)} locations — {objective[:80]}")
         else:
             locations = self._generate_locations_fallback(scenario_id)
             objective = self._generate_objective(scenario_id)
+            _p(f"Setting generated (fallback): {len(locations)} locations")
 
         # npc_placement maps archetype_id -> location_id (from LLM, may be None/empty)
         npc_placement = llm_setting.get("npc_placement", {}) if llm_setting else {}
 
         # 3. Generate items with unlock chains
+        _p(f"Building items, NPCs, and task graph...")
         items = self._generate_items(locations)
         
         # 4. Generate NPCs with contextual placement
@@ -252,6 +262,12 @@ class ProceduralGraphGenerator:
         # 6. Append one escape task per role (exit through first/entry location)
         tasks = self._append_escape_tasks(tasks, role_ids, locations)
 
+        task_type_counts = {}
+        for t in tasks:
+            task_type_counts[t.type] = task_type_counts.get(t.type, 0) + 1
+        breakdown = ", ".join(f"{v}×{k}" for k, v in sorted(task_type_counts.items()))
+        _p(f"Task graph built: {len(tasks)} tasks ({breakdown}), {len(npcs)} NPCs, {len(items)} items")
+
         graph = ScenarioGraph(
             scenario_id=scenario_id,
             objective=objective,
@@ -262,9 +278,17 @@ class ProceduralGraphGenerator:
             timeline_minutes=self.config.timeline_minutes
         )
         
-        # 7. Enrich item/NPC/task names and full NPC profiles via LLM
-        _enrich_graph_with_llm(graph, role_ids)
-        
+        # 7. Enrich item/NPC/task names and full NPC profiles via LLM.
+        #    This rewrites NPC info IDs (placeholder → real LLM names) and updates
+        #    task target_outcomes to match.
+        _enrich_graph_with_llm(graph, role_ids, progress_fn=progress_fn)
+
+        # 8. Post-enrichment graph guarantees — run AFTER enrichment so these use
+        #    the real LLM-generated outcome IDs, not placeholder stubs.
+        if len(role_ids) > 1:
+            self._ensure_cross_role_chain(graph.tasks)
+        self._ensure_minimum_cross_role_tasks(graph.tasks, role_ids)
+
         return graph
     
     def _generate_locations_fallback(self, scenario_id: str) -> List[Location]:
@@ -417,14 +441,16 @@ class ProceduralGraphGenerator:
         task_counters = {role: 1 for role in role_ids}
         
         # Track available prerequisite sources
-        # Note: For starting tasks, we don't use prerequisites
-        # For dependent tasks, we only reference already-created tasks
         available_task_ids: Set[str] = set()
-        available_outcomes: Set[str] = set()
-        available_items: Set[str] = set()
-        
-        # Get all NPC outcomes (these exist from the start)
+
+        # Pre-seed with all NPC outcomes — NPCs are present from game start, so any role
+        # can reference their outcomes as "info to share" without waiting for tasks to run.
         npc_outcomes = self._get_all_npc_outcomes(npcs)
+        available_outcomes: Set[str] = set(npc_outcomes)
+
+        # Pre-seed with all non-hidden items — visible items exist in locations from the
+        # start, so handoff tasks can reference them before a search task has run.
+        available_items: Set[str] = {item.id for item in items if not item.hidden}
         
         # Build items_by_location mapping (ALL items - hidden and non-hidden)
         items_by_location = {}
@@ -439,6 +465,7 @@ class ProceduralGraphGenerator:
         for role in role_ids:
             role_code = ROLE_CODES.get(role, role[:2].upper())
             tasks_for_role = random.randint(*self.config.tasks_per_role)
+            prev_task_id: Optional[str] = None  # tracks the preceding task for this role
             
             for task_num in range(1, tasks_for_role + 1):
                 task_id = f"{role_code}{task_num}"
@@ -449,7 +476,9 @@ class ProceduralGraphGenerator:
                         task_id, role, locations, npcs
                     )
                 else:
-                    # Create task with dependencies on previous tasks
+                    # Create task with dependencies on previous tasks.
+                    # prev_task_id is passed so the dependent task ALWAYS chains
+                    # from its immediate predecessor, preventing dead-end tasks.
                     task = self._create_dependent_task(
                         task_id,
                         role,
@@ -459,7 +488,8 @@ class ProceduralGraphGenerator:
                         npcs,
                         available_task_ids,
                         available_outcomes,
-                        available_items
+                        available_items,
+                        prev_task_id=prev_task_id,
                     )
                 
                 # If it's a search task, populate items (ensuring no duplicates)
@@ -496,6 +526,7 @@ class ProceduralGraphGenerator:
                 
                 tasks.append(task)
                 available_task_ids.add(task_id)
+                prev_task_id = task_id  # track for next iteration's mandatory prereq
                 
                 # If this is an NPC task, add its outcomes as available
                 if task.type == TaskType.NPC_LLM.value and task.target_outcomes:
@@ -588,7 +619,8 @@ class ProceduralGraphGenerator:
         npcs: List[NPC],
         available_task_ids: Set[str],
         available_outcomes: Set[str],
-        available_items: Set[str]
+        available_items: Set[str],
+        prev_task_id: Optional[str] = None,
     ) -> Task:
         """Create a task with dependencies"""
         
@@ -598,14 +630,22 @@ class ProceduralGraphGenerator:
             task_type = "npc_llm"
         location = random.choice(locations)
         
-        # Create prerequisites (1-3 prerequisites from available sources)
-        prerequisites = self._create_prerequisites(
-            available_task_ids,
-            available_outcomes,
-            available_items,
-            min_prereqs=1,
-            max_prereqs=2
-        )
+        # Build prerequisites. Always chain from the immediate predecessor for this
+        # role (prevents dead-end tasks). Optionally add one outcome prereq on top.
+        if prev_task_id:
+            prerequisites = [Prerequisite(type="task", id=prev_task_id)]
+            # 40% chance to also require one outcome, giving the graph more richness
+            if available_outcomes and random.random() < 0.4:
+                oid = random.choice(list(available_outcomes))
+                prerequisites.append(Prerequisite(type="outcome", id=oid))
+        else:
+            prerequisites = self._create_prerequisites(
+                available_task_ids,
+                available_outcomes,
+                available_items,
+                min_prereqs=1,
+                max_prereqs=2
+            )
         
         if task_type == "minigame":
             minigame = self._pick_minigame(role)
@@ -702,13 +742,17 @@ class ProceduralGraphGenerator:
             # Verbal information share (requires prior knowledge)
             if available_outcomes:
                 outcome_id = random.choice(list(available_outcomes))
+                # Add the outcome as an explicit Outcome prerequisite so the validator
+                # can trace the cross-role info chain (Rule 39)
+                outcome_prereq = Prerequisite(type="outcome", id=outcome_id)
+                prereqs_with_outcome = prerequisites + [outcome_prereq] if outcome_id not in [p.id for p in prerequisites] else prerequisites
                 return Task(
                     id=task_id,
                     type=task_type,
                     description=f"Share information with team",
                     assigned_role=role,
                     location=location.id,
-                    prerequisites=prerequisites,
+                    prerequisites=prereqs_with_outcome,
                     info_description=f"Information about {outcome_id}"
                 )
             else:
@@ -833,6 +877,133 @@ class ProceduralGraphGenerator:
                         description=None
                     ))
     
+    def _ensure_minimum_cross_role_tasks(self, tasks: List[Task], role_ids: List[str]) -> None:
+        """Guarantee at least MIN_HANDOFF handoff and MIN_INFO_SHARE info_share tasks exist.
+
+        Candidate pool includes minigame, search, AND npc_llm dependent tasks so this
+        works even when all tasks are npc_llm (e.g. Mastermind-heavy scenarios).
+        Minimums match the validator's Rule 17 thresholds exactly.
+        """
+        MIN_HANDOFF = 3   # matches validator Rule 17 minimum
+        MIN_INFO_SHARE = 2
+
+        handoff_count = sum(1 for t in tasks if t.type == TaskType.HANDOFF.value)
+        info_share_count = sum(1 for t in tasks if t.type == TaskType.INFO_SHARE.value)
+
+        # Collect all real outcome IDs from NPC tasks (after enrichment these are real names)
+        available_outcomes = []
+        for t in tasks:
+            if t.type == TaskType.NPC_LLM.value:
+                available_outcomes.extend(t.target_outcomes)
+
+        # Candidates: dependent tasks (have prerequisites), not escape tasks.
+        # Include npc_llm so we can always find candidates even in mastermind-heavy scenarios.
+        candidates = [
+            t for t in tasks
+            if t.prerequisites
+            and t.type in (TaskType.MINIGAME.value, TaskType.SEARCH.value, TaskType.NPC_LLM.value)
+            and not getattr(t, "_is_escape", False)
+        ]
+
+        # Shuffle to vary which tasks get converted across runs
+        random.shuffle(candidates)
+        idx = 0
+
+        while handoff_count < MIN_HANDOFF and idx < len(candidates):
+            other_roles = [r for r in role_ids if r != candidates[idx].assigned_role]
+            if other_roles:
+                t = candidates[idx]
+                # Clear NPC/minigame fields that don't apply to handoff
+                t.type = TaskType.HANDOFF.value
+                t.handoff_to_role = random.choice(other_roles)
+                t.handoff_item = None
+                t.npc_id = None
+                t.npc_name = None
+                t.minigame_id = None
+                t.target_outcomes = []
+                t.description = f"Hand off to {t.handoff_to_role.replace('_', ' ')}"
+                handoff_count += 1
+                candidates.pop(idx)
+                logger.info(f"[cross-role] Converted {t.id} ({t.assigned_role}) to handoff → {t.handoff_to_role}")
+            else:
+                idx += 1
+
+        while info_share_count < MIN_INFO_SHARE and idx < len(candidates):
+            if available_outcomes:
+                t = candidates[idx]
+                oid = random.choice(available_outcomes)
+                # For npc_llm → info_share: keep the prerequisite chain, clear NPC fields
+                t.type = TaskType.INFO_SHARE.value
+                t.info_description = f"Information about {oid}"
+                t.npc_id = None
+                t.npc_name = None
+                t.minigame_id = None
+                t.target_outcomes = []
+                t.description = "Share intelligence with the team"
+                # Ensure the outcome is an explicit prerequisite for Rule 39 tracing
+                if oid not in [p.id for p in t.prerequisites]:
+                    t.prerequisites.append(Prerequisite(type="outcome", id=oid))
+                info_share_count += 1
+                candidates.pop(idx)
+                logger.info(f"[cross-role] Converted {t.id} ({t.assigned_role}) to info_share (outcome: {oid})")
+            else:
+                idx += 1
+
+    def _ensure_cross_role_chain(self, tasks: List[Task]) -> None:
+        """Guarantee at least one outcome flows from one role's NPC task to a different role's prerequisite.
+
+        If no such chain exists after generation, inject one by adding an Outcome prerequisite
+        to the first eligible dependent task of a different role. This ensures Rule 39 passes.
+        """
+        # Map: outcome_id -> set of roles that learned it via NPC_LLM target_outcomes
+        outcome_learned_by: Dict[str, Set[str]] = {}
+        for t in tasks:
+            if t.type == TaskType.NPC_LLM.value:
+                for oid in t.target_outcomes:
+                    outcome_learned_by.setdefault(oid, set()).add(t.assigned_role)
+
+        if not outcome_learned_by:
+            return  # No NPC outcomes exist — nothing to chain
+
+        # Map: outcome_id -> set of roles that already require it as a prerequisite
+        outcome_required_by: Dict[str, Set[str]] = {}
+        for t in tasks:
+            for prereq in t.prerequisites:
+                if prereq.type == "outcome":
+                    outcome_required_by.setdefault(prereq.id, set()).add(t.assigned_role)
+
+        # Check if a cross-role chain already exists
+        for oid, learning_roles in outcome_learned_by.items():
+            requiring_roles = outcome_required_by.get(oid, set())
+            for lr in learning_roles:
+                for rr in requiring_roles:
+                    if lr != rr:
+                        return  # Chain already exists — nothing to do
+
+        # No chain found — inject one. Pick the first outcome and find a dependent
+        # task for a different role to add it to.
+        for oid, learning_roles in outcome_learned_by.items():
+            for learning_role in learning_roles:
+                # Find a dependent task (has prerequisites) assigned to a DIFFERENT role
+                candidates = [
+                    t for t in tasks
+                    if t.assigned_role != learning_role
+                    and t.prerequisites
+                    and t.type not in (TaskType.HANDOFF.value, TaskType.INFO_SHARE.value)
+                    and oid not in [p.id for p in t.prerequisites]
+                ]
+                if candidates:
+                    target = candidates[0]
+                    target.prerequisites.append(
+                        Prerequisite(type="outcome", id=oid,
+                                     description=f"Received intel from {learning_role}")
+                    )
+                    logger.info(
+                        f"[cross-role] Injected Outcome `{oid}` (from {learning_role}) "
+                        f"as prerequisite on {target.id} ({target.assigned_role})"
+                    )
+                    return  # One chain is enough
+
     def _append_escape_tasks(
         self,
         tasks: List[Task],
@@ -1045,7 +1216,22 @@ Return ONLY this JSON:
         return None
 
 
-def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str]) -> None:
+def _clean_llm_json(text: str) -> str:
+    """Strip markdown code fences and fix common LLM JSON syntax issues."""
+    import re as _re
+    text = text.strip()
+    # Strip ```json ... ``` or ``` ... ``` fences
+    if text.startswith("```"):
+        lines = text.split("\n")
+        text = "\n".join(lines[1:])  # drop opening fence line
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3].rstrip()
+    # Remove trailing commas before } or ] (most common LLM mistake)
+    text = _re.sub(r',(\s*[}\]])', r'\1', text)
+    return text.strip()
+
+
+def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str], progress_fn=None) -> None:
     """
     Replace placeholder names/descriptions with scenario-specific content via two LLM calls:
       1. Items + tasks (fast, compact)
@@ -1064,6 +1250,8 @@ def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str]) -> None:
     except Exception as e:
         logger.warning(f"LLM enrichment skipped (import failed): {e}")
         return
+
+    _p = progress_fn or (lambda msg: None)
 
     scenario_id = graph.scenario_id
     scenario_name = scenario_id.replace("_", " ")
@@ -1100,9 +1288,10 @@ Return ONLY this JSON (no markdown):
   "tasks": [{{"id": "MM1", "description": "..."}}]
 }}"""
 
+    _p(f"Enriching items and task descriptions via LLM ({len(graph.items)} items, {len(graph.tasks)} tasks)...")
     try:
         response = model.generate_content(items_tasks_prompt)
-        data = json.loads(response.text)
+        data = json.loads(_clean_llm_json(response.text))
 
         item_map = {i["id"]: i for i in data.get("items", [])}
         for item in graph.items:
@@ -1118,8 +1307,10 @@ Return ONLY this JSON (no markdown):
                 task.description = task_map[task.id].get("description", task.description)
 
         logger.info(f"[enrichment] Enriched {len(item_map)} items, {len(task_map)} tasks")
+        _p(f"Items and tasks enriched: {len(item_map)} items named, {len(task_map)} task descriptions written")
     except Exception as e:
         logger.warning(f"[enrichment] Items/tasks LLM call failed: {e}")
+        _p(f"Warning: items/tasks enrichment failed ({e}), using placeholders")
 
     # --- Call 2: Full NPC profiles ---
     # Build per-NPC task context so the LLM knows what each NPC needs to provide
@@ -1198,10 +1389,35 @@ Return ONLY this JSON (no markdown):
   ]
 }}"""
 
-    try:
-        response = model.generate_content(npc_prompt)
-        data = json.loads(response.text)
+    def _try_parse_npc_response(raw_text: str) -> Optional[Dict]:
+        """Try to parse NPC profile response, cleaning common LLM JSON issues."""
+        try:
+            return json.loads(_clean_llm_json(raw_text))
+        except json.JSONDecodeError:
+            return None
 
+    npc_names = [npc.id for npc in graph.npcs]
+    _p(f"Building full NPC profiles via LLM ({len(npc_names)} NPCs: {', '.join(npc_names)})...")
+
+    data = None
+    for attempt in range(2):
+        try:
+            if attempt > 0:
+                _p(f"  Retrying NPC profile call (attempt {attempt+1}/2)...")
+            response = model.generate_content(npc_prompt)
+            data = _try_parse_npc_response(response.text)
+            if data:
+                break
+            logger.warning(f"[enrichment] NPC JSON parse failed (attempt {attempt+1}/2), retrying...")
+        except Exception as e:
+            logger.warning(f"[enrichment] NPC LLM call error (attempt {attempt+1}/2): {e}")
+
+    if not data:
+        logger.warning(f"[enrichment] NPC profile call failed after 2 attempts, keeping placeholders")
+        _p(f"Warning: NPC profile enrichment failed after 2 attempts, using placeholders")
+        return
+
+    try:
         npc_map = {n["id"]: n for n in data.get("npcs", [])}
         for npc in graph.npcs:
             enriched = npc_map.get(npc.id)
@@ -1245,28 +1461,39 @@ Return ONLY this JSON (no markdown):
                 for i, cover in enumerate(enriched.get("cover_options", []))
             ]
 
-            # Re-wire any npc_llm tasks that target this NPC: if the task has no target_outcomes
-            # yet, assign the first information_known ID so it has a semantic outcome to unlock.
+            # Re-wire all npc_llm tasks that target this NPC to use the enriched real
+            # outcome IDs. The tasks were created with placeholder IDs like
+            # `security_guard_info_1`; enrichment replaces those with LLM-generated
+            # names like `vault_location`. Always overwrite so the two stay in sync.
             if npc.information_known:
-                first_info_id = npc.information_known[0].info_id
-                for task in graph.tasks:
-                    if task.type == "npc_llm" and task.npc_id == npc.id and not task.target_outcomes:
-                        if first_info_id:
-                            task.target_outcomes = [first_info_id]
+                real_ids = [i.info_id for i in npc.information_known if i.info_id]
+                real_ids += [a.action_id for a in npc.actions_available if a.action_id]
+                if real_ids:
+                    for task in graph.tasks:
+                        if task.type == "npc_llm" and task.npc_id == npc.id:
+                            # Keep up to 2 outcomes; prefer info IDs over action IDs
+                            task.target_outcomes = real_ids[:min(2, len(real_ids))]
 
         logger.info(f"[enrichment] Enriched {len(npc_map)} NPCs with full profiles")
+        enriched_names = [npc.name for npc in graph.npcs if npc.name != npc.id]
+        _p(f"NPC profiles complete: {', '.join(enriched_names) if enriched_names else f'{len(npc_map)} NPCs enriched'}")
     except Exception as e:
-        logger.warning(f"[enrichment] NPC profile LLM call failed: {e}")
+        logger.warning(f"[enrichment] NPC profile application failed: {e}")
+        _p(f"Warning: NPC profile application failed ({e})")
 
 
 def generate_scenario_graph(
     scenario_id: str,
     role_ids: List[str],
-    config: GeneratorConfig = None
+    config: GeneratorConfig = None,
+    progress_fn: Optional[callable] = None,
 ) -> ScenarioGraph:
-    """Main entry point for procedural graph generation"""
-    
+    """Main entry point for procedural graph generation.
+
+    Args:
+        progress_fn: Optional callable(msg: str) invoked at each major step.
+                     Useful for streaming progress to a UI during long LLM calls.
+    """
     generator = ProceduralGraphGenerator(config)
-    graph = generator.generate(scenario_id, role_ids)
-    
+    graph = generator.generate(scenario_id, role_ids, progress_fn=progress_fn)
     return graph

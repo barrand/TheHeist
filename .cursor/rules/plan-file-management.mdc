@@ -1,0 +1,33 @@
+---
+description: Manage Cursor plan files — move to active/ after creation, archive/ when done
+alwaysApply: true
+---
+
+# Plan File Management
+
+Cursor's plan mode saves files to `~/.cursor/plans/` with no subdirectory control.
+After any plan file operation, immediately move the file to the correct location.
+
+## Directories
+
+- **Active**: `~/.cursor/plans/active/` — plans currently in use
+- **Archive**: `~/.cursor/plans/archive/` — completed or abandoned plans
+
+## Rules
+
+**After creating a plan** (the `create_plan` tool outputs to `~/.cursor/plans/`):
+```bash
+mv ~/.cursor/plans/<new_plan_file>.plan.md ~/.cursor/plans/active/
+```
+
+**After completing or abandoning a plan**, move it to archive:
+```bash
+mv ~/.cursor/plans/active/<plan_file>.plan.md ~/.cursor/plans/archive/
+```
+
+**When reading or updating a plan**, use the `active/` path:
+```
+~/.cursor/plans/active/<plan_file>.plan.md
+```
+
+**Never leave plan files in the root** `~/.cursor/plans/` — always move immediately after creation.

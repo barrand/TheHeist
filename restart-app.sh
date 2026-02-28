@@ -20,9 +20,11 @@ cd "$SCRIPT_DIR"
 echo -e "${YELLOW}1. Stopping existing processes...${NC}"
 pkill -9 -f "flutter run" 2>/dev/null
 pkill -9 -f "python.*run.py" 2>/dev/null
+pkill -9 -f "python.*ui_server.py" 2>/dev/null
 pkill -9 -f "flutter_tools_chrome_device" 2>/dev/null
 lsof -ti:8087 | xargs kill -9 2>/dev/null
 lsof -ti:8000 | xargs kill -9 2>/dev/null
+lsof -ti:5555 | xargs kill -9 2>/dev/null
 sleep 3
 echo -e "${GREEN}   ✓ Processes stopped${NC}"
 echo ""
@@ -39,6 +41,16 @@ BACKEND_PID=$!
 echo -e "${GREEN}   ✓ Backend starting (PID: $BACKEND_PID)${NC}"
 echo -e "     Logs: tail -f /tmp/heist_logs/backend.log"
 sleep 3
+echo ""
+
+# Start E2E portal
+echo -e "${YELLOW}3. Starting E2E portal...${NC}"
+cd "$SCRIPT_DIR/backend"
+E2E_PORT=5555 $PYTHON scripts/e2e_testing/ui_server.py > /tmp/heist_logs/e2e_portal.log 2>&1 &
+E2E_PID=$!
+echo -e "${GREEN}   ✓ E2E portal starting (PID: $E2E_PID)${NC}"
+echo -e "     URL:  http://localhost:5555"
+echo -e "     Logs: tail -f /tmp/heist_logs/e2e_portal.log"
 echo ""
 
 # Check if backend is healthy
@@ -98,6 +110,7 @@ echo -e "${BLUE}======================================${NC}"
 echo ""
 echo -e "  📱 Frontend:  ${GREEN}http://localhost:8087${NC}"
 echo -e "  🔧 Backend:   ${GREEN}http://localhost:8000${NC}"
+echo -e "  🧪 E2E Portal:${GREEN}http://localhost:5555${NC}"
 echo ""
 echo -e "  ${YELLOW}Quick Test:${NC}"
 echo -e "    1. Browser 1: Click 🎭 Test as Mastermind"

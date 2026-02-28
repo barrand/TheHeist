@@ -18,7 +18,7 @@ from generators.procedural_generator import (
     generate_scenario_graph,
     GeneratorConfig
 )
-from generators.graph_validator import validate_graph
+from generators.graph_validator_fixer import validate_and_fix_graph
 from generators.json_exporter import export_to_json
 from generators.markdown_renderer import export_to_markdown
 
@@ -46,26 +46,22 @@ def test_generation(scenario_id: str, roles: list, seed: int = None):
     print(f"      - {len(graph.tasks)} tasks")
     print()
     
-    # Validate graph
+    # Validate and auto-fix graph
     print("2️⃣  Validating graph structure...")
-    result = validate_graph(graph)
-    
-    if result.valid:
-        print("   ✅ Graph is valid!\n")
+    fixed_graph, result = validate_and_fix_graph(graph)
+    graph = fixed_graph
+
+    if result.is_valid:
+        fixes = len(result.fixes_applied)
+        print(f"   ✅ Graph is valid!" + (f" ({fixes} auto-fixed)" if fixes else "") + "\n")
     else:
         print("   ❌ Validation failed:\n")
         for error in result.errors:
-            print(f"      [{error.severity.upper()}] {error.rule}")
-            print(f"      {error.message}")
-            for detail in error.details[:3]:  # Show first 3 details
-                print(f"        - {detail}")
-            if len(error.details) > 3:
-                print(f"        ... and {len(error.details) - 3} more")
+            print(f"      {error}")
             print()
-        
-        if any(e.severity == "critical" for e in result.errors):
-            print("   🛑 Critical errors found. Aborting export.\n")
-            return False
+
+        print("   🛑 Critical errors remain after auto-fix. Aborting export.\n")
+        return False
     
     # Export to JSON
     print("3️⃣  Exporting to JSON...")

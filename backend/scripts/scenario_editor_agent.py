@@ -9,7 +9,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 import google.generativeai as genai
 
@@ -50,6 +50,7 @@ class ScenarioEditorAgent:
                 "response_mime_type": "text/plain"
             }
         )
+        self._role_minigames: Dict[str, List[str]] = self._load_role_minigames()
         logger.info(f"Scenario Editor Agent initialized with {self.model_name}")
     
     def fix_issues(
@@ -175,9 +176,80 @@ REFERENCE — Complete NPC block (museum_gala_vault.md gold standard):
   - `tourist`: "Enthusiastic tourist who thinks this is a wax museum" -- (bewildered by this person, not sharing anything)
 """
 
-    def _get_npc_fix_instructions(self, issue: ValidationIssue) -> str:
-        """Return targeted fix instructions for NPC quality rules (36-39)."""
+    def _load_role_minigames(self) -> Dict[str, List[str]]:
+        """Load per-role valid minigame IDs from shared_data/roles.json."""
+        try:
+            roles_path = Path(__file__).parent.parent.parent / "shared_data" / "roles.json"
+            with open(roles_path) as f:
+                data = json.load(f)
+            return {
+                role["role_id"]: [mg["id"] for mg in role.get("minigames", [])]
+                for role in data.get("roles", [])
+            }
+        except Exception as e:
+            logger.warning(f"[editor] Could not load roles.json for minigame reference: {e}")
+            return {}
+
+    def _format_minigame_reference(self) -> str:
+        """Format a per-role minigame ID reference table for injection into the prompt."""
+        if not self._role_minigames:
+            return ""
+        lines = ["VALID MINIGAME IDs BY ROLE (ONLY use IDs from this table):"]
+        for role_id, mgs in sorted(self._role_minigames.items()):
+            if mgs:
+                lines.append(f"  - {role_id}: {', '.join(mgs)}")
+        lines.append("NEVER use a minigame ID not listed above for the task's assigned role.")
+        return "\n".join(lines)
+
+    def _get_fix_instructions(self, issue: ValidationIssue) -> str:
+        """Return targeted fix instructions for each rule the editor handles."""
         rule = issue.rule_number
+
+        # --- Structural rules ---
+        if rule == 16:
+            minigame_ref = self._format_minigame_reference()
+            return (
+                "Replace some `npc_llm` tasks with `minigame` tasks to bring social interactions below 60%.\n"
+                "CRITICAL: Only use minigame IDs from the per-role table below — NEVER invent IDs.\n"
+                "For each task you change:\n"
+                "  - Change `*Type:*` from `npc_llm` to `minigame`\n"
+                "  - Replace `*NPC:*` and `*Target Outcomes:*` lines with `*Minigame:* `valid_id_here``\n"
+                "  - Keep all prerequisite lines exactly as-is — do NOT reorder or remove any Task/Outcome prereqs.\n"
+                f"\n{minigame_ref}"
+            )
+        if rule == 17:
+            return (
+                "Add new handoff and/or info_share tasks until Rule 17 minimums are met (≥3 handoff, ≥2 info_share).\n"
+                "DO NOT modify or remove any existing tasks or their prerequisites.\n"
+                "Add NEW tasks using these exact formats:\n\n"
+                "HANDOFF TASK FORMAT:\n"
+                "#### [ROLE_CODE][N] - Hand off [item] to [target_role]\n"
+                "- *Type:* handoff\n"
+                "- *Assigned Role:* `role_id`\n"
+                "- *Location:* `location_id`\n"
+                "- *Handoff Item:* `item_id`\n"
+                "- *Handoff To Role:* `target_role_id`\n"
+                "- *Prerequisites:* Task `PREV_TASK_ID`\n\n"
+                "INFO_SHARE TASK FORMAT:\n"
+                "#### [ROLE_CODE][N] - Share intelligence with the team\n"
+                "- *Type:* info_share\n"
+                "- *Assigned Role:* `role_id`\n"
+                "- *Location:* `location_id`\n"
+                "- *Info Description:* Brief note on what is shared\n"
+                "- *Prerequisites:* Task `PREV_TASK_ID`, Outcome `real_npc_outcome_id`\n"
+                "  (The Outcome prereq MUST reference an existing NPC information_known or actions_available ID)\n"
+            )
+        if rule == 28:
+            return (
+                "Fix dead-end tasks by chaining them into the task sequence — DO NOT remove or reorder any tasks.\n"
+                "For each dead-end task ID listed in the issue details:\n"
+                "  1. Find the NEXT task in that role's sequence (the task with the next letter/number).\n"
+                "  2. Add `Task `DEAD_END_TASK_ID`` to the prerequisites of that next task.\n"
+                "  3. If the dead-end task is the last task for a role, add it as a prereq to the role's escape task.\n"
+                "  DO NOT change the dead-end task itself — only edit the task that comes AFTER it.\n"
+            )
+
+        # --- NPC quality rules ---
         if rule == 36:
             return (
                 "Fill in the MISSING NPC fields identified above to match the reference block.\n"
@@ -213,18 +285,26 @@ REFERENCE — Complete NPC block (museum_gala_vault.md gold standard):
 
     def _build_fix_prompt(self, scenario_content: str, issue: ValidationIssue) -> str:
         """Build prompt for fixing a specific issue"""
-        
+
         # Format issue details
         details_str = "\n".join([f"  - {d}" for d in issue.details]) if issue.details else "  (No specific details)"
 
-        # Include NPC reference block and targeted instructions for quality rules
+        # Rules that benefit from the NPC reference block
         npc_rules = {36, 37, 38, 39}
+        # Rules that get targeted fix instructions
+        guided_rules = {16, 17, 28} | npc_rules
+
         npc_reference_section = ""
-        extra_instructions = ""
         if issue.rule_number in npc_rules:
             npc_reference_section = f"\n{self._NPC_REFERENCE_BLOCK}\n"
-            extra_instructions = f"\nNPC-SPECIFIC FIX GUIDANCE:\n{self._get_npc_fix_instructions(issue)}\n"
-        
+
+        extra_instructions = ""
+        if issue.rule_number in guided_rules:
+            fix_guide = self._get_fix_instructions(issue)
+            if fix_guide:
+                label = "NPC-SPECIFIC FIX GUIDANCE" if issue.rule_number in npc_rules else "FIX GUIDANCE"
+                extra_instructions = f"\n{label}:\n{fix_guide}\n"
+
         prompt = f"""You are a scenario file editor. Your job is to make MINIMAL, SURGICAL edits to fix specific validation issues.
 {npc_reference_section}
 VALIDATION ISSUE TO FIX:
@@ -255,7 +335,7 @@ INSTRUCTIONS:
 
 OUTPUT:
 Return the ENTIRE fixed scenario file with your changes applied."""
-        
+
         return prompt
 
 

@@ -135,7 +135,7 @@ def delete_all_scenarios():
 
 @app.route("/api/generate", methods=["POST"])
 def generate_scenario():
-    """Generate a new scenario — streams NDJSON progress lines"""
+    """Generate a new scenario — streams NDJSON progress lines via the shared pipeline."""
     data = request.json
     scenario_id = data.get("scenario_id", "custom_heist")
     roles = data.get("roles", ["mastermind", "hacker"])
@@ -148,91 +148,75 @@ def generate_scenario():
         return _line({"type": "progress", "message": msg})
 
     def generate():
-        import sys
-        sys.path.insert(0, str(BACKEND_ROOT / "scripts"))
+        import sys, threading, queue as _queue
+        # Ensure scripts/ is importable (needed for scenario_pipeline itself)
+        scripts_dir = str(BACKEND_ROOT / "scripts")
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
 
-        try:
-            yield _progress(f"Starting generation: {scenario_id} with {len(roles)} roles")
+        yield _progress(f"Starting generation: {scenario_id} with {len(roles)} roles")
 
-            yield _progress("Loading generators...")
-            from generators.procedural_generator import generate_scenario_graph, GeneratorConfig
-            from generators.graph_validator_fixer import validate_and_fix_graph
-            from generators.json_exporter import export_to_json
-            from generators.markdown_renderer import export_to_markdown
+        # The pipeline is synchronous (LLM calls). Run it in a background thread
+        # and stream its progress messages back to the client via a queue.
+        _msg_queue = _queue.Queue()
+        _result_holder = [None]
+        _DONE = object()
 
-            yield _progress("Generating scenario graph...")
-            config = GeneratorConfig(seed=seed if seed else None)
-            graph = generate_scenario_graph(scenario_id, roles, config)
-            yield _progress(f"Graph: {len(graph.tasks)} tasks, {len(graph.locations)} locations")
+        def _progress_cb(msg: str):
+            _msg_queue.put(msg)
 
-            yield _progress("Validating and fixing graph...")
-            fixed_graph, validation_result = validate_and_fix_graph(graph, max_iterations=10)
-            if not validation_result.is_valid:
-                yield _line({
-                    "type": "result", "success": False,
-                    "error": "Graph validation failed",
-                    "errors": validation_result.errors
-                })
-                return
-            fixed_count = len(validation_result.fixes_applied)
-            yield _progress(f"Graph valid" + (f" ({fixed_count} issues auto-fixed)" if fixed_count else ""))
+        def _run():
+            try:
+                from scenario_pipeline import run_pipeline
+                _result_holder[0] = run_pipeline(
+                    scenario_id=scenario_id,
+                    roles=roles,
+                    seed=seed,
+                    progress_fn=_progress_cb,
+                )
+            except Exception as exc:
+                import traceback
+                _result_holder[0] = {"_exception": exc, "_tb": traceback.format_exc()}
+            finally:
+                _msg_queue.put(_DONE)
 
-            yield _progress("Exporting to JSON and markdown...")
-            export_to_json(fixed_graph, roles=roles)
-            export_to_markdown(fixed_graph, roles=roles)
-            roles_part = "_".join(sorted(roles))
-            exported_filename = f"generated_{scenario_id}_{roles_part}.md"
-            yield _progress(f"Exported: {exported_filename}")
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
 
-            yield _progress("Validating scenario markdown...")
-            from validate_scenario import ScenarioValidator, ValidationLevel
-            md_path = EXPERIENCES_DIR / exported_filename
-            validator = ScenarioValidator(md_path)
-            report = validator.validate_all()
-            critical_issues = [i for i in report.issues if i.level == ValidationLevel.CRITICAL]
-            important_issues = [i for i in report.issues if i.level == ValidationLevel.IMPORTANT]
-            advisory_issues = [i for i in report.issues if i.level == ValidationLevel.ADVISORY]
-            yield _progress(
-                f"Markdown validation: {len(critical_issues)} critical, "
-                f"{len(important_issues)} important, {len(advisory_issues)} advisory"
-            )
-            for issue in important_issues:
-                detail = "; ".join(issue.details) if issue.details else ""
-                yield _progress(f"  ⚠️  {issue.title}" + (f": {detail}" if detail else ""))
-            for issue in advisory_issues:
-                detail = "; ".join(issue.details) if issue.details else ""
-                yield _progress(f"  ℹ️  {issue.title}" + (f": {detail}" if detail else ""))
+        while True:
+            msg = _msg_queue.get()
+            if msg is _DONE:
+                break
+            yield _progress(msg)
 
-            if critical_issues:
-                yield _progress(f"Running editor to fix {len(critical_issues)} critical issue(s)...")
-                from scenario_editor_agent import ScenarioEditorAgent
-                agent = ScenarioEditorAgent()
-                for idx, issue in enumerate(critical_issues, 1):
-                    yield _progress(f"  Fixing [{idx}/{len(critical_issues)}]: {issue.title}")
-                results = agent.fix_issues(md_path, critical_issues)
-                fixed_count = sum(1 for r in results if r.success)
-                yield _progress(f"Editor done: {fixed_count}/{len(critical_issues)} fixed")
-            else:
-                yield _progress("✅ Markdown validation passed, no edits needed")
+        result = _result_holder[0]
 
+        # Handle unexpected thread crash
+        if isinstance(result, dict) and "_exception" in result:
             yield _line({
-                "type": "result",
-                "success": True,
-                "scenario_id": scenario_id,
-                "player_count": player_count,
-                "tasks": len(fixed_graph.tasks),
-                "locations": len(fixed_graph.locations),
-                "items": len(fixed_graph.items),
+                "type": "result", "success": False,
+                "error": str(result["_exception"]),
+                "traceback": result["_tb"],
             })
+            return
 
-        except Exception as e:
-            import traceback
+        if result is None or not result.success:
             yield _line({
-                "type": "result",
-                "success": False,
-                "error": str(e),
-                "traceback": traceback.format_exc()
+                "type": "result", "success": False,
+                "error": result.error if result else "Unknown error",
+                "traceback": result.traceback if result else "",
             })
+            return
+
+        yield _line({
+            "type": "result",
+            "success": True,
+            "scenario_id": scenario_id,
+            "player_count": len(roles),
+            "tasks": result.tasks,
+            "locations": result.locations,
+            "items": result.items,
+        })
 
     return Response(
         stream_with_context(generate()),
