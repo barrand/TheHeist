@@ -216,42 +216,125 @@ class ProceduralGraphGenerator:
         """Generate locations in logical zones"""
         location_count = random.randint(*self.config.location_count)
         
-        # Common location patterns based on scenario type
+        # Location templates keyed by scenario theme keywords
         if "museum" in scenario_id:
             location_templates = [
-                ("entrance_hall", "Entrance Hall", "Museum Interior", "Grand entrance with security"),
-                ("exhibit_floor", "Exhibit Floor", "Museum Interior", "Main gallery with displays"),
-                ("storage_room", "Storage Room", "Museum Interior", "Back storage area"),
-                ("security_office", "Security Office", "Museum Interior", "Security monitoring room"),
-                ("vault_chamber", "Vault Chamber", "Museum Interior", "Secure vault room"),
-                ("rooftop", "Rooftop Access", "Museum Exterior", "Rooftop entrance point"),
-                ("loading_dock", "Loading Dock", "Museum Exterior", "Service entrance"),
+                ("entrance_hall", "Entrance Hall", "Museum Interior", "Grand entrance with security checkpoints"),
+                ("exhibit_floor", "Exhibit Floor", "Museum Interior", "Main gallery with valuable displays"),
+                ("storage_room", "Storage Room", "Museum Interior", "Back storage area with crated artifacts"),
+                ("security_office", "Security Office", "Museum Interior", "Security monitoring and camera feeds"),
+                ("vault_chamber", "Vault Chamber", "Museum Interior", "Heavily secured vault room"),
+                ("rooftop", "Rooftop Access", "Museum Exterior", "Rooftop with skylights and HVAC"),
+                ("loading_dock", "Loading Dock", "Museum Exterior", "Service entrance for deliveries"),
             ]
         elif "bank" in scenario_id:
             location_templates = [
-                ("lobby", "Bank Lobby", "Bank Interior", "Main customer area"),
-                ("teller_area", "Teller Area", "Bank Interior", "Transaction stations"),
-                ("manager_office", "Manager Office", "Bank Interior", "Bank manager workspace"),
-                ("server_room", "Server Room", "Bank Interior", "IT infrastructure"),
-                ("vault", "Vault", "Bank Interior", "Main vault"),
-                ("parking_garage", "Parking Garage", "Bank Exterior", "Underground parking"),
+                ("lobby", "Bank Lobby", "Bank Interior", "Main customer area with tellers"),
+                ("teller_area", "Teller Area", "Bank Interior", "Transaction counter stations"),
+                ("manager_office", "Manager Office", "Bank Interior", "Branch manager workspace"),
+                ("server_room", "Server Room", "Bank Interior", "IT infrastructure and alarm systems"),
+                ("vault_corridor", "Vault Corridor", "Bank Interior", "Secured hallway leading to vault"),
+                ("vault", "Vault", "Bank Interior", "Main safe deposit vault"),
+                ("parking_garage", "Parking Garage", "Bank Exterior", "Underground parking with side entrance"),
             ]
         elif "office" in scenario_id:
             location_templates = [
-                ("reception", "Reception Area", "Office Interior", "Front desk"),
-                ("cubicle_farm", "Cubicle Farm", "Office Interior", "Open workspace"),
-                ("executive_suite", "Executive Suite", "Office Interior", "C-level offices"),
-                ("server_room", "Server Room", "Office Interior", "Data center"),
-                ("archive_room", "Archive Room", "Office Interior", "Document storage"),
-                ("rooftop", "Rooftop", "Office Exterior", "Roof access"),
+                ("reception", "Reception Area", "Office Interior", "Front desk with visitor sign-in"),
+                ("cubicle_farm", "Cubicle Farm", "Office Interior", "Open-plan workspace"),
+                ("executive_suite", "Executive Suite", "Office Interior", "C-level private offices"),
+                ("server_room", "Server Room", "Office Interior", "Data center and network closet"),
+                ("archive_room", "Archive Room", "Office Interior", "Physical document storage"),
+                ("conference_room", "Conference Room", "Office Interior", "Meeting room with AV equipment"),
+                ("rooftop", "Rooftop", "Office Exterior", "Roof access with utility equipment"),
+            ]
+        elif "mansion" in scenario_id:
+            location_templates = [
+                ("front_gate", "Front Gate", "Mansion Exterior", "Gated entrance with guard booth"),
+                ("foyer", "Grand Foyer", "Mansion Interior", "Sweeping entrance hall"),
+                ("study", "Private Study", "Mansion Interior", "Owner's locked private office"),
+                ("panic_room", "Panic Room", "Mansion Interior", "Concealed reinforced safe room"),
+                ("wine_cellar", "Wine Cellar", "Mansion Interior", "Underground cellar with hidden passages"),
+                ("security_hub", "Security Hub", "Mansion Interior", "Central camera and alarm control"),
+                ("garden", "Rear Garden", "Mansion Exterior", "Landscaped grounds with staff"),
+            ]
+        elif "casino" in scenario_id:
+            location_templates = [
+                ("casino_floor", "Casino Floor", "Casino Interior", "Bustling gambling hall"),
+                ("high_roller_room", "High Roller Room", "Casino Interior", "Private VIP gaming area"),
+                ("counting_room", "Counting Room", "Casino Interior", "Cash processing behind vault"),
+                ("surveillance_room", "Surveillance Room", "Casino Interior", "Camera monitoring station"),
+                ("casino_vault", "Casino Vault", "Casino Interior", "Reinforced cash and chip storage"),
+                ("service_corridor", "Service Corridor", "Casino Interior", "Staff-only back passages"),
+                ("hotel_lobby", "Hotel Lobby", "Casino Exterior", "Adjacent hotel entrance"),
+            ]
+        elif "train" in scenario_id:
+            location_templates = [
+                ("platform", "Train Platform", "Train Exterior", "Boarding platform with crowds"),
+                ("passenger_car", "Passenger Car", "Train Interior", "Regular passenger compartments"),
+                ("dining_car", "Dining Car", "Train Interior", "Restaurant car with staff"),
+                ("cargo_car", "Cargo Car", "Train Interior", "Locked freight compartments"),
+                ("armored_car", "Armored Car", "Train Interior", "Heavily secured transport car"),
+                ("engine_room", "Engine Room", "Train Interior", "Locomotive cab and controls"),
+                ("roof", "Train Roof", "Train Exterior", "Top of moving train"),
+            ]
+        elif "lab" in scenario_id or "research" in scenario_id:
+            location_templates = [
+                ("reception", "Security Reception", "Lab Interior", "Badged entry with guards"),
+                ("open_lab", "Open Lab", "Lab Interior", "General research workspace"),
+                ("clean_room", "Clean Room", "Lab Interior", "Sterile prototype development area"),
+                ("server_farm", "Server Farm", "Lab Interior", "Research data infrastructure"),
+                ("secure_lab", "Secure Lab", "Lab Interior", "Classified project containment"),
+                ("loading_bay", "Loading Bay", "Lab Exterior", "Equipment delivery entrance"),
+                ("rooftop_hvac", "Rooftop HVAC", "Lab Exterior", "Roof utility systems"),
+            ]
+        elif "art" in scenario_id or "gallery" in scenario_id:
+            location_templates = [
+                ("gallery_entrance", "Gallery Entrance", "Gallery Interior", "Public entrance with bag check"),
+                ("main_gallery", "Main Gallery", "Gallery Interior", "Primary exhibition space"),
+                ("restoration_lab", "Restoration Lab", "Gallery Interior", "Art restoration workshop"),
+                ("storage_vault", "Storage Vault", "Gallery Interior", "Climate-controlled art storage"),
+                ("director_office", "Director's Office", "Gallery Interior", "Gallery director private office"),
+                ("loading_bay", "Loading Bay", "Gallery Exterior", "Art shipment entrance"),
+                ("rooftop", "Rooftop", "Gallery Exterior", "Roof with skylight access"),
+            ]
+        elif "police" in scenario_id or "evidence" in scenario_id:
+            location_templates = [
+                ("front_desk", "Front Desk", "Station Interior", "Public reception area"),
+                ("bullpen", "Detective Bullpen", "Station Interior", "Open detective workspace"),
+                ("evidence_room", "Evidence Room", "Station Interior", "Secure property storage"),
+                ("holding_cells", "Holding Cells", "Station Interior", "Temporary detention area"),
+                ("records_room", "Records Room", "Station Interior", "File and document storage"),
+                ("locker_room", "Locker Room", "Station Interior", "Officer locker and break area"),
+                ("parking_lot", "Rear Parking Lot", "Station Exterior", "Police vehicle parking"),
+            ]
+        elif "prison" in scenario_id or "detention" in scenario_id:
+            location_templates = [
+                ("visitor_center", "Visitor Center", "Prison Interior", "Monitored visitation area"),
+                ("guard_station", "Guard Station", "Prison Interior", "Security checkpoint"),
+                ("cell_block", "Cell Block", "Prison Interior", "Inmate housing area"),
+                ("yard", "Exercise Yard", "Prison Interior", "Outdoor recreation area"),
+                ("medical_wing", "Medical Wing", "Prison Interior", "Infirmary and treatment"),
+                ("control_room", "Control Room", "Prison Interior", "Central gate and camera control"),
+                ("loading_dock", "Loading Dock", "Prison Exterior", "Supply delivery entrance"),
+            ]
+        elif "dock" in scenario_id or "ship" in scenario_id or "port" in scenario_id:
+            location_templates = [
+                ("gate_house", "Gate House", "Port Exterior", "Dock entrance checkpoint"),
+                ("dock_yard", "Dock Yard", "Port Exterior", "Open container storage area"),
+                ("warehouse", "Warehouse", "Port Interior", "Large freight storage building"),
+                ("customs_office", "Customs Office", "Port Interior", "Import inspection office"),
+                ("crane_platform", "Crane Platform", "Port Exterior", "Container crane operating area"),
+                ("target_container", "Target Container", "Port Exterior", "The specific container to access"),
+                ("security_booth", "Security Booth", "Port Exterior", "Roving guard checkpoint"),
             ]
         else:
-            # Generic heist locations
+            # Generic fallback
             location_templates = [
                 ("entry_point", "Entry Point", "Exterior", "Initial access point"),
-                ("main_area", "Main Area", "Interior", "Primary area"),
-                ("secure_area", "Secure Area", "Interior", "Restricted zone"),
-                ("target_room", "Target Room", "Interior", "Final objective room"),
+                ("main_area", "Main Area", "Interior", "Primary operational area"),
+                ("secure_area", "Secure Area", "Interior", "Restricted access zone"),
+                ("control_room", "Control Room", "Interior", "Security and systems hub"),
+                ("target_room", "Target Room", "Interior", "Final objective location"),
             ]
         
         # Select random subset
@@ -802,6 +885,22 @@ class ProceduralGraphGenerator:
             return "Infiltrate the bank and access the vault"
         elif "office" in scenario_id:
             return "Steal confidential documents from the executive suite"
+        elif "mansion" in scenario_id:
+            return "Break into the panic room and retrieve the hidden assets"
+        elif "casino" in scenario_id:
+            return "Crack the casino vault and walk out with the chips"
+        elif "train" in scenario_id:
+            return "Board the armored train and steal the guarded cargo"
+        elif "lab" in scenario_id or "research" in scenario_id:
+            return "Extract the prototype from the secure research facility"
+        elif "art" in scenario_id or "gallery" in scenario_id:
+            return "Swap the famous painting with a convincing forgery"
+        elif "police" in scenario_id or "evidence" in scenario_id:
+            return "Recover the evidence from the police station before it's processed"
+        elif "prison" in scenario_id or "detention" in scenario_id:
+            return "Extract the target from custody without triggering a lockdown"
+        elif "dock" in scenario_id or "ship" in scenario_id or "port" in scenario_id:
+            return "Locate and retrieve the cargo from the guarded shipping yard"
         else:
             return "Complete the heist successfully"
 
