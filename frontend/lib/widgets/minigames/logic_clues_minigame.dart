@@ -61,21 +61,24 @@ class _LogicCluesMinigameState extends State<LogicCluesMinigame> {
           ];
           break;
         case MinigameDifficulty.hard:
-          _itemCount = 5;
+          _itemCount = 6;
           _itemColors = {
             'Red': Colors.red,
             'Blue': Colors.blue,
             'Yellow': Colors.yellow,
             'Green': Colors.green,
             'Purple': Colors.purple,
+            'Orange': Colors.orange,
           };
-          _correctOrder = ['Purple', 'Red', 'Blue', 'Yellow', 'Green'];
+          // Order: Yellow, Purple, Red, Blue, Green, Orange
+          // No direct position clues - requires chaining deductions
+          _correctOrder = ['Yellow', 'Purple', 'Red', 'Blue', 'Green', 'Orange'];
           _clues = [
-            'Purple is at the far left',
+            'Yellow is left of Purple',
+            'Purple is between Yellow and Red',
+            'Blue is between Red and Green',
+            'Green is left of Orange',
             'Red is left of Blue',
-            'Yellow is between Blue and Green',
-            'Green is at the far right',
-            'Blue is in the middle',
           ];
           break;
       }
@@ -91,6 +94,13 @@ class _LogicCluesMinigameState extends State<LogicCluesMinigame> {
       _attempts++;
       if (_listEquals(_currentOrder, _correctOrder)) {
         _gameWon = true;
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed attempt'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     });
   }
@@ -174,6 +184,7 @@ class _LogicCluesMinigameState extends State<LogicCluesMinigame> {
         Expanded(
           child: Center(
             child: ReorderableListView(
+              buildDefaultDragHandles: false,
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 40),
               onReorder: (oldIndex, newIndex) {
@@ -185,9 +196,13 @@ class _LogicCluesMinigameState extends State<LogicCluesMinigame> {
                   _currentOrder.insert(newIndex, item);
                 });
               },
-              children: _currentOrder.map((item) {
-                return Container(
+              children: _currentOrder.asMap().entries.map<Widget>((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return ReorderableDragStartListener(
                   key: ValueKey(item),
+                  index: index,
+                  child: Container(
                   width: 80,
                   height: 80,
                   margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -204,22 +219,16 @@ class _LogicCluesMinigameState extends State<LogicCluesMinigame> {
                     ],
                   ),
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.drag_handle, color: Colors.white, size: 24),
-                        const SizedBox(height: 4),
-                        Text(
-                          item,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
+                ),
                 );
               }).toList(),
             ),

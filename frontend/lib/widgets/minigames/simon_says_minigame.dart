@@ -37,20 +37,20 @@ class _SimonSaysMinigameState extends State<SimonSaysMinigame> {
   @override
   void initState() {
     super.initState();
-    // Difficulty: number of rounds and speed
+    // Difficulty: number of rounds and speed (speed increases each round for all)
     switch (widget.difficulty) {
       case MinigameDifficulty.easy:
-        _targetRounds = 4;
+        _targetRounds = 7;
         _flashDuration = 700;
         _pauseDuration = 300;
         break;
       case MinigameDifficulty.medium:
-        _targetRounds = 5;
+        _targetRounds = 8;
         _flashDuration = 600;
         _pauseDuration = 200;
         break;
       case MinigameDifficulty.hard:
-        _targetRounds = 7;
+        _targetRounds = 10;
         _flashDuration = 400;
         _pauseDuration = 150;
         break;
@@ -69,11 +69,25 @@ class _SimonSaysMinigameState extends State<SimonSaysMinigame> {
     _showSequence();
   }
   
+  int _getFlashDurationForRound() {
+    // Speed increases each round (shorter = faster)
+    final factor = (1.0 - 0.1 * (_round - 1)).clamp(0.5, 1.0);
+    return (_flashDuration * factor).round().clamp(180, 999);
+  }
+
+  int _getPauseDurationForRound() {
+    final factor = (1.0 - 0.12 * (_round - 1)).clamp(0.4, 1.0);
+    return (_pauseDuration * factor).round().clamp(60, 999);
+  }
+
   Future<void> _showSequence() async {
     if (!mounted) return;
     setState(() {
       _showingSequence = true;
     });
+
+    final flashDuration = _getFlashDurationForRound();
+    final pauseDuration = _getPauseDurationForRound();
     
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
@@ -83,12 +97,12 @@ class _SimonSaysMinigameState extends State<SimonSaysMinigame> {
       setState(() {
         _flashingButton = _sequence[i];
       });
-      await Future.delayed(Duration(milliseconds: _flashDuration));
+      await Future.delayed(Duration(milliseconds: flashDuration));
       if (!mounted) return;
       setState(() {
         _flashingButton = -1;
       });
-      await Future.delayed(Duration(milliseconds: _pauseDuration));
+      await Future.delayed(Duration(milliseconds: pauseDuration));
       if (!mounted) return;
     }
     

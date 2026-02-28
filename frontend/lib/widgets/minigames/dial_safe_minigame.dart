@@ -92,48 +92,48 @@ class _DialSafeMinigameState extends State<DialSafeMinigame> {
           'Step: ${_currentStep + 1} / ${_combination.length}',
           'Target: ${_currentStep < _combination.length ? _combination[_currentStep] : "—"}',
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 20),
           child: Text(
             'Drag the dial to the target number, then tap Submit',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: AppColors.textSecondary, height: 1.5),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 16),
         Expanded(
-          child: Center(
+          child: SingleChildScrollView(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Current number display
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
                   decoration: BoxDecoration(
                     color: AppColors.bgSecondary,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.borderSubtle, width: 2),
                   ),
                   child: Text(
                     _currentNumber.toString().padLeft(2, '0'),
                     style: const TextStyle(
-                      fontSize: 60,
+                      fontSize: 42,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                       fontFamily: 'monospace',
                     ),
                   ),
                 ),
-                const SizedBox(height: 40),
-                // Dial
+                const SizedBox(height: 20),
+                // Dial (smaller)
                 GestureDetector(
                   onPanUpdate: _onDragUpdate,
                   child: Transform.rotate(
                     angle: _rotation * pi / 180,
                     child: Container(
-                      width: 200,
-                      height: 200,
+                      width: 140,
+                      height: 140,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.bgSecondary,
@@ -143,8 +143,8 @@ class _DialSafeMinigameState extends State<DialSafeMinigame> {
                         children: [
                           Center(
                             child: Container(
-                              width: 20,
-                              height: 20,
+                              width: 14,
+                              height: 14,
                               decoration: const BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
@@ -152,14 +152,14 @@ class _DialSafeMinigameState extends State<DialSafeMinigame> {
                             ),
                           ),
                           Positioned(
-                            top: 10,
-                            left: 90,
+                            top: 8,
+                            left: 60,
                             child: Container(
-                              width: 20,
-                              height: 60,
+                              width: 16,
+                              height: 44,
                               decoration: BoxDecoration(
                                 color: AppColors.accentPrimary,
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                           ),
@@ -168,15 +168,18 @@ class _DialSafeMinigameState extends State<DialSafeMinigame> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
                 // Submit button
-                ElevatedButton(
-                  onPressed: _submitNumber,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.bgSecondary,
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: ElevatedButton(
+                    onPressed: _submitNumber,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.bgSecondary,
+                      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
+                    ),
+                    child: const Text('Submit', style: TextStyle(fontSize: 16)),
                   ),
-                  child: const Text('Submit', style: TextStyle(fontSize: 18)),
                 ),
               ],
             ),

@@ -47,11 +47,11 @@ class _WireConnectMinigameState extends State<WireConnectMinigame> {
           _wireCount = 5;
           break;
         case MinigameDifficulty.hard:
-          _wireCount = 7;
+          _wireCount = 9;
           break;
       }
       
-      // Wire definitions
+      // Wire definitions (need 9 for hard mode)
       final allWires = [
         WireFull(Colors.red, Icons.star, 'Red Star'),
         WireFull(Colors.blue, Icons.circle, 'Blue Circle'),
@@ -60,6 +60,8 @@ class _WireConnectMinigameState extends State<WireConnectMinigame> {
         WireFull(Colors.orange, Icons.hexagon, 'Orange Hex'),
         WireFull(Colors.cyan, Icons.diamond, 'Cyan Diamond'),
         WireFull(Colors.yellow, Icons.change_history, 'Yellow Triangle'),
+        WireFull(Colors.pink, Icons.bolt, 'Pink Bolt'),
+        WireFull(Colors.teal, Icons.ac_unit, 'Teal Snowflake'),
       ];
       
       _leftWires = allWires.sublist(0, _wireCount);
@@ -148,12 +150,6 @@ class _WireConnectMinigameState extends State<WireConnectMinigame> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              const Text(
-                '🧩 Figure out the pattern!\nLeft: Color + Symbol | Right: Color OR Symbol',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
-              ),
-              const SizedBox(height: 8),
               if (_selectedLeftWire != null)
                 Text(
                   'Selected: ${_leftWires[_selectedLeftWire!].name}',

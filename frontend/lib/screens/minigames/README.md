@@ -40,9 +40,9 @@ Each minigame now accepts a `MinigameDifficulty` parameter with three levels:
 - Hard: 7 pins, 97% precision
 
 #### Simon Says
-- Easy: 4 rounds, slower (700ms flash)
-- Medium: 5 rounds, medium speed (600ms)
-- Hard: 7 rounds, faster (400ms)
+- Easy: 7 rounds, slower base (speed increases each round)
+- Medium: 8 rounds, medium base (speed increases each round)
+- Hard: 10 rounds, faster base (speed increases each round)
 
 #### Dial Safe
 - Easy: 2 numbers, ±3 tolerance
@@ -62,7 +62,7 @@ Each minigame now accepts a `MinigameDifficulty` parameter with three levels:
 #### Wire Connect
 - Easy: 3 wires to connect
 - Medium: 5 wires to connect
-- Hard: 7 wires to connect
+- Hard: 9 wires to connect (no instruction text)
 
 #### Card Swipe
 - Easy: 2 successes, 150-700 speed
@@ -77,7 +77,7 @@ Each minigame now accepts a `MinigameDifficulty` parameter with three levels:
 #### Logic Clues
 - Easy: 3 boxes, simpler clues
 - Medium: 4 boxes, moderate clues
-- Hard: 5 boxes, complex clues
+- Hard: 6 boxes, relative-only clues (no direct positions—requires chain deduction)
 
 ## Usage
 
