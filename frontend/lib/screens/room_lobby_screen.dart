@@ -336,62 +336,57 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
               });
             });
             return Dialog(
-          backgroundColor: AppColors.bgPrimary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
-            side: BorderSide(color: AppColors.accentPrimary, width: 2),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(AppDimensions.spaceXL),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Title
-                Text(
-                  dialogTitle,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.accentPrimary,
-                  ),
-                ),
-                SizedBox(height: AppDimensions.spaceLG),
-                
-                // Spinner
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentPrimary),
-                ),
-                SizedBox(height: AppDimensions.spaceLG),
-                
-                // Show live progress if available, else rotating flavor text
-                _generationProgressMessage.isNotEmpty
-                    ? Text(
-                        _generationProgressMessage,
-                        style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                        textAlign: TextAlign.center,
-                      )
-                    : StreamBuilder<int>(
-                  stream: Stream.periodic(Duration(seconds: 2), (i) => i % heistMessages.length),
-                  builder: (context, snapshot) {
-                    final index = snapshot.data ?? 0;
-                    return AnimatedSwitcher(
-                      duration: Duration(milliseconds: 300),
-                      child: Text(
-                        heistMessages[index],
-                        key: ValueKey(index),
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
+              backgroundColor: AppColors.bgPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+                side: BorderSide(color: AppColors.accentPrimary, width: 2),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(AppDimensions.spaceXL),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      dialogTitle,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accentPrimary,
                       ),
-                    );
-                  },
+                    ),
+                    SizedBox(height: AppDimensions.spaceLG),
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentPrimary),
+                    ),
+                    SizedBox(height: AppDimensions.spaceLG),
+                    _generationProgressMessage.isNotEmpty
+                        ? Text(
+                            _generationProgressMessage,
+                            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                            textAlign: TextAlign.center,
+                          )
+                        : StreamBuilder<int>(
+                            stream: Stream.periodic(Duration(seconds: 2), (i) => i % heistMessages.length),
+                            builder: (context, snapshot) {
+                              final index = snapshot.data ?? 0;
+                              return AnimatedSwitcher(
+                                duration: Duration(milliseconds: 300),
+                                child: Text(
+                                  heistMessages[index],
+                                  key: ValueKey(index),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            },
+                          ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
+              ),
+            );
           },
         ),
       ),
