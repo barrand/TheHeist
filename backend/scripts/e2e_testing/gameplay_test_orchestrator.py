@@ -370,6 +370,12 @@ class GameplayTestOrchestrator:
                 if bot not in active_bots:
                     idle_counts[bot.role] += 1
             
+            # Snapshot task completion count before this round of turns.
+            # If any task gets completed this round, items may have been revealed in
+            # previously-empty rooms, so we clear depleted-location counts to allow
+            # bots to search those rooms again.
+            completed_before = sum(len(b.state.completed_tasks) for b in bots)
+
             # Each active bot takes a turn
             for bot in active_bots:
                 try:
@@ -385,7 +391,16 @@ class GameplayTestOrchestrator:
                 except Exception as e:
                     logger.error(f"❌ Error during {bot.player_name} turn: {e}")
                     result.issues.append(f"Turn {turn}: {bot.player_name} error: {str(e)}")
-            
+
+            # If any task was completed this round, a hidden item may now be visible.
+            # Reset all depleted-location search counts so bots will try again.
+            completed_after = sum(len(b.state.completed_tasks) for b in bots)
+            if completed_after > completed_before:
+                newly_done = completed_after - completed_before
+                logger.debug(f"  {newly_done} task(s) completed — resetting depleted search counts")
+                for counts in empty_search_counts.values():
+                    counts.clear()
+
             # Small delay for backend processing
             await asyncio.sleep(0.5)
         
