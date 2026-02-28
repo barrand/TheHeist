@@ -101,10 +101,9 @@ echo -e "    1. Browser 1: Click 🎭 Test as Mastermind"
 echo -e "    2. Browser 2: Click 🔐 Test as Safe Cracker → Enter room code"
 echo -e "    3. Host clicks Start Game"
 echo ""
-echo -e "  Flutter log: tail -f /tmp/theheist-flutter.log"
 echo -e "  Ctrl+C to stop tailing (app keeps running)"
 echo ""
 echo -e "${BLUE}======================================${NC}"
 echo ""
 
-tail -f /tmp/heist_logs/backend.log
+tail -f /tmp/heist_logs/backend.log /tmp/theheist-flutter.log
