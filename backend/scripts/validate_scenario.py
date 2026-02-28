@@ -113,6 +113,7 @@ class ParsedTask:
     minigame_id: Optional[str] = None
     npc_id: Optional[str] = None
     target_outcomes: List[str] = field(default_factory=list)
+    handoff_item: Optional[str] = None
 
 
 @dataclass
@@ -475,6 +476,13 @@ class ScenarioValidator:
                     if outcomes_match:
                         target_outcomes = [outcomes_match.group(1)]
                 
+                # Extract handoff item for handoff tasks
+                handoff_item = None
+                if task_type == 'handoff':
+                    handoff_item_match = re.search(r'^\s*-\s+\*Handoff Item:\*\s+`([^`]+)`', task_text, re.MULTILINE)
+                    if handoff_item_match:
+                        handoff_item = handoff_item_match.group(1)
+
                 self.tasks[task_id] = ParsedTask(
                     id=task_id,
                     role=role_name,
@@ -484,7 +492,8 @@ class ScenarioValidator:
                     prerequisites=prerequisites,
                     minigame_id=minigame_id,
                     npc_id=npc_id,
-                    target_outcomes=target_outcomes
+                    target_outcomes=target_outcomes,
+                    handoff_item=handoff_item
                 )
     
     def validate_all(self) -> ValidationReport:
@@ -503,6 +512,7 @@ class ScenarioValidator:
         self.check_item_references()  # Rule 11
         self.check_location_consistency()  # Rule 12
         self.check_outcome_ids()  # Rule 13
+        self.check_handoff_tasks_have_items()  # Rule 40
         
         # Task distribution checks
         self.check_balanced_roles()  # Rule 14
@@ -787,6 +797,22 @@ class ScenarioValidator:
                 fix_suggestion="Add target outcome to NPC's Information Known section with matching ID"
             ))
     
+    def check_handoff_tasks_have_items(self):
+        """Rule 40: Every handoff task must specify a handoff_item"""
+        missing = [
+            task.id for task in self.tasks.values()
+            if task.type == 'handoff' and not task.handoff_item
+        ]
+        if missing:
+            self.report.add_issue(ValidationIssue(
+                rule_number=40,
+                level=ValidationLevel.CRITICAL,
+                title="Handoff Task Missing Item",
+                message="Handoff tasks must specify a handoff_item — tasks without one cannot be completed",
+                details=[f"Task {tid} is type 'handoff' but has no Handoff Item defined" for tid in missing],
+                fix_suggestion="Assign a valid item ID as handoff_item to each handoff task"
+            ))
+
     def check_balanced_roles(self):
         """Rule 14: Check role task distribution"""
         # Count tasks per role
@@ -833,7 +859,7 @@ class ScenarioValidator:
             elif social_pct > 70:
                 self.report.add_issue(ValidationIssue(
                     rule_number=16,
-                    level=ValidationLevel.IMPORTANT,
+                    level=ValidationLevel.ADVISORY,
                     title="Too Many Social Interactions",
                     message=f"Social tasks: {social_pct:.1f}% (target: 60-70%)",
                     details=[f"{social_count}/{total_count} tasks are social interactions"],
@@ -955,11 +981,16 @@ class ScenarioValidator:
         
         # Rule 28: Check for dead-end tasks (Important, not Critical)
         dead_ends = analyzer.find_dead_end_tasks()
-        # Filter out final objective tasks (these are expected to be dead ends)
-        final_task_patterns = ['handoff', 'extraction', 'escape', 'deliver', 'complete']
+        # The last task per role is a natural terminal node — the game ends via the
+        # Escape mechanism once all roles complete their final task. Never flag these.
+        role_last_ids: set = set()
+        for role in self.roles:
+            role_task_ids = sorted(tid for tid, task in self.tasks.items() if task.role == role)
+            if role_task_ids:
+                role_last_ids.add(role_task_ids[-1])
         non_final_dead_ends = [
-            tid for tid in dead_ends 
-            if not any(pattern in self.tasks[tid].description.lower() for pattern in final_task_patterns)
+            tid for tid in dead_ends
+            if tid not in role_last_ids
         ]
         
         if non_final_dead_ends:

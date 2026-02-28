@@ -148,10 +148,9 @@ class LLMDecisionMaker:
     ) -> str:
         """Build the LLM prompt"""
         
-        # Format inventory
-        inv_str = ", ".join([item.get("name", item.get("id")) for item in inventory])
-        if not inv_str:
-            inv_str = "(empty)"
+        # Format inventory — show both name AND id so handoff rules can match item IDs
+        inv_parts = [f"{item.get('name', item.get('id'))} (id:{item.get('id', '?')})" for item in inventory]
+        inv_str = ", ".join(inv_parts) if inv_parts else "(empty)"
         
         # Format available tasks
         tasks_str = ""
@@ -170,7 +169,19 @@ class LLMDecisionMaker:
                     prereq_str = f" (needs: {', '.join([p['id'] for p in prereq_items])})"
             
             npc_str = f" NPC:{npc_id}" if npc_id else ""
-            tasks_str += f"{i}. ID:`{task_id}` [{task_type}] {task_desc} @ {task_location}{prereq_str}{npc_str}\n"
+
+            # For handoff tasks, explicitly surface the item ID and recipient role so the
+            # LLM isn't misled by a description that may use a different item name.
+            extra_str = ""
+            if task_type == "handoff":
+                handoff_item = task.get("handoff_item")
+                handoff_to = task.get("handoff_to_role")
+                if handoff_item:
+                    extra_str += f" [HANDOFF ITEM ID: {handoff_item}]"
+                if handoff_to:
+                    extra_str += f" [HANDOFF TO: {handoff_to}]"
+
+            tasks_str += f"{i}. ID:`{task_id}` [{task_type}] {task_desc} @ {task_location}{prereq_str}{npc_str}{extra_str}\n"
         
         if not tasks_str:
             tasks_str = "(no tasks available - possibly waiting for teammates)"
@@ -265,7 +276,14 @@ DECISION RULES:
 - If task type is "minigame" or "info_share" → use "complete_task" action  
 - If you have an available task at your current location → complete it or talk to NPC
 - If you have an available task elsewhere → move to that location
-- If task type is "handoff" → you must be in the SAME LOCATION as the target player to hand off an item.
+- If task type is "handoff":
+  - FIRST check your INVENTORY. The task listing shows [HANDOFF ITEM ID: xxx].
+    - If that item ID is NOT in your inventory → do NOT choose "handoff". Instead:
+      - If a teammate is holding it → use "request_item"
+      - Otherwise → use "search" at the task's location to find it first
+  - Only choose "handoff" if the item IS already in your inventory.
+  - The task listing shows [HANDOFF ITEM ID: xxx] — use THAT exact item ID as target_item, NOT the name in the description
+  - The task listing shows [HANDOFF TO: role] — use that as target_player
   - Check TEAMMATES section: if target player is already at your location → use "handoff" action
   - If target player is at a DIFFERENT location → use "move" action to go to their location first
   - Never attempt "handoff" if the target player is not at your current location
@@ -281,6 +299,7 @@ OUTPUT FORMAT (JSON):
   "target_item": "item_id" (if action=pickup or request_item),
   "target_npc": "npc_id from task NPC field" (if action=talk),
   "target_task": "task ID from ID:`` field" (if action=talk or complete_task - use the ID, not description!),
+  "target_task": "task ID" (if action=handoff — REQUIRED so system knows which item to transfer),
   "target_player": "role name e.g. hacker" (if action=handoff or request_item),
   "message": "opening message" (if action=talk)
 }}

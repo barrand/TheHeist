@@ -50,16 +50,23 @@ class GraphValidator:
 
             print(f"🔍 Validation iteration {iteration + 1}/{max_iterations}")
 
-            # Structural checks run first and auto-fix inline (do not emit errors)
-            self._validate_no_cycles()
-            self._validate_no_orphans()
-            self._validate_no_dead_ends()
+            # Structural checks run in a tight inner loop until the graph is stable.
+            # Each pass can introduce new issues (e.g. orphan-wiring adds a prereq
+            # that creates a new cycle), so we repeat until no new fixes are applied.
+            for _inner in range(len(self.graph.tasks) + 1):
+                fixes_before = len(self.fixes)
+                self._validate_no_cycles()
+                self._validate_no_orphans()
+                self._validate_no_dead_ends()
+                if len(self.fixes) == fixes_before:
+                    break  # Stable — no new structural fixes this pass
 
             self._validate_location_count()
             self._validate_task_count()
             self._validate_references()
             self._validate_npc_task_matching()
             self._validate_hidden_items()
+            self._validate_handoff_items()
             self._validate_starting_tasks()
             self._validate_task_balance()
 
@@ -149,6 +156,29 @@ class GraphValidator:
                 print(f"   {msg}")
                 self.fixes.append(msg)
 
+    def _would_create_cycle(self, from_id: str, to_id: str) -> bool:
+        """Return True if adding the edge 'to_id requires from_id' would create a cycle.
+
+        Equivalently: can we already reach from_id starting from to_id in the current graph?
+        If yes, adding from_id as a prerequisite of to_id closes a cycle.
+        """
+        prereqs_of: Dict[str, List[str]] = {
+            t.id: [p.id for p in t.prerequisites if p.type == "task"]
+            for t in self.graph.tasks
+        }
+        # BFS from to_id following PREREQUISITE edges
+        visited: Set[str] = set()
+        queue: deque = deque([to_id])
+        while queue:
+            cur = queue.popleft()
+            if cur == from_id:
+                return True
+            for prereq in prereqs_of.get(cur, []):
+                if prereq not in visited:
+                    visited.add(prereq)
+                    queue.append(prereq)
+        return False
+
     def _validate_no_orphans(self):
         """Detect tasks unreachable from any starting task and wire them into the chain."""
         task_map = {t.id: t for t in self.graph.tasks}
@@ -190,26 +220,56 @@ class GraphValidator:
             task_idx = next((i for i, t in enumerate(role_tasks) if t.id == task.id), None)
 
             if task_idx is not None and task_idx > 0:
-                prev_task = role_tasks[task_idx - 1]
-                # Avoid adding duplicate prerequisite
-                existing = {p.id for p in task.prerequisites if p.type == "task"}
-                if prev_task.id not in existing:
+                # Walk backwards through same-role tasks to find one that won't create a cycle
+                wired = False
+                for candidate_idx in range(task_idx - 1, -1, -1):
+                    prev_task = role_tasks[candidate_idx]
+                    existing = {p.id for p in task.prerequisites if p.type == "task"}
+                    if prev_task.id in existing:
+                        wired = True  # Already wired to this one
+                        break
+                    if self._would_create_cycle(prev_task.id, task.id):
+                        msg = f"[fix] Orphan {task.id}: skipped wiring to {prev_task.id} (would create cycle)"
+                        print(f"   {msg}")
+                        continue
                     task.prerequisites.append(Prerequisite(type="task", id=prev_task.id, description=None))
                     msg = f"[fix] Wired orphan {task.id}: added prerequisite Task {prev_task.id}"
                     print(f"   {msg}")
                     self.fixes.append(msg)
+                    wired = True
+                    break
+                if not wired:
+                    # All same-role candidates would create cycles — make it a starting task
+                    task.prerequisites = [p for p in task.prerequisites if p.type != "task"]
+                    msg = f"[fix] Fixed orphan {task.id}: cleared task prerequisites (now a starting task — all wiring candidates caused cycles)"
+                    print(f"   {msg}")
+                    self.fixes.append(msg)
             else:
-                # No previous task in role — make it a starting task
+                # First task in role — make it a starting task
                 task.prerequisites = [p for p in task.prerequisites if p.type != "task"]
                 msg = f"[fix] Fixed orphan {task.id}: cleared task prerequisites (now a starting task)"
                 print(f"   {msg}")
                 self.fixes.append(msg)
 
     def _validate_no_dead_ends(self):
-        """Detect tasks with no dependents that aren't final/escape tasks, and wire them forward."""
+        """Detect mid-sequence dead-end tasks and wire them into the next task in their role chain.
+
+        The LAST task per role is a natural terminal node (game ends via the Escape mechanism
+        once all roles finish). Never force-wire role-final tasks — that creates cross-role
+        cycles that oscillate with the cycle fixer.
+        """
         task_map = {t.id: t for t in self.graph.tasks}
         if not task_map:
             return
+
+        # Identify the last task per role — these are intentional terminal nodes
+        role_last: Set[str] = set()
+        tasks_by_role: Dict[str, List] = {}
+        for t in self.graph.tasks:
+            tasks_by_role.setdefault(t.assigned_role, []).append(t)
+        for role_task_list in tasks_by_role.values():
+            last = sorted(role_task_list, key=lambda t: t.id)[-1]
+            role_last.add(last.id)
 
         # Build reverse dependency map
         is_prereq_for: Dict[str, Set[str]] = {tid: set() for tid in task_map}
@@ -218,15 +278,7 @@ class GraphValidator:
                 if p.type == "task" and p.id in is_prereq_for:
                     is_prereq_for[p.id].add(t.id)
 
-        # Heuristic: last task for each role is a natural endpoint — skip it
-        role_last: Set[str] = set()
-        tasks_by_role: Dict[str, List] = {}
-        for t in self.graph.tasks:
-            tasks_by_role.setdefault(t.assigned_role, []).append(t)
-        for role_tasks in tasks_by_role.values():
-            last = sorted(role_tasks, key=lambda t: t.id)[-1]
-            role_last.add(last.id)
-
+        # Only flag mid-sequence dead-ends — skip role-final tasks
         dead_ends = [
             t for t in self.graph.tasks
             if not is_prereq_for[t.id] and t.id not in role_last
@@ -243,15 +295,19 @@ class GraphValidator:
             task_idx = next((i for i, t in enumerate(role_tasks) if t.id == task.id), None)
 
             if task_idx is not None and task_idx < len(role_tasks) - 1:
+                # Wire into the next task in the same role's sequence (cycle-safe)
                 next_task = role_tasks[task_idx + 1]
                 existing = {p.id for p in next_task.prerequisites if p.type == "task"}
                 if task.id not in existing:
-                    next_task.prerequisites.append(Prerequisite(type="task", id=task.id, description=None))
-                    is_prereq_for[task.id].add(next_task.id)
-                    msg = f"[fix] Wired dead-end {task.id} into {next_task.id} prerequisites"
-                    print(f"   {msg}")
-                    self.fixes.append(msg)
-            # If it IS the last task in the role sequence, it's a natural final task — no fix needed
+                    if self._would_create_cycle(task.id, next_task.id):
+                        msg = f"[fix] Dead-end {task.id}: skipped wiring to {next_task.id} (would create cycle)"
+                        print(f"   {msg}")
+                    else:
+                        next_task.prerequisites.append(Prerequisite(type="task", id=task.id, description=None))
+                        is_prereq_for[task.id].add(next_task.id)
+                        msg = f"[fix] Wired dead-end {task.id} into {next_task.id} prerequisites"
+                        print(f"   {msg}")
+                        self.fixes.append(msg)
 
     def _validate_location_count(self):
         """Check location count is in valid range"""
@@ -359,7 +415,26 @@ class GraphValidator:
         for item in self.graph.items:
             if item.hidden and not item.unlock_prerequisites:
                 self.errors.append(f"item_{item.id}_hidden_no_unlock")
-    
+
+    def _validate_handoff_items(self):
+        """Every handoff task must have a handoff_item assigned."""
+        non_hidden_items = [item.id for item in self.graph.items if not item.hidden]
+        for task in self.graph.tasks:
+            if task.type == "handoff" and not getattr(task, "handoff_item", None):
+                if non_hidden_items:
+                    # Auto-fix: assign the first available non-hidden item
+                    task.handoff_item = non_hidden_items[0]
+                    msg = f"[fix] Assigned handoff_item {task.handoff_item} to task {task.id} (was missing)"
+                    print(f"   {msg}")
+                    self.fixes.append(msg)
+                else:
+                    # No items at all — convert to info_share so it's at least completable
+                    task.type = "info_share"
+                    task.info_description = "Share team intelligence"
+                    msg = f"[fix] Converted itemless handoff {task.id} to info_share (no items in scenario)"
+                    print(f"   {msg}")
+                    self.fixes.append(msg)
+
     def _validate_starting_tasks(self):
         """Validate each role has at least one starting task"""
         tasks_by_role: Dict[str, List[Task]] = {}

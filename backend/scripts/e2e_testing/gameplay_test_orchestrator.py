@@ -337,28 +337,24 @@ class GameplayTestOrchestrator:
             
             # Get bots with available actions
             active_bots = [b for b in bots if b.has_available_tasks()]
-            
+
             if not active_bots:
-                # No bots have available tasks - this could be a win condition if all tasks are completed
-                # Check if we have a reasonable number of completed tasks (at least 1 per bot)
+                # No bots have available tasks right now.
+                # This is a deadlock — the game ends via the backend escape event,
+                # not by the orchestrator guessing all tasks are done.
                 total_completed = sum(len(bot.state.completed_tasks) for bot in bots)
-                expected_min = len(bots)  # At least 1 task per bot
-                
-                if total_completed >= expected_min:
-                    # All tasks completed successfully
-                    result.status = "WIN"
-                    logger.info(f"")
-                    logger.info(f"🎉 {'='*60}")
-                    logger.info(f"   ✅ ALL TASKS COMPLETED IN {turn} TURNS!")
-                    logger.info(f"   {'='*60}")
-                else:
-                    # True deadlock - no tasks available but none completed either
-                    result.status = "DEADLOCK"
-                    result.issues.append(f"Turn {turn}: No bots have available tasks (deadlock)")
-                    logger.warning(f"")
-                    logger.warning(f"⚠️  {'='*60}")
-                    logger.warning(f"   DEADLOCK: No bots have available tasks, {total_completed} total completions")
-                    logger.warning(f"   {'='*60}")
+                result.status = "DEADLOCK"
+                result.issues.append(
+                    f"Turn {turn}: No bots have available tasks (deadlock). "
+                    f"{total_completed} tasks completed so far."
+                )
+                logger.warning(f"")
+                logger.warning(f"⚠️  {'='*60}")
+                logger.warning(
+                    f"   DEADLOCK: No bots have available tasks "
+                    f"({total_completed} tasks completed)"
+                )
+                logger.warning(f"   {'='*60}")
                 break
             
             # Track idle bots
@@ -695,17 +691,54 @@ class GameplayTestOrchestrator:
                 return ActionOutcome.SYSTEM_FAILURE
         
         elif decision.action == "handoff":
-            if decision.target_item and decision.target_player:
+            if decision.target_player:
                 target_bot = next((b for b in (all_bots or []) if b.role == decision.target_player), None)
                 if target_bot:
+                    # Resolve the actual item to hand off from the task definition.
+                    # The LLM may use the item name from the description (which can be
+                    # wrong) rather than the canonical handoff_item ID from the task.
+                    item_id = decision.target_item
+                    if decision.target_task:
+                        task_def = bot.state.available_tasks.get(decision.target_task, {})
+                        canonical_item = task_def.get("handoff_item")
+                        if canonical_item:
+                            if canonical_item != item_id:
+                                logger.debug(
+                                    f"   Correcting handoff item: LLM said '{item_id}' "
+                                    f"but task {decision.target_task} requires '{canonical_item}'"
+                                )
+                            item_id = canonical_item
+                    if not item_id:
+                        # A handoff task with no item is a generator defect — surface it clearly
+                        logger.warning(f"handoff: task {decision.target_task} has no handoff_item — generator produced an invalid handoff task")
+                        return ActionOutcome.SYSTEM_FAILURE
+                    # Safety net: verify the bot actually holds the item before attempting handoff
+                    bot_item_ids = {inv_item.get("id") for inv_item in bot.state.inventory}
+                    if item_id not in bot_item_ids:
+                        # Check if a teammate has it — if so, redirect to request_item
+                        holder = next(
+                            (b for b in (all_bots or []) if b != bot and any(i.get("id") == item_id for i in b.state.inventory)),
+                            None
+                        )
+                        if holder:
+                            logger.info(f"   {bot.player_name} doesn't have {item_id} — requesting it from {holder.player_name}")
+                            ok = await self._execute_request_item_from(bot, holder, item_id, all_bots, result)
+                            return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
+                        else:
+                            logger.info(f"   {bot.player_name} doesn't have {item_id} — searching {task_def.get('location', bot.state.current_location)}")
+                            search_loc = task_def.get("location", bot.state.current_location)
+                            if search_loc != bot.state.current_location:
+                                await bot.move_to_location(search_loc)
+                            ok = await bot.search_room()
+                            return ActionOutcome.SUCCESS if ok else ActionOutcome.FAILURE
                     # Ensure both bots are in the same location before handing off
                     if bot.state.current_location != target_bot.state.current_location:
                         meet_loc = target_bot.state.current_location
-                        logger.info(f"💬 {bot.player_name} → {target_bot.player_name}: 'I have {decision.target_item}, heading to {meet_loc} for the handoff.'")
+                        logger.info(f"💬 {bot.player_name} → {target_bot.player_name}: 'Heading to {meet_loc} for the handoff.'")
                         moved = await bot.move_to_location(meet_loc)
                         if not moved:
                             return ActionOutcome.SYSTEM_FAILURE
-                    ok = await bot.handoff_item(decision.target_item, target_bot.state.player_id)
+                    ok = await bot.handoff_item(item_id, target_bot.state.player_id)
                     return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
         
         elif decision.action == "request_item":
@@ -729,27 +762,12 @@ class GameplayTestOrchestrator:
                 logger.warning(f"request_item: {provider_role} doesn't have {item_id}")
                 return ActionOutcome.SYSTEM_FAILURE
 
-            logger.info(f"💬 {bot.player_name} → {provider_bot.player_name}: 'Can you drop {item_id} at {meet_location}?'")
-            logger.info(f"💬 {provider_bot.player_name}: 'Sure, heading there now.'")
-
-            if provider_bot.state.current_location != meet_location:
-                if not await provider_bot.move_to_location(meet_location):
-                    return ActionOutcome.SYSTEM_FAILURE
-                logger.info(f"   {provider_bot.player_name} arrived at {meet_location}")
-
-            if not await provider_bot.drop_item(item_id):
-                return ActionOutcome.SYSTEM_FAILURE
-            logger.info(f"   {provider_bot.player_name} dropped {item_id} at {meet_location}")
-
             if bot.state.current_location != meet_location:
                 if not await bot.move_to_location(meet_location):
                     return ActionOutcome.SYSTEM_FAILURE
 
-            picked_up = await bot.pickup_item(item_id)
-            if picked_up:
-                logger.info(f"   {bot.player_name} picked up {item_id} ✅")
-                return ActionOutcome.SUCCESS
-            return ActionOutcome.SYSTEM_FAILURE
+            ok = await self._execute_request_item_from(bot, provider_bot, item_id, all_bots, result)
+            return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
 
         elif decision.action == "wait":
             logger.info(f"{bot.player_name} waiting")
@@ -757,6 +775,29 @@ class GameplayTestOrchestrator:
 
         return ActionOutcome.SYSTEM_FAILURE
     
+    async def _execute_request_item_from(
+        self,
+        bot: "BotPlayer",
+        provider_bot: "BotPlayer",
+        item_id: str,
+        all_bots: List["BotPlayer"],
+        result: "TestResult",
+    ) -> bool:
+        """Shared logic: ask provider_bot to drop item_id so bot can pick it up."""
+        meet_location = bot.state.current_location
+        logger.info(f"💬 {bot.player_name} → {provider_bot.player_name}: 'Can you drop {item_id} at {meet_location}?'")
+        logger.info(f"💬 {provider_bot.player_name}: 'Sure, heading there now.'")
+        if provider_bot.state.current_location != meet_location:
+            if not await provider_bot.move_to_location(meet_location):
+                return False
+        if not await provider_bot.drop_item(item_id):
+            return False
+        logger.info(f"   {provider_bot.player_name} dropped {item_id} at {meet_location}")
+        picked_up = await bot.pickup_item(item_id)
+        if picked_up:
+            logger.info(f"   {bot.player_name} picked up {item_id} ✅")
+        return picked_up
+
     async def _check_game_won(self, bots: List[BotPlayer]) -> bool:
         """
         Check if game is won by detecting game_ended WebSocket broadcast

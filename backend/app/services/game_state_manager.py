@@ -89,7 +89,8 @@ class GameStateManager:
         
         # Specific validation by task type
         if task.type == TaskType.HANDOFF:
-            # Check if player has the item
+            if not task.handoff_item:
+                return False, f"Task {task.id} is a handoff but has no handoff_item — invalid scenario data"
             has_item = any(item.id == task.handoff_item for item in player.inventory)
             if not has_item:
                 return False, f"You don't have {task.handoff_item}"
@@ -160,7 +161,17 @@ class GameStateManager:
         logger.info(f"🔍 Current achieved_outcomes after completion: {game_state.achieved_outcomes}")
         
         return True, newly_available, None
-    
+
+    def check_all_tasks_complete(self, room_code: str) -> bool:
+        """Return True when every task in the scenario has been completed."""
+        game_state = self.get_game_state(room_code)
+        if not game_state:
+            return False
+        return all(
+            t.status.value == "completed" if hasattr(t.status, "value") else t.status == "completed"
+            for t in game_state.tasks.values()
+        )
+
     def check_search_completions(self, room_code: str, player_id: str, room: GameRoom) -> List[str]:
         """
         Check if any SEARCH tasks for this player are now completable

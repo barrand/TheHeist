@@ -149,6 +149,11 @@ class PlayerMovedMessage(BaseModel):
     location: str = Field(..., description="New location")
 
 
+class AllTasksCompleteMessage(BaseModel):
+    """Broadcast when all players have completed all tasks — unlocks the Escape Now button"""
+    type: Literal["all_tasks_complete"] = "all_tasks_complete"
+
+
 class GameEndedMessage(BaseModel):
     """Broadcast when game ends"""
     type: Literal["game_ended"] = "game_ended"

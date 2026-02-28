@@ -32,7 +32,9 @@ from app.models.websocket import (
     ItemPickedUpMessage,
     ItemTransferredMessage,
     ErrorMessage,
-    RoomStateMessage
+    RoomStateMessage,
+    AllTasksCompleteMessage,
+    GameEndedMessage,
 )
 
 logger = logging.getLogger(__name__)
@@ -203,7 +205,10 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
             
             elif message_type == "drop_item":
                 await handle_drop_item(room_code, player_id, data)
-            
+
+            elif message_type == "escape":
+                await handle_escape(room_code, player_id)
+
             else:
                 logger.warning(f"Unknown message type: {message_type}")
                 await websocket.send_json({
@@ -473,6 +478,40 @@ async def _broadcast_task_completed(
                         await ws_manager.send_to_player(room_code, pid, unlocked_msg.model_dump(mode='json'))
     
     logger.info(f"✅ Task {task_id} completed by {player_name}, unlocked {len(newly_available)} tasks")
+
+    # Check if every task is now done — if so, unlock the Escape Now button for all players
+    if game_state_manager.check_all_tasks_complete(room_code):
+        logger.info(f"🏁 All tasks complete in room {room_code} — broadcasting all_tasks_complete")
+        await ws_manager.broadcast_to_room(room_code, AllTasksCompleteMessage().model_dump(mode='json'))
+
+
+async def handle_escape(room_code: str, player_id: str) -> None:
+    """Handle a player pressing the Escape Now button — ends the game for the whole room."""
+    ws_manager = get_ws_manager()
+    room_manager = get_room_manager()
+    game_state_manager = get_game_state_manager()
+
+    room = room_manager.get_room(room_code)
+    if not room or player_id not in room.players:
+        return
+
+    if not game_state_manager.check_all_tasks_complete(room_code):
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Not all tasks are complete yet — the crew isn't ready to escape!"
+        })
+        return
+
+    player_name = room.players[player_id].name
+    logger.info(f"🚪 {player_name} triggered escape in room {room_code} — ending game")
+
+    game_ended = GameEndedMessage(
+        result="success",
+        summary=f"{player_name} led the crew to safety. The heist is complete.",
+        objective=getattr(room, "objective", None),
+        scenario=getattr(room, "scenario", None),
+    )
+    await ws_manager.broadcast_to_room(room_code, game_ended.model_dump(mode='json'))
 
 
 async def handle_npc_message(room_code: str, player_id: str, data: Dict[str, Any]) -> None:

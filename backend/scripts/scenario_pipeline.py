@@ -93,6 +93,10 @@ def run_pipeline(
     if scripts_str not in sys.path:
         sys.path.insert(0, scripts_str)
 
+    MAX_GENERATION_ATTEMPTS = 3
+    # Structural rules: fixed by graph_validator_fixer. NPC rules: sent to editor.
+    NPC_QUALITY_RULES = {36, 37, 38, 39}
+
     try:
         # ── 1. Import generators ───────────────────────────────────────────
         _emit("Loading generators...")
@@ -102,129 +106,183 @@ def run_pipeline(
         from generators.markdown_renderer import export_to_markdown
         from validate_scenario import ScenarioValidator, ValidationLevel
 
-        # ── 2. Generate graph ──────────────────────────────────────────────
-        _emit("Generating scenario graph...")
-        config = GeneratorConfig(seed=seed)
-        graph = generate_scenario_graph(
-            scenario_id, roles, config,
-            progress_fn=lambda msg: _emit(f"  {msg}"),
-        )
-        _emit(
-            f"Graph complete: {len(graph.tasks)} tasks, "
-            f"{len(graph.locations)} locations, {len(graph.npcs)} NPCs"
-        )
+        def _issue_line(issue):
+            tag = "🔴" if issue.level == ValidationLevel.CRITICAL else "⚠️ "
+            detail = "; ".join(issue.details[:2]) if issue.details else ""
+            return f"  {tag} {issue.title}" + (f": {detail}" if detail else "")
 
-        # ── 3. Validate and auto-fix graph ─────────────────────────────────
-        _emit("Validating and fixing graph...")
-        fixed_graph, validation_result = validate_and_fix_graph(graph, max_iterations=10)
-        if not validation_result.is_valid:
-            raise RuntimeError(
-                f"Graph validation failed: {'; '.join(validation_result.errors)}"
-            )
-        fix_count = len(validation_result.fixes_applied)
-        for fix_msg in validation_result.fixes_applied:
-            _emit(f"  {fix_msg}")
-        _emit("Graph valid" + (f" ({fix_count} issues auto-fixed)" if fix_count else ""))
+        for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
+            if attempt > 1:
+                _emit(f"♻️  Attempt {attempt}/{MAX_GENERATION_ATTEMPTS} — regenerating (previous attempt had unresolved critical structural issues)...")
 
-        # ── 4. Export to JSON + markdown ───────────────────────────────────
-        _emit("Exporting to JSON and markdown...")
-        export_to_json(fixed_graph, roles=roles)
-        export_to_markdown(fixed_graph, roles=roles)
-        base_name = _cache_filename(scenario_id, roles)
-        md_path = _EXPERIENCES_DIR / f"{base_name}.md"
-        _emit(f"Exported: {md_path.name}")
-
-        # ── 5. Markdown validation ─────────────────────────────────────────
-        _emit("Validating scenario markdown...")
-        validator = ScenarioValidator(md_path)
-        report = validator.validate_all()
-        critical = [i for i in report.issues if i.level == ValidationLevel.CRITICAL]
-        important = [i for i in report.issues if i.level == ValidationLevel.IMPORTANT]
-        advisory = [i for i in report.issues if i.level == ValidationLevel.ADVISORY]
-        _emit(
-            f"Markdown validation: {len(critical)} critical, "
-            f"{len(important)} important, {len(advisory)} advisory"
-        )
-        for issue in critical:
-            detail = "; ".join(issue.details) if issue.details else ""
-            _emit(f"  🔴 {issue.title}" + (f": {detail}" if detail else ""))
-        for issue in important:
-            detail = "; ".join(issue.details) if issue.details else ""
-            _emit(f"  ⚠️  {issue.title}" + (f": {detail}" if detail else ""))
-        for issue in advisory:
-            detail = "; ".join(issue.details) if issue.details else ""
-            _emit(f"  ℹ️  {issue.title}" + (f": {detail}" if detail else ""))
-
-        # ── 6. Editor pass — NPC quality issues only (rules 36–39) ───────────
-        # Structural issues (cycles, orphans, dead-ends, task balance) are now
-        # fixed deterministically in graph_validator_fixer BEFORE markdown export,
-        # so the LLM editor is restricted to NPC quality rules where it actually
-        # adds value (creative text, profile completeness, relationship detail).
-        NPC_QUALITY_RULES = {36, 37, 38, 39}
-        issues_to_fix = [
-            i for i in (critical + important)
-            if i.rule_number in NPC_QUALITY_RULES
-        ]
-        structural_remaining = [
-            i for i in (critical + important)
-            if i.rule_number not in NPC_QUALITY_RULES
-        ]
-        if structural_remaining:
+            # ── 2. Generate graph ──────────────────────────────────────────
+            _emit("Generating scenario graph...")
+            config = GeneratorConfig(seed=seed)
+            try:
+                graph = generate_scenario_graph(
+                    scenario_id, roles, config,
+                    progress_fn=lambda msg: _emit(f"  {msg}"),
+                )
+            except ValueError as raw_err:
+                # Raw graph had unresolvable cycles before enrichment — retry
+                _emit(f"  🔴 Raw graph cycle detected before enrichment: {raw_err}")
+                if attempt < MAX_GENERATION_ATTEMPTS:
+                    _emit(f"  Retrying (attempt {attempt + 1}/{MAX_GENERATION_ATTEMPTS})...")
+                    seed = None  # Use fresh random seed on retry
+                    continue
+                raise RuntimeError(
+                    f"Raw graph cycle could not be resolved after {MAX_GENERATION_ATTEMPTS} attempts"
+                ) from raw_err
             _emit(
-                f"ℹ️  {len(structural_remaining)} structural issue(s) logged (not sent to editor): "
-                + "; ".join(i.title for i in structural_remaining)
+                f"Graph complete: {len(graph.tasks)} tasks, "
+                f"{len(graph.locations)} locations, {len(graph.npcs)} NPCs"
             )
 
-        if issues_to_fix:
-            _emit(
-                f"Running editor to fix {len(issues_to_fix)} NPC quality issue(s)..."
-            )
-            from scenario_editor_agent import ScenarioEditorAgent
-            agent = ScenarioEditorAgent()
-            results = []
-            for idx, issue in enumerate(issues_to_fix, 1):
-                tag = "🔴" if issue.level == ValidationLevel.CRITICAL else "🟡"
-                _emit(f"  {tag} [{idx}/{len(issues_to_fix)}]: {issue.title} — calling LLM...")
-                result = agent.fix_issues(md_path, [issue], max_issues=1)[0]
-                results.append(result)
-                _emit(f"    {'✓ fixed' if result.success else '✗ could not fix'}")
-            fixed_count = sum(1 for r in results if r.success)
-            _emit(f"Editor done: {fixed_count}/{len(issues_to_fix)} issue(s) addressed")
-
-            # ── 7. Post-edit re-validation ─────────────────────────────────
-            report2 = ScenarioValidator(md_path).validate_all()
-            c2 = [i for i in report2.issues if i.level == ValidationLevel.CRITICAL]
-            im2 = [i for i in report2.issues if i.level == ValidationLevel.IMPORTANT]
-            ad2 = [i for i in report2.issues if i.level == ValidationLevel.ADVISORY]
-            _emit(
-                f"Post-edit validation: {len(c2)} critical, "
-                f"{len(im2)} important, {len(ad2)} advisory"
-            )
-            if not c2 and not im2:
-                _emit("✅ All critical and important issues resolved")
+            # ── 3. Graph topology fixer ────────────────────────────────────
+            # Mutates the in-memory graph: breaks cycles, connects orphans,
+            # wires mid-sequence dead-ends. Does NOT simulate gameplay.
+            _emit("── [1/3] Graph topology fix...")
+            fixed_graph, validation_result = validate_and_fix_graph(graph, max_iterations=10)
+            if not validation_result.is_valid:
+                raise RuntimeError(
+                    f"Graph validation failed: {'; '.join(validation_result.errors)}"
+                )
+            fix_count = len(validation_result.fixes_applied)
+            for fix_msg in validation_result.fixes_applied:
+                _emit(f"  {fix_msg}")
+            if fix_count:
+                _emit(f"  Topology fixed ({fix_count} auto-fix(es) applied)")
             else:
-                for i in c2 + im2:
-                    _emit(f"  ⚠️  Still open: {i.title}")
-            critical, important, advisory = c2, im2, ad2
-        else:
-            _emit("✅ No NPC quality issues — skipping editor")
+                _emit(f"  Topology clean — no fixes needed")
 
-        _emit(
-            f"Done! {len(fixed_graph.tasks)} tasks, "
-            f"{len(fixed_graph.locations)} locations, "
-            f"{len(fixed_graph.items)} items"
-        )
+            # ── 4. Export to JSON + markdown ───────────────────────────────
+            _emit("Exporting to JSON and markdown...")
+            export_to_json(fixed_graph, roles=roles)
+            export_to_markdown(fixed_graph, roles=roles)
+            base_name = _cache_filename(scenario_id, roles)
+            md_path = _EXPERIENCES_DIR / f"{base_name}.md"
+            _emit(f"  Exported: {md_path.name}")
 
-        return PipelineResult(
-            success=True,
-            md_path=md_path,
-            tasks=len(fixed_graph.tasks),
-            locations=len(fixed_graph.locations),
-            items=len(fixed_graph.items),
-            npcs=len(fixed_graph.npcs),
-            remaining_critical=len(critical),
-            remaining_important=len(important),
-            remaining_advisory=len(advisory),
+            # ── 5. Playability simulation + NPC quality check ──────────────
+            # Playability (Rule 31): simulates 500 turns — catches deadlocks
+            #   that pure topology checks can't see (e.g. outcomes never produced).
+            # NPC quality (Rules 36-39): story/interaction quality → sent to editor.
+            _emit("── [2/3] Playability simulation...")
+            validator = ScenarioValidator(md_path)
+            report = validator.validate_all()
+            critical  = [i for i in report.issues if i.level == ValidationLevel.CRITICAL]
+            important = [i for i in report.issues if i.level == ValidationLevel.IMPORTANT]
+            advisory  = [i for i in report.issues if i.level == ValidationLevel.ADVISORY]
+
+            # Deadlock = Rule 31 (playability sim). Other structural = topology bugs that
+            # slipped past the fixer. NPC quality = sent to editor.
+            DEADLOCK_RULE = 31
+            deadlock_issues    = [i for i in critical if i.rule_number == DEADLOCK_RULE]
+            other_structural   = [i for i in (critical + important)
+                                  if i.rule_number not in NPC_QUALITY_RULES and i.rule_number != DEADLOCK_RULE]
+            npc_issues         = [i for i in (critical + important) if i.rule_number in NPC_QUALITY_RULES]
+            critical_structural = deadlock_issues + [i for i in other_structural if i.level == ValidationLevel.CRITICAL]
+
+            if deadlock_issues:
+                _emit(f"  🔴 Deadlock detected — gameplay simulator could not complete all tasks")
+                for issue in deadlock_issues:
+                    _emit(f"     {issue.message}")
+            else:
+                _emit(f"  ✅ Playability OK — no deadlocks found")
+
+            if other_structural:
+                _emit(f"  Structural issues ({len(other_structural)}):")
+                for issue in other_structural:
+                    _emit(f"    {_issue_line(issue)}")
+
+            if advisory:
+                _emit(f"  Advisory: " + ", ".join(i.title for i in advisory))
+
+            # ── 5b. Retry if critical structural issues remain ─────────────
+            if critical_structural and attempt < MAX_GENERATION_ATTEMPTS:
+                reasons = ", ".join(i.title for i in critical_structural)
+                _emit(
+                    f"  ♻️  Critical issue(s) [{reasons}] — regenerating "
+                    f"(attempt {attempt + 1}/{MAX_GENERATION_ATTEMPTS})..."
+                )
+                seed = None
+                continue
+
+            if critical_structural:
+                _emit(
+                    f"  🔴 {len(critical_structural)} critical issue(s) unresolved after "
+                    f"{MAX_GENERATION_ATTEMPTS} attempts — scenario may not be playable"
+                )
+
+            # ── 6. NPC quality editor (rules 36–39) ───────────────────────
+            # Only NPC quality rules go to the LLM editor. Structural bugs must
+            # be fixed by the generator/fixer, not patched with text rewrites.
+            _emit("── [3/3] NPC quality check...")
+            if npc_issues:
+                _emit(f"  {len(npc_issues)} NPC quality issue(s) found — sending to editor...")
+                from scenario_editor_agent import ScenarioEditorAgent
+                agent = ScenarioEditorAgent()
+                results = []
+                for idx, issue in enumerate(npc_issues, 1):
+                    tag = "🔴" if issue.level == ValidationLevel.CRITICAL else "🟡"
+                    _emit(f"  {tag} [{idx}/{len(npc_issues)}]: {issue.title}")
+                    result = agent.fix_issues(md_path, [issue], max_issues=1)[0]
+                    results.append(result)
+                    _emit(f"    {'✓ fixed' if result.success else '✗ could not fix'}")
+                fixed_count = sum(1 for r in results if r.success)
+                _emit(f"  Editor: {fixed_count}/{len(npc_issues)} fixed")
+
+                # Post-edit re-validation
+                report2 = ScenarioValidator(md_path).validate_all()
+                c2  = [i for i in report2.issues if i.level == ValidationLevel.CRITICAL]
+                im2 = [i for i in report2.issues if i.level == ValidationLevel.IMPORTANT]
+                ad2 = [i for i in report2.issues if i.level == ValidationLevel.ADVISORY]
+                npc2    = [i for i in (c2 + im2) if i.rule_number in NPC_QUALITY_RULES]
+                struct2 = [i for i in (c2 + im2) if i.rule_number not in NPC_QUALITY_RULES]
+                if not c2 and not im2:
+                    _emit("  ✅ All NPC quality issues resolved")
+                else:
+                    for issue in npc2:
+                        _emit(f"  ✗ Still open (NPC): {issue.title}")
+                    for issue in struct2:
+                        _emit(f"  ✗ Still open (structural): {issue.title}")
+                critical, important, advisory = c2, im2, ad2
+            else:
+                _emit("  ✅ No NPC quality issues")
+
+            # ── 8. Final pipeline summary ──────────────────────────────────
+            total_unresolved = len(critical) + len(important)
+            if total_unresolved == 0:
+                _emit(
+                    f"✅ Done — {len(fixed_graph.tasks)} tasks, "
+                    f"{len(fixed_graph.locations)} locations, "
+                    f"{len(fixed_graph.items)} items, "
+                    f"0 unresolved issues"
+                )
+            else:
+                _emit(
+                    f"⚠️  Done with {total_unresolved} unresolved issue(s) — "
+                    f"{len(fixed_graph.tasks)} tasks, "
+                    f"{len(fixed_graph.locations)} locations, "
+                    f"{len(fixed_graph.items)} items"
+                )
+
+            return PipelineResult(
+                success=True,
+                md_path=md_path,
+                tasks=len(fixed_graph.tasks),
+                locations=len(fixed_graph.locations),
+                items=len(fixed_graph.items),
+                npcs=len(fixed_graph.npcs),
+                remaining_critical=len(critical),
+                remaining_important=len(important),
+                remaining_advisory=len(advisory),
+            )
+
+        # All attempts exhausted with unresolved critical structural issues
+        raise RuntimeError(
+            f"Scenario has unresolvable critical structural issues after "
+            f"{MAX_GENERATION_ATTEMPTS} generation attempts"
         )
 
     except Exception as exc:

@@ -49,6 +49,7 @@ class _GameScreenState extends State<GameScreen> {
   bool _gameEnded = false;
   String? _gameResult;
   String? _gameSummary;
+  bool _allTasksComplete = false;
   String _currentLocation = 'Crew Hideout'; // Overwritten in initState from startingLocation
   bool _showCompletedTasks = false;
   
@@ -191,6 +192,13 @@ class _GameScreenState extends State<GameScreen> {
     
     // Listen for all messages
     widget.wsService.messages.listen((message) {
+      // All tasks complete — unlock Escape Now button
+      if (message['type'] == 'all_tasks_complete') {
+        setState(() {
+          _allTasksComplete = true;
+        });
+      }
+
       // Game ended
       if (message['type'] == 'game_ended') {
         setState(() {
@@ -862,6 +870,7 @@ class _GameScreenState extends State<GameScreen> {
           _buildNavButton(Icons.map, 'Map', _allLocations.isNotEmpty ? _showMapDialog : null),
           _buildNavButton(Icons.backpack, 'Bag', _showInventory),
           _buildNavButton(Icons.search, 'Search', _searchRoom),
+          if (_allTasksComplete) _buildEscapeButton(),
         ],
       ),
     );
@@ -891,6 +900,36 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
   
+  Widget _buildEscapeButton() {
+    return InkWell(
+      onTap: _triggerEscape,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: AppDimensions.spaceMD, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+          border: Border.all(color: AppColors.success, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.exit_to_app, color: AppColors.success, size: 24),
+            SizedBox(height: 4),
+            Text(
+              'ESCAPE',
+              style: TextStyle(
+                color: AppColors.success,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showMapDialog() {
     // Get location names from backend (populated on game start)
     final locationNames = _allLocations
@@ -1356,6 +1395,10 @@ class _GameScreenState extends State<GameScreen> {
   }
   
   
+  void _triggerEscape() {
+    widget.wsService.send({'type': 'escape'});
+  }
+
   // Search current room
   void _searchRoom() {
     widget.wsService.searchRoom();

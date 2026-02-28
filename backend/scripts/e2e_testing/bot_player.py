@@ -521,6 +521,11 @@ class BotPlayer:
             # Track if this bot picked up item (already handled in pickup_item)
             pass
         
+        elif msg_type == "all_tasks_complete":
+            # All tasks done — one bot triggers the escape on behalf of the team
+            logger.info(f"Bot {self.player_name} received all_tasks_complete — triggering escape")
+            await self._send({"type": "escape"})
+
         elif msg_type == "game_ended":
             self.state.game_ended = True
             self.state.game_result = msg.get("result", "unknown")

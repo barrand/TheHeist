@@ -284,7 +284,12 @@
                                 appendGenLog(msg.message);
                             } else if (msg.type === 'result') {
                                 if (msg.success) {
-                                    appendGenLog(`✅ Done! ${msg.tasks} tasks, ${msg.locations} locations, ${msg.items} items`);
+                                    const unresolved = (msg.remaining_critical || 0) + (msg.remaining_important || 0);
+                                    if (unresolved > 0) {
+                                        appendGenLog(`⚠️  Generation complete with ${unresolved} unresolved issue(s) — scenario loaded`, true);
+                                    } else {
+                                        appendGenLog(`✅ Done! ${msg.tasks} tasks, ${msg.locations} locations, ${msg.items} items`);
+                                    }
                                     await refreshScenarios();
                                 } else {
                                     appendGenLog(`❌ Failed: ${msg.error}`, true);
@@ -309,7 +314,12 @@
                         if (msg.type === 'progress') appendGenLog(msg.message);
                         else if (msg.type === 'result') {
                             if (msg.success) {
-                                appendGenLog(`✅ Done! ${msg.tasks} tasks, ${msg.locations} locations`);
+                                const unresolved = (msg.remaining_critical || 0) + (msg.remaining_important || 0);
+                                if (unresolved > 0) {
+                                    appendGenLog(`⚠️  Generation complete with ${unresolved} unresolved issue(s) — scenario loaded`, true);
+                                } else {
+                                    appendGenLog(`✅ Done! ${msg.tasks} tasks, ${msg.locations} locations`);
+                                }
                                 await refreshScenarios();
                             } else {
                                 appendGenLog(`❌ Failed: ${msg.error}`, true);

@@ -259,9 +259,6 @@ class ProceduralGraphGenerator:
         # 5. Generate task graph (the critical part)
         tasks = self._generate_task_graph(role_ids, locations, items, npcs)
 
-        # 6. Append one escape task per role (exit through first/entry location)
-        tasks = self._append_escape_tasks(tasks, role_ids, locations)
-
         task_type_counts = {}
         for t in tasks:
             task_type_counts[t.type] = task_type_counts.get(t.type, 0) + 1
@@ -277,7 +274,15 @@ class ProceduralGraphGenerator:
             tasks=tasks,
             timeline_minutes=self.config.timeline_minutes
         )
-        
+
+        # 6. Pre-enrichment structural validation.
+        #    Fix cycles/orphans NOW on the cheap raw graph so we never waste expensive
+        #    LLM enrichment calls on a structurally broken graph.
+        raw_cycles = _detect_cycles_raw(graph.tasks)
+        if raw_cycles:
+            _p(f"  Raw graph has {len(raw_cycles)} cycle(s) — aborting before enrichment")
+            raise ValueError(f"Raw graph has unresolvable cycles: {raw_cycles}")
+
         # 7. Enrich item/NPC/task names and full NPC profiles via LLM.
         #    This rewrites NPC info IDs (placeholder → real LLM names) and updates
         #    task target_outcomes to match.
@@ -287,7 +292,14 @@ class ProceduralGraphGenerator:
         #    the real LLM-generated outcome IDs, not placeholder stubs.
         if len(role_ids) > 1:
             self._ensure_cross_role_chain(graph.tasks)
-        self._ensure_minimum_cross_role_tasks(graph.tasks, role_ids)
+        self._ensure_minimum_cross_role_tasks(graph.tasks, role_ids, graph.items)
+
+        # 8b. Post-enrichment structural check — the cross-role wiring in step 8 can
+        #     introduce new edges. Abort now rather than wasting export + validation.
+        post_cycles = _detect_cycles_raw(graph.tasks)
+        if post_cycles:
+            _p(f"  Post-enrichment cross-role wiring introduced {len(post_cycles)} cycle(s) — aborting")
+            raise ValueError(f"Post-enrichment cycles: {post_cycles}")
 
         return graph
     
@@ -624,10 +636,16 @@ class ProceduralGraphGenerator:
     ) -> Task:
         """Create a task with dependencies"""
         
-        # Choose task type based on distribution; re-roll if role can't do minigames
-        task_type = self._weighted_choice(self.config.task_type_distribution)
-        if task_type == "minigame" and not self._role_can_do_minigame(role):
-            task_type = "npc_llm"
+        # Choose task type based on distribution.
+        # If the role can't do minigames, redistribute minigame weight across the
+        # other types proportionally rather than dumping everything into npc_llm.
+        if not self._role_can_do_minigame(role):
+            dist = {k: v for k, v in self.config.task_type_distribution.items() if k != "minigame"}
+            total = sum(dist.values()) or 1.0
+            dist = {k: v / total for k, v in dist.items()}
+            task_type = self._weighted_choice(dist)
+        else:
+            task_type = self._weighted_choice(self.config.task_type_distribution)
         location = random.choice(locations)
         
         # Build prerequisites. Always chain from the immediate predecessor for this
@@ -877,7 +895,7 @@ class ProceduralGraphGenerator:
                         description=None
                     ))
     
-    def _ensure_minimum_cross_role_tasks(self, tasks: List[Task], role_ids: List[str]) -> None:
+    def _ensure_minimum_cross_role_tasks(self, tasks: List[Task], role_ids: List[str], items: List = None) -> None:
         """Guarantee at least MIN_HANDOFF handoff and MIN_INFO_SHARE info_share tasks exist.
 
         Candidate pool includes minigame, search, AND npc_llm dependent tasks so this
@@ -896,6 +914,9 @@ class ProceduralGraphGenerator:
             if t.type == TaskType.NPC_LLM.value:
                 available_outcomes.extend(t.target_outcomes)
 
+        # Build a pool of non-hidden item IDs that can be handed off
+        handoff_item_pool = [item.id for item in (items or []) if not item.hidden] if items else []
+
         # Candidates: dependent tasks (have prerequisites), not escape tasks.
         # Include npc_llm so we can always find candidates even in mastermind-heavy scenarios.
         candidates = [
@@ -911,22 +932,29 @@ class ProceduralGraphGenerator:
 
         while handoff_count < MIN_HANDOFF and idx < len(candidates):
             other_roles = [r for r in role_ids if r != candidates[idx].assigned_role]
-            if other_roles:
-                t = candidates[idx]
-                # Clear NPC/minigame fields that don't apply to handoff
-                t.type = TaskType.HANDOFF.value
-                t.handoff_to_role = random.choice(other_roles)
-                t.handoff_item = None
-                t.npc_id = None
-                t.npc_name = None
-                t.minigame_id = None
-                t.target_outcomes = []
-                t.description = f"Hand off to {t.handoff_to_role.replace('_', ' ')}"
-                handoff_count += 1
-                candidates.pop(idx)
-                logger.info(f"[cross-role] Converted {t.id} ({t.assigned_role}) to handoff → {t.handoff_to_role}")
-            else:
+            if not other_roles:
                 idx += 1
+                continue
+            if not handoff_item_pool:
+                # No items available — use info_share instead of a broken itemless handoff
+                logger.info(f"[cross-role] No items available for handoff — skipping handoff conversion for {candidates[idx].id}")
+                idx += 1
+                continue
+            t = candidates[idx]
+            # Clear NPC/minigame fields that don't apply to handoff
+            t.type = TaskType.HANDOFF.value
+            t.handoff_to_role = random.choice(other_roles)
+            chosen_item = random.choice(handoff_item_pool)
+            t.handoff_item = chosen_item
+            handoff_item_pool.remove(chosen_item)  # each item can only be handed off once
+            t.npc_id = None
+            t.npc_name = None
+            t.minigame_id = None
+            t.target_outcomes = []
+            t.description = f"Hand off to {t.handoff_to_role.replace('_', ' ')}"
+            handoff_count += 1
+            candidates.pop(idx)
+            logger.info(f"[cross-role] Converted {t.id} ({t.assigned_role}) to handoff → {t.handoff_to_role} (item: {t.handoff_item})")
 
         while info_share_count < MIN_INFO_SHARE and idx < len(candidates):
             if available_outcomes:
@@ -1229,6 +1257,43 @@ def _clean_llm_json(text: str) -> str:
     # Remove trailing commas before } or ] (most common LLM mistake)
     text = _re.sub(r',(\s*[}\]])', r'\1', text)
     return text.strip()
+
+
+def _detect_cycles_raw(tasks: List["Task"]) -> List[str]:
+    """Return a list of cycle descriptions found in the raw task prerequisite graph.
+
+    Uses DFS with a colour-marking algorithm (white/grey/black). Only follows
+    task-type prerequisites (not item/outcome edges which can't form cycles).
+    Called BEFORE LLM enrichment so cycles are caught on the cheap raw graph.
+    """
+    task_map = {t.id: t for t in tasks}
+    WHITE, GREY, BLACK = 0, 1, 2
+    colour = {tid: WHITE for tid in task_map}
+    cycles: List[str] = []
+
+    def dfs(node_id: str, path: List[str]) -> None:
+        colour[node_id] = GREY
+        path.append(node_id)
+        task = task_map.get(node_id)
+        if task:
+            for prereq in task.prerequisites:
+                if prereq.type != "task" or prereq.id not in task_map:
+                    continue
+                if colour[prereq.id] == GREY:
+                    # Found a back-edge → cycle
+                    cycle_start = path.index(prereq.id)
+                    cycle_path = " -> ".join(path[cycle_start:] + [prereq.id])
+                    cycles.append(cycle_path)
+                elif colour[prereq.id] == WHITE:
+                    dfs(prereq.id, path)
+        path.pop()
+        colour[node_id] = BLACK
+
+    for tid in list(task_map):
+        if colour[tid] == WHITE:
+            dfs(tid, [])
+
+    return cycles
 
 
 def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str], progress_fn=None) -> None:
