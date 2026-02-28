@@ -390,7 +390,6 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
           },
         ),
       ),
-      ),
     );
   }
   
