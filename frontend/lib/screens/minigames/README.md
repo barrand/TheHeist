@@ -22,7 +22,8 @@ frontend/lib/
         ├── wire_connect_minigame.dart   # Hacker
         ├── card_swipe_minigame.dart     # Insider
         ├── rhythm_climb_minigame.dart   # Cat Burglar
-        └── logic_clues_minigame.dart    # Mastermind
+        ├── logic_clues_minigame.dart    # Mastermind
+        └── doodle_climb_minigame.dart   # Cat Burglar
 ```
 
 ## Difficulty System
@@ -78,6 +79,11 @@ Each minigame now accepts a `MinigameDifficulty` parameter with three levels:
 - Easy: 3 boxes, simpler clues
 - Medium: 4 boxes, moderate clues
 - Hard: 6 boxes, relative-only clues (no direct positions—requires chain deduction)
+
+#### Doodle Climb
+- Easy: Target 200, 80px platforms, slower gravity, bigger jump
+- Medium: Target 400, 70px platforms, standard physics
+- Hard: Target 600, 55px platforms, faster gravity, tighter timing
 
 ## Usage
 

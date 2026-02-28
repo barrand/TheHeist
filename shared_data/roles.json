@@ -181,6 +181,10 @@
         {
           "id": "balance_meter",
           "description": "Tilt phone to keep balance meter centered"
+        },
+        {
+          "id": "doodle_climb",
+          "description": "Bounce off ledges to scale the building"
         }
       ]
     },

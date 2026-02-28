@@ -10,7 +10,7 @@ import 'package:the_heist/widgets/minigames/wire_connect_minigame.dart';
 import 'package:the_heist/widgets/minigames/card_swipe_minigame.dart';
 import 'package:the_heist/widgets/minigames/rhythm_climb_minigame.dart';
 import 'package:the_heist/widgets/minigames/logic_clues_minigame.dart';
-
+import 'package:the_heist/widgets/minigames/doodle_climb_minigame.dart';
 void main() {
   runApp(const MinigamePrototypeApp());
 }
@@ -53,6 +53,7 @@ class _MinigameHubState extends State<MinigameHub> {
     'button_mash_barrier': (diff) => ButtonMashMinigame(difficulty: diff),
     'climbing_rhythm': (diff) => RhythmClimbMinigame(difficulty: diff),
     'logic_clues': (diff) => LogicCluesMinigame(difficulty: diff),
+    'doodle_climb': (diff) => DoodleClimbMinigame(difficulty: diff),
   };
   
   // All roles and their minigames from roles.json
@@ -296,6 +297,13 @@ class _MinigameHubState extends State<MinigameHub> {
           name: 'Balance',
           description: 'Keep meter centered',
           roleId: 'cat_burglar',
+        ),
+        MinigameInfo(
+          id: 'doodle_climb',
+          name: 'Doodle Climb',
+          description: 'Bounce off ledges to scale the building',
+          roleId: 'cat_burglar',
+          isImplemented: true,
         ),
       ],
     ),
