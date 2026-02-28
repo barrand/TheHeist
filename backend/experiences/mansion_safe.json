@@ -1,0 +1,763 @@
+{
+  "scenario_id": "mansion_safe",
+  "objective": "Complete the heist successfully",
+  "locations": [
+    {
+      "id": "secure_area",
+      "name": "Secure Area",
+      "description": "Restricted zone",
+      "category": "Interior",
+      "visual": "secure area environment"
+    },
+    {
+      "id": "target_room",
+      "name": "Target Room",
+      "description": "Final objective room",
+      "category": "Interior",
+      "visual": "target room environment"
+    },
+    {
+      "id": "entry_point",
+      "name": "Entry Point",
+      "description": "Initial access point",
+      "category": "Exterior",
+      "visual": "entry point environment"
+    },
+    {
+      "id": "main_area",
+      "name": "Main Area",
+      "description": "Primary area",
+      "category": "Interior",
+      "visual": "main area environment"
+    },
+    {
+      "id": "extra_location_1",
+      "name": "Extra Location 1",
+      "description": "Additional location for scenario",
+      "category": "interior",
+      "visual": ""
+    },
+    {
+      "id": "extra_location_2",
+      "name": "Extra Location 2",
+      "description": "Additional location for scenario",
+      "category": "interior",
+      "visual": ""
+    }
+  ],
+  "items": [
+    {
+      "id": "item_1",
+      "name": "Item 1",
+      "description": "A useful item found at Secure Area",
+      "location": "secure_area",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "CB3"
+        },
+        {
+          "type": "task",
+          "id": "G1"
+        }
+      ],
+      "visual": "generic item 1",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_2",
+      "name": "Item 2",
+      "description": "A useful item found at Secure Area",
+      "location": "secure_area",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "CB1"
+        }
+      ],
+      "visual": "generic item 2",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_3",
+      "name": "Item 3",
+      "description": "A useful item found at Target Room",
+      "location": "target_room",
+      "hidden": false,
+      "visual": "generic item 3",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_4",
+      "name": "Item 4",
+      "description": "A useful item found at Target Room",
+      "location": "target_room",
+      "hidden": false,
+      "visual": "generic item 4",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_5",
+      "name": "Item 5",
+      "description": "A useful item found at Entry Point",
+      "location": "entry_point",
+      "hidden": false,
+      "visual": "generic item 5",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_6",
+      "name": "Item 6",
+      "description": "A useful item found at Entry Point",
+      "location": "entry_point",
+      "hidden": false,
+      "visual": "generic item 6",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_7",
+      "name": "Item 7",
+      "description": "A useful item found at Entry Point",
+      "location": "entry_point",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "MM2"
+        }
+      ],
+      "visual": "generic item 7",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_8",
+      "name": "Item 8",
+      "description": "A useful item found at Main Area",
+      "location": "main_area",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "SC5"
+        }
+      ],
+      "visual": "generic item 8",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_9",
+      "name": "Item 9",
+      "description": "A useful item found at Main Area",
+      "location": "main_area",
+      "hidden": false,
+      "visual": "generic item 9",
+      "quantity": 1,
+      "transferable": true
+    }
+  ],
+  "npcs": [
+    {
+      "id": "it_specialist",
+      "name": "IT Specialist",
+      "role": "IT",
+      "personality": "Technical and distracted",
+      "location": "entry_point",
+      "information_known": [
+        {
+          "info_id": "it_specialist_info_1",
+          "confidence": "HIGH",
+          "description": "Information from IT Specialist"
+        },
+        {
+          "info_id": "it_specialist_info_2",
+          "confidence": "HIGH",
+          "description": "Information from IT Specialist"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "it_specialist_action_1",
+          "confidence": "MEDIUM",
+          "description": "Action performed by IT Specialist"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "woman",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "friendly",
+      "attitude": "casual",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "security_guard",
+      "name": "Security Guard",
+      "role": "guard",
+      "personality": "Cautious and rule-following",
+      "location": "main_area",
+      "information_known": [
+        {
+          "info_id": "security_guard_info_1",
+          "confidence": "HIGH",
+          "description": "Information from Security Guard"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "security_guard_action_1",
+          "confidence": "HIGH",
+          "description": "Action performed by Security Guard"
+        },
+        {
+          "action_id": "security_guard_action_2",
+          "confidence": "HIGH",
+          "description": "Action performed by Security Guard"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "person",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "neutral",
+      "attitude": "casual",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    }
+  ],
+  "tasks": [
+    {
+      "id": "MM1",
+      "type": "minigame",
+      "description": "Complete lock picking",
+      "assigned_role": "mastermind",
+      "location": "main_area",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "lock_picking"
+    },
+    {
+      "id": "MM2",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "mastermind",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_2"
+      ]
+    },
+    {
+      "id": "MM3",
+      "type": "npc_llm",
+      "description": "Talk to Security Guard",
+      "assigned_role": "mastermind",
+      "location": "main_area",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM2"
+        },
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "security_guard",
+      "npc_name": "Security Guard",
+      "npc_personality": "Cautious and rule-following",
+      "target_outcomes": [
+        "security_guard_info_1"
+      ]
+    },
+    {
+      "id": "MM4",
+      "type": "minigame",
+      "description": "Complete camera bypass",
+      "assigned_role": "mastermind",
+      "location": "secure_area",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "camera_bypass"
+    },
+    {
+      "id": "MM5",
+      "type": "minigame",
+      "description": "Complete wire connecting",
+      "assigned_role": "mastermind",
+      "location": "secure_area",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_2"
+        },
+        {
+          "type": "task",
+          "id": "MM3"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "wire_connecting"
+    },
+    {
+      "id": "SC1",
+      "type": "minigame",
+      "description": "Complete wire connecting",
+      "assigned_role": "safe_cracker",
+      "location": "entry_point",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "wire_connecting"
+    },
+    {
+      "id": "SC2",
+      "type": "minigame",
+      "description": "Complete wire connecting",
+      "assigned_role": "safe_cracker",
+      "location": "secure_area",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM5"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "wire_connecting"
+    },
+    {
+      "id": "SC3",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "safe_cracker",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_1"
+      ]
+    },
+    {
+      "id": "SC4",
+      "type": "search",
+      "description": "Search Secure Area",
+      "assigned_role": "safe_cracker",
+      "location": "secure_area",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "SC1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_1",
+        "item_2"
+      ]
+    },
+    {
+      "id": "SC5",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "safe_cracker",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "SC4"
+        },
+        {
+          "type": "task",
+          "id": "MM3"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_1"
+      ]
+    },
+    {
+      "id": "SC6",
+      "type": "search",
+      "description": "Search Entry Point",
+      "assigned_role": "safe_cracker",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "security_guard_info_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_5"
+      ]
+    },
+    {
+      "id": "G1",
+      "type": "search",
+      "description": "Search for items at Entry Point",
+      "assigned_role": "grifter",
+      "location": "entry_point",
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_6"
+      ]
+    },
+    {
+      "id": "G2",
+      "type": "search",
+      "description": "Search Entry Point",
+      "assigned_role": "grifter",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM2"
+        },
+        {
+          "type": "outcome",
+          "id": "security_guard_info_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_7"
+      ]
+    },
+    {
+      "id": "G3",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "grifter",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "SC5"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_1"
+      ]
+    },
+    {
+      "id": "G4",
+      "type": "minigame",
+      "description": "Complete safe cracking",
+      "assigned_role": "grifter",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "G5",
+      "type": "minigame",
+      "description": "Complete safe cracking",
+      "assigned_role": "grifter",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_1"
+        },
+        {
+          "type": "task",
+          "id": "MM1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "G6",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "grifter",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_1",
+        "it_specialist_info_2"
+      ]
+    },
+    {
+      "id": "L1",
+      "type": "search",
+      "description": "Search for items at Main Area",
+      "assigned_role": "lookout",
+      "location": "main_area",
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_9"
+      ]
+    },
+    {
+      "id": "L2",
+      "type": "minigame",
+      "description": "Complete fingerprint matching",
+      "assigned_role": "lookout",
+      "location": "target_room",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM3"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "fingerprint_matching"
+    },
+    {
+      "id": "L3",
+      "type": "minigame",
+      "description": "Complete safe cracking",
+      "assigned_role": "lookout",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "G1"
+        },
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "L4",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "lookout",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "SC3"
+        },
+        {
+          "type": "outcome",
+          "id": "security_guard_info_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_2"
+      ]
+    },
+    {
+      "id": "L5",
+      "type": "search",
+      "description": "Search Main Area",
+      "assigned_role": "lookout",
+      "location": "main_area",
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_8"
+      ]
+    },
+    {
+      "id": "L6",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "lookout",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "G6"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_1"
+      ]
+    },
+    {
+      "id": "CB1",
+      "type": "minigame",
+      "description": "Complete lock picking",
+      "assigned_role": "cat_burglar",
+      "location": "secure_area",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "lock_picking"
+    },
+    {
+      "id": "CB2",
+      "type": "minigame",
+      "description": "Complete wire connecting",
+      "assigned_role": "cat_burglar",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "wire_connecting"
+    },
+    {
+      "id": "CB3",
+      "type": "npc_llm",
+      "description": "Talk to IT Specialist",
+      "assigned_role": "cat_burglar",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "G3"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "it_specialist",
+      "npc_name": "IT Specialist",
+      "npc_personality": "Technical and distracted",
+      "target_outcomes": [
+        "it_specialist_info_1",
+        "it_specialist_info_2"
+      ]
+    },
+    {
+      "id": "CB4",
+      "type": "minigame",
+      "description": "Complete safe cracking",
+      "assigned_role": "cat_burglar",
+      "location": "target_room",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "it_specialist_info_1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "CB5",
+      "type": "minigame",
+      "description": "Complete wire connecting",
+      "assigned_role": "cat_burglar",
+      "location": "entry_point",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM1"
+        },
+        {
+          "type": "task",
+          "id": "CB1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "wire_connecting"
+    }
+  ],
+  "timeline_minutes": 120
+}

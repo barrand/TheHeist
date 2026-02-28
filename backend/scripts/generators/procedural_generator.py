@@ -147,15 +147,11 @@ class GeneratorConfig:
     seed: Optional[int] = None
 
 
-# Role code mapping
+# Role code mapping (must match shared_data/roles.json and experience_loader.py)
 ROLE_CODES = {
-    "mastermind": "MM",
-    "hacker": "H",
-    "safe_cracker": "SC",
-    "insider": "I",
-    "driver": "D",
-    "grifter": "G",
-    "muscle": "M",
+    "mastermind": "MM", "hacker": "H", "safe_cracker": "SC", "insider": "I",
+    "driver": "D", "grifter": "G", "muscle": "M", "lookout": "L",
+    "fence": "F", "cat_burglar": "CB", "cleaner": "CL", "pickpocket": "PP",
 }
 
 # Available minigames
