@@ -406,7 +406,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             orElse: () => _availableScenarios.first,
           )
         : null;
-    final minPlayers = selectedScenario?.rolesRequired.length ?? 2;
+    final minPlayers = 2; // Any 2+ players can attempt any scenario
     
     // Check minimum players
     if (_players.length < minPlayers) {
@@ -776,7 +776,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
-                        children: scenario.rolesRequired.map((roleId) {
+                        children: scenario.rolesSuggested.map((roleId) {
                           final role = _availableRoles.firstWhere(
                             (r) => r.roleId == roleId,
                             orElse: () => Role(
@@ -867,7 +867,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
-                  children: selectedScenario.rolesRequired.map((roleId) {
+                  children: selectedScenario.rolesSuggested.map((roleId) {
                     final role = _availableRoles.firstWhere(
                       (r) => r.roleId == roleId,
                       orElse: () => Role(
@@ -1220,7 +1220,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             orElse: () => _availableScenarios.first,
           )
         : null;
-    final minPlayers = selectedScenario?.rolesRequired.length ?? 2;
+    final minPlayers = 2;
     
     final allHaveRoles = _players.isNotEmpty && 
         _players.every((p) => p['role'] != null && p['role'] != '');

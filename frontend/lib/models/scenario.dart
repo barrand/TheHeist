@@ -5,8 +5,9 @@ class Scenario {
   final String theme;
   final String objective;
   final String summary;
-  final List<String> rolesRequired;
-  final List<String>? locations;
+  /// Suggested roles for this scenario — players may pick any roles they like.
+  /// These are shown as defaults in the lobby but not enforced.
+  final List<String> rolesSuggested;
 
   const Scenario({
     required this.scenarioId,
@@ -14,8 +15,7 @@ class Scenario {
     required this.theme,
     required this.objective,
     required this.summary,
-    required this.rolesRequired,
-    this.locations,
+    required this.rolesSuggested,
   });
 
   factory Scenario.fromJson(Map<String, dynamic> json) {
@@ -25,14 +25,11 @@ class Scenario {
       theme: json['theme'] as String,
       objective: json['objective'] as String,
       summary: json['summary'] as String,
-      rolesRequired: (json['roles_required'] as List<dynamic>)
+      rolesSuggested: (json['roles_suggested'] as List<dynamic>? ??
+              json['roles_required'] as List<dynamic>? ??
+              [])
           .map((role) => role as String)
           .toList(),
-      locations: json['locations'] != null
-          ? (json['locations'] as List<dynamic>)
-              .map((loc) => loc as String)
-              .toList()
-          : null,
     );
   }
 

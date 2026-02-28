@@ -174,7 +174,7 @@ class ScenarioSelectionModal extends StatelessWidget {
                                         Wrap(
                                           spacing: 6,
                                           runSpacing: 4,
-                                          children: scenario.rolesRequired.map((roleId) {
+                                          children: scenario.rolesSuggested.map((roleId) {
                                             final role = availableRoles.firstWhere(
                                               (r) => r.roleId == roleId,
                                               orElse: () => Role(

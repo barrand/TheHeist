@@ -10,7 +10,7 @@
       "theme": "museum_gala",
       "objective": "Steal the jewels from the museum vault during a black-tie event.",
       "summary": "Infiltrate a gala, secure access, crack the vault, and escape unnoticed.",
-      "roles_required": ["mastermind", "safe_cracker"]
+      "roles_suggested": ["mastermind", "safe_cracker"]
     },
     {
       "scenario_id": "mansion_panic_room",
@@ -18,7 +18,7 @@
       "theme": "mansion",
       "objective": "Steal a cash ledger hidden in a panic room.",
       "summary": "Gain entry to a private mansion, bypass security, and crack a secure room.",
-      "roles_required": ["mastermind", "safe_cracker"]
+      "roles_suggested": ["mastermind", "safe_cracker"]
     },
     {
       "scenario_id": "casino_vault_night",
@@ -26,7 +26,7 @@
       "theme": "casino",
       "objective": "Break into the casino vault and steal high-value chips.",
       "summary": "Blend in on the floor, disable surveillance, and crack the vault.",
-      "roles_required": ["mastermind", "safe_cracker", "hacker"]
+      "roles_suggested": ["mastermind", "safe_cracker", "hacker"]
     },
     {
       "scenario_id": "train_robbery_car",
@@ -34,7 +34,7 @@
       "theme": "train",
       "objective": "Steal a guarded artifact from a moving armored car.",
       "summary": "Board the train, bypass guards, and extract the artifact.",
-      "roles_required": ["mastermind", "muscle"]
+      "roles_suggested": ["mastermind", "muscle"]
     },
     {
       "scenario_id": "secure_lab_prototype",
@@ -42,7 +42,7 @@
       "theme": "research_lab",
       "objective": "Extract a prototype from a secure lab.",
       "summary": "Infiltrate the lab, bypass access controls, and retrieve the item.",
-      "roles_required": ["mastermind", "hacker"]
+      "roles_suggested": ["mastermind", "hacker"]
     },
     {
       "scenario_id": "office_bug_plant",
@@ -50,7 +50,7 @@
       "theme": "corporate_office",
       "objective": "Plant a surveillance bug in a secure executive office.",
       "summary": "Social-engineer access and place a device without detection.",
-      "roles_required": ["mastermind", "grifter"]
+      "roles_suggested": ["mastermind", "grifter"]
     },
     {
       "scenario_id": "art_gallery_swap",
@@ -58,7 +58,7 @@
       "theme": "art_gallery",
       "objective": "Replace a famous painting with a convincing forgery.",
       "summary": "Distract staff, swap the artwork, and exit cleanly.",
-      "roles_required": ["mastermind", "fence"]
+      "roles_suggested": ["mastermind", "fence"]
     },
     {
       "scenario_id": "bank_safe_deposit",
@@ -66,7 +66,7 @@
       "theme": "bank",
       "objective": "Access a specific safe deposit box and extract its contents.",
       "summary": "Get past the lobby, reach the vault corridor, and open a target box.",
-      "roles_required": ["mastermind", "safe_cracker"]
+      "roles_suggested": ["mastermind", "safe_cracker"]
     },
     {
       "scenario_id": "evidence_room_cleanup",
@@ -74,7 +74,7 @@
       "theme": "police_station",
       "objective": "Remove an evidence item and erase traces of the break-in.",
       "summary": "Enter the station, retrieve the item, and clean evidence.",
-      "roles_required": ["mastermind", "cleaner"]
+      "roles_suggested": ["mastermind", "cleaner"]
     },
     {
       "scenario_id": "prison_extract",
@@ -82,7 +82,7 @@
       "theme": "detention_center",
       "objective": "Extract a prisoner from custody without triggering alarms.",
       "summary": "Coordinate a diversion, access holding, and escape safely.",
-      "roles_required": ["mastermind", "muscle"]
+      "roles_suggested": ["mastermind", "muscle"]
     },
     {
       "scenario_id": "dockside_container",
@@ -90,7 +90,7 @@
       "theme": "shipping_yard",
       "objective": "Retrieve a crate from a guarded shipping container yard.",
       "summary": "Navigate the yard, locate the container, and extract the cargo.",
-      "roles_required": ["mastermind", "lookout"]
+      "roles_suggested": ["mastermind", "lookout"]
     }
   ]
 }
