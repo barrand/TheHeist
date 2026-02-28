@@ -53,6 +53,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   bool _isGeneratingImages = false;
   int _loadingMessageIndex = 0;
   String _generationProgressMessage = '';
+  String _generationTitle = '🎲 Building Your Scenario';
   
   @override
   void initState() {
@@ -146,26 +147,22 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       });
     });
     
-    // Listen for on-the-fly scenario generation progress
+    // Listen for on-the-fly scenario/image generation progress
     widget.wsService.scenarioGenerating.listen((message) {
       final msg = message['message'] as String? ?? '';
+      final isImageMsg = msg.startsWith('🎨 Generating images');
+      final newTitle = isImageMsg ? '🎨 Creating Images' : '🎲 Building Your Scenario';
       if (!_isGeneratingImages) {
-        setState(() { _isGeneratingImages = true; });
-        _showImageGenerationModal(title: '🎲 Building Your Scenario', progressMessage: msg);
+        setState(() {
+          _isGeneratingImages = true;
+          _generationTitle = newTitle;
+        });
+        _showImageGenerationModal(title: newTitle, progressMessage: msg);
       } else {
-        // Update the progress message shown in the modal
-        setState(() { _generationProgressMessage = msg; });
-      }
-    });
-
-    // Listen for image generation start
-    widget.wsService.info.listen((message) {
-      final infoMessage = message['message'] as String?;
-      if (infoMessage != null && infoMessage.contains('Generating experience images')) {
-        if (!_isGeneratingImages) {
-          setState(() { _isGeneratingImages = true; });
-          _showImageGenerationModal();
-        }
+        setState(() {
+          _generationProgressMessage = msg;
+          if (isImageMsg) _generationTitle = newTitle;
+        });
       }
     });
     
@@ -187,10 +184,12 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       final yourTasks = message['your_tasks'] ?? [];
       final locations = List<Map<String, dynamic>>.from(message['locations'] ?? []);
       final npcs = List<Map<String, dynamic>>.from(message['npcs'] ?? []);
+      final startingLocation = message['starting_location'] as String?;
       
       debugPrint('🎮 LOBBY: Scenario: $scenario, ${locations.length} locations, ${npcs.length} NPCs');
       debugPrint('🎮 LOBBY: Objective: $objective');
       debugPrint('🎮 LOBBY: Tasks count: ${yourTasks.length}');
+      debugPrint('🎮 LOBBY: Starting location: $startingLocation');
       
       // Navigate to game screen
       Navigator.of(context).pushReplacement(
@@ -206,6 +205,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             roomCode: widget.roomCode,
             locations: locations,
             npcs: npcs,
+            startingLocation: startingLocation,
           ),
         ),
       );
@@ -317,11 +317,9 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       '🎨 Setting the scene...',
     ];
 
-    final dialogTitle = title ?? '🎬 Creating Your Experience';
-    if (progressMessage != null) {
-      _generationProgressMessage = progressMessage;
-    }
-    
+    if (title != null) _generationTitle = title;
+    if (progressMessage != null) _generationProgressMessage = progressMessage;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -329,10 +327,13 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         canPop: false,
         child: StatefulBuilder(
           builder: (context, setModalState) {
-            // Keep modal in sync when _generationProgressMessage changes
+            // Keep modal title and progress in sync as messages arrive
             widget.wsService.scenarioGenerating.listen((msg) {
+              final newMsg = msg['message'] as String? ?? _generationProgressMessage;
+              final isImageMsg = newMsg.startsWith('🎨 Generating images');
               setModalState(() {
-                _generationProgressMessage = msg['message'] as String? ?? _generationProgressMessage;
+                _generationProgressMessage = newMsg;
+                if (isImageMsg) _generationTitle = '🎨 Creating Images';
               });
             });
             return Dialog(
@@ -347,7 +348,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      dialogTitle,
+                      _generationTitle,
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

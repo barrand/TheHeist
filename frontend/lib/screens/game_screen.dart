@@ -21,6 +21,7 @@ class GameScreen extends StatefulWidget {
   final String? roomCode;
   final List<Map<String, dynamic>>? locations;
   final List<Map<String, dynamic>>? npcs;
+  final String? startingLocation;
   
   const GameScreen({
     super.key,
@@ -34,6 +35,7 @@ class GameScreen extends StatefulWidget {
     this.roomCode,
     this.locations,
     this.npcs,
+    this.startingLocation,
   });
   
   @override
@@ -47,7 +49,7 @@ class _GameScreenState extends State<GameScreen> {
   bool _gameEnded = false;
   String? _gameResult;
   String? _gameSummary;
-  String _currentLocation = 'Crew Hideout'; // Starting location
+  String _currentLocation = 'Crew Hideout'; // Overwritten in initState from startingLocation
   bool _showCompletedTasks = false;
   
   // Track all players, NPCs, and locations
@@ -55,6 +57,16 @@ class _GameScreenState extends State<GameScreen> {
   List<Map<String, dynamic>> _npcs = [];
   List<Map<String, dynamic>> _allLocations = [];
   String? _myPlayerId;
+
+  /// Returns the ID of the current location, falling back to a slugified name.
+  String get _currentLocationId {
+    final loc = _allLocations.firstWhere(
+      (l) => l['name'] == _currentLocation,
+      orElse: () => <String, dynamic>{},
+    );
+    final id = loc['id'] as String?;
+    return id ?? _currentLocation.toLowerCase().replaceAll(' ', '_');
+  }
   
   // Inventory tracking
   final List<Item> _myInventory = [];
@@ -70,6 +82,9 @@ class _GameScreenState extends State<GameScreen> {
     }
     if (widget.myPlayerId != null) {
       _myPlayerId = widget.myPlayerId;
+    }
+    if (widget.startingLocation != null && widget.startingLocation!.isNotEmpty) {
+      _currentLocation = widget.startingLocation!;
     }
     if (widget.locations != null) {
       _allLocations = widget.locations!.map((l) => Map<String, dynamic>.from(l)).toList();
@@ -526,7 +541,7 @@ class _GameScreenState extends State<GameScreen> {
             height: 150,
             color: AppColors.bgPrimary,
             child: Image.network(
-              'http://localhost:8000/api/images/${widget.scenario}/location/${_currentLocation.toLowerCase().replaceAll(' ', '_')}',
+              'http://localhost:8000/api/images/${widget.scenario}/location/$_currentLocationId',
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 // Fallback to gradient if image not available
@@ -692,9 +707,9 @@ class _GameScreenState extends State<GameScreen> {
       player['location'] == _currentLocation && player['id'] != _myPlayerId
     ).toList();
     
-    // Get NPCs at current location
+    // Get NPCs at current location — NPC locations use IDs, not display names
     final npcsHere = _npcs.where((npc) => 
-      npc['location'] == _currentLocation
+      npc['location'] == _currentLocationId
     ).toList();
     
     // Debug logging

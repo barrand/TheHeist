@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate location images for an experience using Google Imagen.
+Generate location images for an experience using Gemini Flash Image.
 Images are stored per experience ID for reusability across games.
+
+Uses GEMINI_IMAGE_MODEL (cheap/fast) — same quota pool as text generation,
+not subject to the strict Imagen 10 req/min limit.
 """
 
 import os
@@ -19,11 +22,8 @@ from google.genai import types
 # Import from scripts config (not backend app config)
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
-from config import GEMINI_API_KEY
+from config import GEMINI_API_KEY, GEMINI_IMAGE_MODEL
 
-# Image generation settings
-LOCATION_WIDTH = 300
-LOCATION_HEIGHT = 150
 OUTPUT_DIR = Path(__file__).parent.parent / "generated_images"
 
 # Heist game art style - same as NPCs use
@@ -33,6 +33,15 @@ Borderlands game aesthetic, graphic novel style,
 vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details,
 set in year 2020, contemporary styling (not futuristic)"""
+
+
+def _parse_retry_after(error_str: str, default: float = 15.0) -> float:
+    """Extract the suggested retry delay (seconds) from a 429 error message."""
+    import re
+    match = re.search(r"retry in ([\d.]+)s", error_str)
+    if match:
+        return float(match.group(1)) + 2.0
+    return default
 
 
 def get_location_prompt(location_name: str, visual_description: str = None) -> str:
@@ -66,9 +75,10 @@ async def generate_location_image(
     location_id: str,
     experience_id: str,
     visual_description: str,
-    client: genai.Client
+    client: genai.Client,
+    max_retries: int = 3
 ) -> str:
-    """Generate a single location image."""
+    """Generate a single location image with retry on rate limit."""
     
     output_path = OUTPUT_DIR / experience_id / f"location_{location_id}.png"
     
@@ -80,50 +90,54 @@ async def generate_location_image(
     # Generate prompt with visual description
     prompt = get_location_prompt(location_name, visual_description)
     
-    print(f"🎨 Generating location image: {location_name}")
+    print(f"🎨 Generating location image: {location_name} (model: {GEMINI_IMAGE_MODEL})")
     print(f"   Prompt: {prompt[:100]}...")
     
-    try:
-        # Generate image using Imagen 4.0 Fast (cheapest publicly available model)
-        response = client.models.generate_images(
-            model='imagen-4.0-fast-generate-001',
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="16:9",  # Wide landscape format for locations
-                safety_filter_level="block_low_and_above",
-                # Note: person_generation not specified - Imagen 4.0 Fast doesn't support allow_adult
+    for attempt in range(max_retries):
+        if attempt > 0:
+            print(f"   🔄 Retry attempt {attempt + 1}/{max_retries}...")
+
+        try:
+            # Use Gemini Flash Image (fast/cheap) — avoids the strict Imagen quota
+            response = client.models.generate_content(
+                model=GEMINI_IMAGE_MODEL,
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_modalities=["Text", "Image"]
+                ),
             )
-        )
-        
-        # Save image
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        print(f"   📁 Output path: {output_path.absolute()}")
-        
-        if response.generated_images:
-            image = response.generated_images[0]
-            print(f"   💾 Writing {len(image.image.image_bytes)} bytes...")
-            with open(output_path, 'wb') as f:
-                f.write(image.image.image_bytes)
             
-            if output_path.exists():
-                print(f"   ✅ Saved: {output_path} ({output_path.stat().st_size} bytes)")
-                return str(output_path)
+            # Save image
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            for part in response.parts:
+                if part.inline_data is not None:
+                    image = part.as_image()
+                    image.save(str(output_path))
+                    print(f"   ✅ Saved: {output_path}")
+                    return str(output_path)
+            
+            print(f"   ❌ No image in response for {location_name} (attempt {attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                continue
+
+        except Exception as e:
+            error_str = str(e)
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                wait = _parse_retry_after(error_str)
+                print(f"   ⏳ Rate limited — waiting {wait:.1f}s before retry...")
+                await asyncio.sleep(wait)
+            elif attempt < max_retries - 1:
+                print(f"   ❌ Error on attempt {attempt + 1}/{max_retries}: {e}")
             else:
-                print(f"   ❌ File not found after save: {output_path}")
-                return None
-        else:
-            print(f"   ❌ No image in response for {location_name}")
-            return None
-            
-    except Exception as e:
-        print(f"   ❌ Error generating {location_name}: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+                import traceback
+                traceback.print_exc()
+
+    print(f"   ❌ Failed to generate {location_name} after {max_retries} attempts")
+    return None
 
 
-async def generate_all_location_images(experience_id: str, locations: List[Dict]):
+async def generate_all_location_images(experience_id: str, locations: List[Dict], on_progress=None):
     """Generate images for all locations in an experience."""
     
     print(f"\n{'='*60}")
@@ -147,9 +161,11 @@ async def generate_all_location_images(experience_id: str, locations: List[Dict]
             client=client
         )
         results.append(result)
+        if on_progress:
+            await on_progress()
         
-        # Small delay to avoid rate limits
-        await asyncio.sleep(0.5)
+        # Small delay between requests (Gemini Flash Image has generous quotas)
+        await asyncio.sleep(2)
     
     successful = [r for r in results if r is not None]
     print(f"\n✅ Generated {len(successful)}/{len(locations)} location images")

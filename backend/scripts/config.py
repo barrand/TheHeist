@@ -50,10 +50,18 @@ GEMINI_EXPERIENCE_MODEL = os.getenv('GEMINI_EXPERIENCE_MODEL', 'gemini-2.5-flash
 GEMINI_NPC_MODEL = os.getenv('GEMINI_NPC_MODEL', 'gemini-2.0-flash-lite')
 
 # Image Generation Models
-# Imagen 4.0: High-quality character portraits (roles, player avatars)
-# Gemini 2.5 Flash Image: Fast, cheap for NPCs and objects
+#
+# STATIC images (generated once, shared across all games):
+#   IMAGEN_MODEL — high-quality Imagen 4.0 for player role portraits and
+#   scenario background cards.  Used by generate_npc_image.py (use_premium_model=True)
+#   and generate_scene_image.py.
+#
+# DYNAMIC images (generated per game session on-the-fly):
+#   GEMINI_IMAGE_MODEL — Gemini Flash Image for locations, items, and NPC portraits.
+#   Uses the text-generation quota pool, so it is NOT subject to the 10 req/min
+#   Imagen limit and is significantly cheaper at scale.
 IMAGEN_MODEL = 'imagen-4.0-generate-001'
-GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-latest-image'
+GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
 
 # ============================================================================
 

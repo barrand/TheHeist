@@ -31,7 +31,10 @@ echo ""
 echo -e "${YELLOW}2. Starting backend server...${NC}"
 cd "$SCRIPT_DIR/backend"
 mkdir -p /tmp/heist_logs
-python3 run.py > /tmp/heist_logs/backend.log 2>&1 &
+# Use venv (Python 3.12) if available, otherwise fall back to system python3
+PYTHON="${SCRIPT_DIR}/backend/venv/bin/python3"
+[ -f "$PYTHON" ] || PYTHON="python3"
+$PYTHON run.py > /tmp/heist_logs/backend.log 2>&1 &
 BACKEND_PID=$!
 echo -e "${GREEN}   ✓ Backend starting (PID: $BACKEND_PID)${NC}"
 echo -e "     Logs: tail -f /tmp/heist_logs/backend.log"

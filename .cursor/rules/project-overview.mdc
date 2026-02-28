@@ -80,6 +80,8 @@ Generated files are cached on disk but are ephemeral — delete them freely to f
 | Role definitions | `shared_data/roles.json` |
 | Scenario definitions | `shared_data/scenarios.json` |
 | Generated experiences | `backend/experiences/generated_*.md` |
+| **Images (permanent)** | `backend/scripts/output/static_images/` — scenario cards, role avatars |
+| **Images (temporary)** | `backend/generated_images/{scenario_id}/` — rooms, NPCs, items (per unique scenario) |
 | Flutter screens | `frontend/lib/screens/` |
 | Flutter WS service | `frontend/lib/services/websocket_service.dart` |
 | Design tokens | `frontend/lib/core/theme/` |
@@ -92,3 +94,14 @@ Generated files are cached on disk but are ephemeral — delete them freely to f
 `backend/scripts/e2e_testing/` runs automated bot playthroughs.  
 Start manually: `cd backend && E2E_PORT=5555 python3 scripts/e2e_testing/ui_server.py`  
 Bots use Gemini to decide actions. Results report WIN / DEADLOCK / TIMEOUT / ERROR.
+
+---
+
+## Image Lifecycle
+
+| Type | Storage | Lifecycle |
+|------|---------|-----------|
+| **Permanent** | `static_images/`, `frontend/assets/static/` | Scenario type cards, role avatars — shared across all experiences, never deleted |
+| **Temporary** | `generated_images/{scenario_id}/` | Rooms, NPCs, items — unique per generated scenario; orphaned when scenario is deleted |
+
+When a scenario is regenerated or discarded, its `generated_images/{scenario_id}/` folder can be cleaned up. Permanent images (scenarios, roles) are one-time generation costs.

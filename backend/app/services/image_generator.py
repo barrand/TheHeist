@@ -6,7 +6,7 @@ Generates location, item, and NPC images for experiences.
 import asyncio
 import logging
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Awaitable, Callable, List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,11 @@ def check_images_exist(experience_id: str) -> tuple[bool, int, int, int]:
     return has_images, location_count, item_count, npc_count
 
 
-async def generate_all_images_for_experience(experience_id: str, experience_dict: Dict) -> bool:
+async def generate_all_images_for_experience(
+    experience_id: str,
+    experience_dict: Dict,
+    broadcast: Optional[Callable[[str], Awaitable[None]]] = None,
+) -> bool:
     """
     Generate all images for an experience synchronously at game start.
     This blocks until all images are generated.
@@ -161,15 +165,26 @@ async def generate_all_images_for_experience(experience_id: str, experience_dict
         # Mark as generating
         _generation_tasks[experience_id] = True
         
+        # Build progress callback if a broadcast channel is available
+        total_images = len(locations) + len(items) + len(npcs)
+        completed = [0]
+
+        async def _on_image_done():
+            completed[0] += 1
+            if broadcast:
+                await broadcast(f"🎨 Generating images ({completed[0]}/{total_images})...")
+
         # Generate in order: Locations → Items → NPCs
         logger.info(f"🎨 Step 1/3: Generating location images...")
-        await generate_all_location_images(experience_id, locations)
+        if broadcast:
+            await broadcast(f"🎨 Generating images (0/{total_images})...")
+        await generate_all_location_images(experience_id, locations, on_progress=_on_image_done)
         
         logger.info(f"🎨 Step 2/3: Generating item images...")
-        await generate_all_item_images(experience_id, items)
+        await generate_all_item_images(experience_id, items, on_progress=_on_image_done)
         
         logger.info(f"🎨 Step 3/3: Generating NPC images...")
-        await generate_all_npc_images(experience_id, npcs)
+        await generate_all_npc_images(experience_id, npcs, on_progress=_on_image_done)
         
         logger.info(f"✅ All images generated for {experience_id}")
         return True

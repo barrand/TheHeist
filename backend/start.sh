@@ -7,4 +7,10 @@ unset GEMINI_MODEL
 
 # Start the backend
 cd "$(dirname "$0")"
-python3 run.py
+
+# Use venv if available, otherwise fall back to system python3
+if [ -f "venv/bin/python3" ]; then
+    venv/bin/python3 run.py
+else
+    python3 run.py
+fi

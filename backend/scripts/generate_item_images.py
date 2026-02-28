@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate item images for an experience using Google Imagen.
+Generate item images for an experience using Gemini Flash Image.
 Images are stored per experience ID for reusability across games.
+
+Uses GEMINI_IMAGE_MODEL (cheap/fast) — same quota pool as text generation,
+not subject to the strict Imagen 10 req/min limit.
 """
 
 import os
@@ -19,10 +22,8 @@ from google.genai import types
 # Import from scripts config (not backend app config)
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
-from config import GEMINI_API_KEY
+from config import GEMINI_API_KEY, GEMINI_IMAGE_MODEL
 
-# Image generation settings
-ITEM_SIZE = 80  # Square
 OUTPUT_DIR = Path(__file__).parent.parent / "generated_images"
 
 # Heist game art style - same as NPCs use
@@ -32,6 +33,15 @@ Borderlands game aesthetic, graphic novel style,
 vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details,
 set in year 2020, contemporary styling (not futuristic)"""
+
+
+def _parse_retry_after(error_str: str, default: float = 15.0) -> float:
+    """Extract the suggested retry delay (seconds) from a 429 error message."""
+    import re
+    match = re.search(r"retry in ([\d.]+)s", error_str)
+    if match:
+        return float(match.group(1)) + 2.0  # Add a small buffer
+    return default
 
 
 def get_item_prompt(item_name: str, item_description: str, visual_description: str = "") -> str:
@@ -73,7 +83,8 @@ async def generate_item_image(
 ) -> str:
     """Generate a single item image with automatic retry for safety filter blocks."""
     
-    output_path = OUTPUT_DIR / experience_id / f"item_{item_id}.png"
+    clean_id = item_id.removeprefix("item_")
+    output_path = OUTPUT_DIR / experience_id / f"item_{clean_id}.png"
     
     # Skip if already exists
     if output_path.exists():
@@ -83,50 +94,45 @@ async def generate_item_image(
     # Generate prompt with visual description
     prompt = get_item_prompt(item_name, visual_description, item_description)
     
-    print(f"🎨 Generating item image: {item_name}")
+    print(f"🎨 Generating item image: {item_name} (model: {GEMINI_IMAGE_MODEL})")
     print(f"   Prompt: {prompt[:100]}...")
     
     for attempt in range(max_retries):
         if attempt > 0:
             print(f"   🔄 Retry attempt {attempt + 1}/{max_retries}...")
-            await asyncio.sleep(1)  # Brief delay before retry
-    
+
         try:
-            # Generate image using Imagen 4.0 Fast (cheapest publicly available model)
-            response = client.models.generate_images(
-                model='imagen-4.0-fast-generate-001',
-                prompt=prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    aspect_ratio="1:1",  # Square
-                    safety_filter_level="block_low_and_above",
-                    person_generation="dont_allow",  # Items shouldn't have people
-                )
+            # Use Gemini Flash Image (fast/cheap) — avoids the strict Imagen quota
+            response = client.models.generate_content(
+                model=GEMINI_IMAGE_MODEL,
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_modalities=["Text", "Image"]
+                ),
             )
             
             # Save image
             output_path.parent.mkdir(parents=True, exist_ok=True)
             
-            if response.generated_images:
-                image = response.generated_images[0]
-                print(f"   💾 Writing {len(image.image.image_bytes)} bytes...")
-                with open(output_path, 'wb') as f:
-                    f.write(image.image.image_bytes)
-                
-                if output_path.exists():
-                    print(f"   ✅ Saved: {output_path} ({output_path.stat().st_size} bytes)")
+            for part in response.parts:
+                if part.inline_data is not None:
+                    image = part.as_image()
+                    image.save(str(output_path))
+                    print(f"   ✅ Saved: {output_path}")
                     return str(output_path)
-                else:
-                    print(f"   ❌ File not found after save: {output_path}")
-            else:
-                print(f"   ⚠️  No image in response (attempt {attempt + 1}/{max_retries}) - likely safety filter block")
-                if attempt < max_retries - 1:
-                    continue  # Retry
-                    
-        except Exception as e:
-            print(f"   ❌ Error on attempt {attempt + 1}/{max_retries}: {e}")
+            
+            print(f"   ⚠️  No image in response (attempt {attempt + 1}/{max_retries}) - likely safety filter block")
             if attempt < max_retries - 1:
                 continue  # Retry
+
+        except Exception as e:
+            error_str = str(e)
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                wait = _parse_retry_after(error_str)
+                print(f"   ⏳ Rate limited — waiting {wait:.1f}s before retry...")
+                await asyncio.sleep(wait)
+            elif attempt < max_retries - 1:
+                print(f"   ❌ Error on attempt {attempt + 1}/{max_retries}: {e}")
             else:
                 import traceback
                 traceback.print_exc()
@@ -136,7 +142,7 @@ async def generate_item_image(
     return None
 
 
-async def generate_all_item_images(experience_id: str, items: List[Dict]):
+async def generate_all_item_images(experience_id: str, items: List[Dict], on_progress=None):
     """Generate images for all items in an experience."""
     
     print(f"\n{'='*60}")
@@ -162,9 +168,11 @@ async def generate_all_item_images(experience_id: str, items: List[Dict]):
             client=client
         )
         results.append(result)
+        if on_progress:
+            await on_progress()
         
-        # Small delay to avoid rate limits
-        await asyncio.sleep(0.5)
+        # Small delay between requests (Gemini Flash Image has generous quotas)
+        await asyncio.sleep(2)
     
     successful = [r for r in results if r is not None]
     print(f"\n✅ Generated {len(successful)}/{len(items)} item images")

@@ -1,0 +1,511 @@
+{
+  "scenario_id": "museum_gala_vault",
+  "objective": "Infiltrate the high-security 'Aether's Echo' gala, bypass its cutting-edge biometric defenses, and steal the legendary 'Star of Cygnus' diamond from its deep vault before dawn.",
+  "locations": [
+    {
+      "id": "grand_facade",
+      "name": "The Grand Façade",
+      "description": "Rain-slicked cobblestones reflect the dazzling lights spilling from the Beaux-Arts museum entrance, where velvet ropes funnel a stream of elegantly dressed patrons.",
+      "category": "Exterior",
+      "visual": "Grand Beaux-Arts museum entrance, night, rain, red carpet, shimmering lights, elegant crowd."
+    },
+    {
+      "id": "nebula_ballroom",
+      "name": "Nebula Ballroom",
+      "description": "Under a ceiling painted with swirling constellations, the opulent ballroom buzzes with high society, champagne flutes clinking amidst soft jazz and hushed conversations.",
+      "category": "Interior",
+      "visual": "Vast museum ballroom, starry ceiling mural, elegant gala attendees, jazz band, champagne."
+    },
+    {
+      "id": "curators_private_study",
+      "name": "Curator's Private Study",
+      "description": "Hidden behind a rotating bookshelf in a quiet gallery, this cluttered office is filled with antique maps, rare books, and a half-empty decanter of aged scotch.",
+      "category": "Interior",
+      "visual": "Wood-paneled private study, bookshelves, desk with antique maps, globe, dim lighting."
+    },
+    {
+      "id": "archival_data_core",
+      "name": "Archival Data Core",
+      "description": "A cold, hum-filled server room where blinking indicator lights illuminate rows of silent, climate-controlled servers storing the museum's entire digital history and security protocols.",
+      "category": "Interior",
+      "visual": "Futuristic server room, glowing LED lights, tall racks of computers, cold blue light."
+    },
+    {
+      "id": "sub_basement_tunnels",
+      "name": "Sub-Basement Service Tunnels",
+      "description": "A labyrinth of damp, echoing concrete passages, thick with exposed pipes and conduit, leading deeper into the museum's forgotten foundations.",
+      "category": "Interior",
+      "visual": "Dark, damp concrete service tunnels, exposed pipes, electrical conduits, dripping water."
+    },
+    {
+      "id": "chronos_lock",
+      "name": "The Chronos Lock",
+      "description": "A circular antechamber of polished steel and reinforced glass, guarded by a temporal displacement field shimmering with faint blue energy and laser grids.",
+      "category": "Interior",
+      "visual": "Circular polished steel antechamber, reinforced glass, shimmering blue energy field, laser grid."
+    }
+  ],
+  "items": [
+    {
+      "id": "item_1",
+      "name": "Gala Invitation Chip",
+      "description": "An ornate card with an embedded RFID chip for event access.",
+      "location": "grand_facade",
+      "hidden": false,
+      "visual": "A shimmering, heavy cardstock invitation with intricate gold leaf patterns and a small, glowing RFID chip embedded near the crest.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_2",
+      "name": "Façade Security Schematic",
+      "description": "A detailed layout of the museum's exterior surveillance system.",
+      "location": "grand_facade",
+      "hidden": false,
+      "visual": "A rolled-up blueprint, slightly faded, showing detailed architectural plans with hand-drawn camera icons and coverage arcs.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_3",
+      "name": "Nebula Server Keycard",
+      "description": "An access card for the Nebula Ballroom's network server room.",
+      "location": "nebula_ballroom",
+      "hidden": false,
+      "visual": "A sleek, black plastic keycard with a magnetic stripe and a subtle 'Server Room 7' etched on its surface.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_4",
+      "name": "Curator's Login Note",
+      "description": "A sticky note with what appears to be the curator's old login credentials.",
+      "location": "curators_private_study",
+      "hidden": false,
+      "visual": "A slightly crumpled yellow sticky note, stuck to a monitor, with smudged but legible handwriting for a username and password.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_5",
+      "name": "Data Core Maintenance Manual",
+      "description": "A comprehensive guide for accessing and maintaining the archival data systems.",
+      "location": "archival_data_core",
+      "hidden": false,
+      "visual": "A thick, worn technical manual with complex diagrams and schematics, its cover dusty and corners dog-eared.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_6",
+      "name": "Backup Drive Encryption Key",
+      "description": "A specialized cryptographic key for accessing encrypted emergency data backups.",
+      "location": "archival_data_core",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "MM1"
+        },
+        {
+          "type": "task",
+          "id": "H3"
+        }
+      ],
+      "visual": "A small, metallic USB drive with a single, softly pulsing blue LED and an intricate, almost alien-like symbol etched into its casing.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_7",
+      "name": "Utility Tunnel Map",
+      "description": "A grimy, folded map detailing the labyrinthine sub-basement service tunnels.",
+      "location": "sub_basement_tunnels",
+      "hidden": false,
+      "visual": "A well-used, water-stained paper map, folded repeatedly, with handwritten annotations and arrows marking various conduits and access points.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_8",
+      "name": "Obsolete Override Panel",
+      "description": "A hidden, manual control panel for the vault's auxiliary ventilation system.",
+      "location": "sub_basement_tunnels",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "MM1"
+        }
+      ],
+      "visual": "A rusty, forgotten metal panel tucked behind a pipe, with a few flickering indicator lights and a dusty, unlabeled toggle switch.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_9",
+      "name": "Chronos Lock Schematic",
+      "description": "The intricate blueprint detailing the vault's unique time-activated locking mechanism.",
+      "location": "chronos_lock",
+      "hidden": false,
+      "visual": "A large, translucent vellum sheet showcasing highly detailed diagrams of gears, circuits, and quantum entanglement components, glowing faintly.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_10",
+      "name": "Biometric Scanner Calibrator",
+      "description": "A specialized tool used to adjust and fine-tune the Chronos Lock's biometric scanner.",
+      "location": "chronos_lock",
+      "hidden": false,
+      "visual": "A sleek, handheld device with a small, glowing touchscreen displaying complex waveform patterns and a precise calibration dial.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_11",
+      "name": "The Stellar Key",
+      "description": "An ancient, otherworldly artifact rumored to unlock any vault, transcending conventional security.",
+      "location": "grand_facade",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "H2"
+        }
+      ],
+      "visual": "An ornate, glowing key forged from unknown iridescent metal, constantly shifting with cosmic patterns and emitting a faint, ethereal hum.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_12",
+      "name": "Vault Door Access Log",
+      "description": "A digital record of all recent entries and attempts on the Cosmic Strongroom's vault door.",
+      "location": "grand_facade",
+      "hidden": false,
+      "visual": "A robust, military-grade tablet displaying a chronological list of access times, user IDs, and biometric scan results, highlighted in green and red.",
+      "quantity": 1,
+      "transferable": true
+    }
+  ],
+  "npcs": [
+    {
+      "id": "curator",
+      "name": "Dr. Elias Thorne",
+      "role": "curator",
+      "personality": "Knowledgeable and proud",
+      "location": "sub_basement_tunnels",
+      "information_known": [
+        {
+          "info_id": "curator_info_1",
+          "confidence": "LOW",
+          "description": "Information from Curator"
+        },
+        {
+          "info_id": "curator_info_2",
+          "confidence": "MEDIUM",
+          "description": "Information from Curator"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "curator_action_1",
+          "confidence": "LOW",
+          "description": "Action performed by Curator"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "person",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "neutral",
+      "attitude": "casual",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "security_guard",
+      "name": "Officer Miller",
+      "role": "guard",
+      "personality": "Cautious and rule-following",
+      "location": "cosmic_strongroom",
+      "information_known": [
+        {
+          "info_id": "security_guard_info_1",
+          "confidence": "LOW",
+          "description": "Information from Security Guard"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "security_guard_action_1",
+          "confidence": "LOW",
+          "description": "Action performed by Security Guard"
+        },
+        {
+          "action_id": "security_guard_action_2",
+          "confidence": "HIGH",
+          "description": "Action performed by Security Guard"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "man",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "neutral",
+      "attitude": "professional",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "manager",
+      "name": "Ms. Anya Sharma",
+      "role": "manager",
+      "personality": "Busy and authoritative",
+      "location": "curators_private_study",
+      "information_known": [
+        {
+          "info_id": "manager_info_1",
+          "confidence": "MEDIUM",
+          "description": "Information from Manager"
+        },
+        {
+          "info_id": "manager_info_2",
+          "confidence": "HIGH",
+          "description": "Information from Manager"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "manager_action_1",
+          "confidence": "MEDIUM",
+          "description": "Action performed by Manager"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "person",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "friendly",
+      "attitude": "suspicious",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "it_specialist",
+      "name": "Kevin Lee",
+      "role": "IT",
+      "personality": "Technical and distracted",
+      "location": "nebula_ballroom",
+      "information_known": [
+        {
+          "info_id": "it_specialist_info_1",
+          "confidence": "MEDIUM",
+          "description": "Information from IT Specialist"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "it_specialist_action_1",
+          "confidence": "LOW",
+          "description": "Action performed by IT Specialist"
+        },
+        {
+          "action_id": "it_specialist_action_2",
+          "confidence": "MEDIUM",
+          "description": "Action performed by IT Specialist"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "woman",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "stern",
+      "attitude": "professional",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    }
+  ],
+  "tasks": [
+    {
+      "id": "MM1",
+      "type": "search",
+      "description": "Locate security camera weak points.",
+      "assigned_role": "mastermind",
+      "location": "grand_facade",
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_1",
+        "item_2"
+      ]
+    },
+    {
+      "id": "MM2",
+      "type": "minigame",
+      "description": "Bypass ventilation system controls.",
+      "assigned_role": "mastermind",
+      "location": "sub_basement_tunnels",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "wire_connecting"
+    },
+    {
+      "id": "MM3",
+      "type": "minigame",
+      "description": "Disable sub-basement motion sensors.",
+      "assigned_role": "mastermind",
+      "location": "sub_basement_tunnels",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "H1",
+      "type": "minigame",
+      "description": "Jam façade's external comms.",
+      "assigned_role": "hacker",
+      "location": "grand_facade",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "fingerprint_matching"
+    },
+    {
+      "id": "H2",
+      "type": "search",
+      "description": "Find server room access keycard.",
+      "assigned_role": "hacker",
+      "location": "nebula_ballroom",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "MM2"
+        },
+        {
+          "type": "task",
+          "id": "MM1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_3"
+      ]
+    },
+    {
+      "id": "H3",
+      "type": "minigame",
+      "description": "Overload main gate's power grid.",
+      "assigned_role": "hacker",
+      "location": "grand_facade",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "lock_picking"
+    },
+    {
+      "id": "H4",
+      "type": "minigame",
+      "description": "Reroute tunnel surveillance feeds.",
+      "assigned_role": "hacker",
+      "location": "sub_basement_tunnels",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "alarm_disable"
+    },
+    {
+      "id": "H5",
+      "type": "npc_llm",
+      "description": "Extract vault access codes from manager.",
+      "assigned_role": "hacker",
+      "location": "curators_private_study",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "H4"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "manager",
+      "npc_name": "Manager",
+      "npc_personality": "Busy and authoritative",
+      "target_outcomes": [
+        "manager_info_1"
+      ]
+    }
+  ],
+  "timeline_minutes": 120
+}

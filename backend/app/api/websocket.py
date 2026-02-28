@@ -331,14 +331,6 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
         skip_images = data.get("skip_images", False)
         
         if not skip_images:
-            # Notify players that images are generating
-            await ws_manager.broadcast_to_room(room_code, {
-                "type": "info",
-                "message": "🎨 Generating experience images... This may take a minute."
-            })
-            
-            # Generate images synchronously (blocks until complete)
-            # Order: Rooms → Items → NPCs
             from app.services.image_generator import generate_all_images_for_experience
             experience_dict = {
                 'locations': [loc.model_dump() for loc in game_state.locations],
@@ -348,9 +340,17 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
                 },
                 'npcs': [npc.model_dump() for npc in game_state.npcs]
             }
-            
+
+            async def _img_broadcast(msg: str):
+                await ws_manager.broadcast_to_room(room_code, {
+                    "type": "scenario_generating",
+                    "message": msg,
+                })
+
             logger.info(f"🎨 Starting image generation for {scenario}...")
-            success = await generate_all_images_for_experience(scenario, experience_dict)
+            success = await generate_all_images_for_experience(
+                scenario, experience_dict, broadcast=_img_broadcast
+            )
             
             if success:
                 logger.info(f"✅ Image generation complete for {scenario}")

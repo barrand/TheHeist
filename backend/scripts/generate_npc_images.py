@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate NPC images for an experience using Gemini 2.5 Flash Image.
+Generate NPC images for an experience using Gemini Flash Image.
 Images are stored per experience ID for reusability across games.
 
-Uses the fast/cheap Gemini Flash model for NPC portraits since there
-can be many NPCs per experience and they are unique per scenario.
+Uses GEMINI_IMAGE_MODEL (cheap/fast) — avoids the strict Imagen 10 req/min
+quota limit. Centralized model name comes from config.py.
 """
 
 import os
@@ -22,7 +22,7 @@ from google.genai import types
 # Import from scripts config
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
-from config import GEMINI_API_KEY
+from config import GEMINI_API_KEY, GEMINI_IMAGE_MODEL
 
 OUTPUT_DIR = Path(__file__).parent.parent / "generated_images"
 
@@ -33,6 +33,15 @@ Borderlands game aesthetic, graphic novel style,
 vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details, expressive characters,
 set in year 2020, contemporary clothing and technology (not futuristic)"""
+
+
+def _parse_retry_after(error_str: str, default: float = 15.0) -> float:
+    """Extract the suggested retry delay (seconds) from a 429 error message."""
+    import re
+    match = re.search(r"retry in ([\d.]+)s", error_str)
+    if match:
+        return float(match.group(1)) + 2.0
+    return default
 
 
 def get_npc_prompt(npc: Dict) -> str:
@@ -85,9 +94,10 @@ def get_npc_prompt(npc: Dict) -> str:
 async def generate_npc_image(
     npc: Dict,
     experience_id: str,
-    client: genai.Client
+    client: genai.Client,
+    max_retries: int = 3
 ) -> str:
-    """Generate a single NPC portrait image."""
+    """Generate a single NPC portrait image with retry on rate limit."""
     
     npc_id = npc.get('id', '')
     npc_name = npc.get('name', 'Unknown')
@@ -101,37 +111,54 @@ async def generate_npc_image(
     
     prompt = get_npc_prompt(npc)
     
-    print(f"🎨 Generating NPC image: {npc_name} ({npc_id})")
+    print(f"🎨 Generating NPC image: {npc_name} ({npc_id}) (model: {GEMINI_IMAGE_MODEL})")
     print(f"   Prompt: {prompt[:120]}...")
     
-    try:
-        # Use Gemini 2.5 Flash Image for fast, cheap NPC generation
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-image',
-            contents=[prompt],
-        )
-        
-        # Save image
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        for part in response.parts:
-            if part.inline_data is not None:
-                image = part.as_image()
-                image.save(str(output_path))
-                print(f"   ✅ Saved: {output_path}")
-                return str(output_path)
-        
-        print(f"   ❌ No image in response for {npc_name}")
-        return None
+    for attempt in range(max_retries):
+        if attempt > 0:
+            print(f"   🔄 Retry attempt {attempt + 1}/{max_retries}...")
+
+        try:
+            # Use Gemini Flash Image (fast/cheap) via config's GEMINI_IMAGE_MODEL
+            response = client.models.generate_content(
+                model=GEMINI_IMAGE_MODEL,
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_modalities=["Text", "Image"]
+                ),
+            )
             
-    except Exception as e:
-        print(f"   ❌ Error generating {npc_name}: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+            # Save image
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            for part in response.parts:
+                if part.inline_data is not None:
+                    image = part.as_image()
+                    image.save(str(output_path))
+                    print(f"   ✅ Saved: {output_path}")
+                    return str(output_path)
+            
+            print(f"   ❌ No image in response for {npc_name} (attempt {attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                continue
+
+        except Exception as e:
+            error_str = str(e)
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                wait = _parse_retry_after(error_str)
+                print(f"   ⏳ Rate limited — waiting {wait:.1f}s before retry...")
+                await asyncio.sleep(wait)
+            elif attempt < max_retries - 1:
+                print(f"   ❌ Error on attempt {attempt + 1}/{max_retries}: {e}")
+            else:
+                import traceback
+                traceback.print_exc()
+
+    print(f"   ❌ Failed to generate {npc_name} after {max_retries} attempts")
+    return None
 
 
-async def generate_all_npc_images(experience_id: str, npcs: List[Dict]):
+async def generate_all_npc_images(experience_id: str, npcs: List[Dict], on_progress=None):
     """Generate images for all NPCs in an experience."""
     
     print(f"\n{'='*60}")
@@ -153,9 +180,11 @@ async def generate_all_npc_images(experience_id: str, npcs: List[Dict]):
             client=client
         )
         results.append(result)
+        if on_progress:
+            await on_progress()
         
-        # Small delay to avoid rate limits
-        await asyncio.sleep(0.5)
+        # Brief delay between NPC images (different model quota from Imagen)
+        await asyncio.sleep(2)
     
     successful = [r for r in results if r is not None]
     print(f"\n✅ Generated {len(successful)}/{len(npcs)} NPC images")
