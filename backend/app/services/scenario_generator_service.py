@@ -68,10 +68,10 @@ async def generate_scenario(
         logger.info(f"[generator] Graph valid" + (f" ({fixes} auto-fixed)" if fixes else ""))
 
         logger.info("[generator] Exporting to JSON and markdown...")
-        export_to_json(fixed_graph)
-        export_to_markdown(fixed_graph)
-        player_count = len(roles)
-        md_filename = f"generated_{scenario_id}_{player_count}players.md"
+        export_to_json(fixed_graph, roles=roles)
+        export_to_markdown(fixed_graph, roles=roles)
+        from app.services.experience_loader import scenario_cache_filename
+        md_filename = scenario_cache_filename(scenario_id, roles) + ".md"
         md_path = _EXPERIENCES_DIR / md_filename
         logger.info(f"[generator] Exported: {md_filename}")
 

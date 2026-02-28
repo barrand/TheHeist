@@ -9,14 +9,15 @@ from typing import Optional
 from dataclasses import asdict
 
 
-def export_to_json(graph, output_path: Optional[str] = None) -> str:
+def export_to_json(graph, output_path: Optional[str] = None, roles=None) -> str:
     """
     Export scenario graph to JSON file.
-    
+
     Args:
         graph: ScenarioGraph instance
-        output_path: Optional path to write JSON. If None, auto-generates path.
-    
+        output_path: Optional explicit path. If None, auto-generates from scenario+roles.
+        roles: Explicit role list for cache-key filename. Falls back to task roles if omitted.
+
     Returns:
         Path to written JSON file
     """
@@ -31,7 +32,11 @@ def export_to_json(graph, output_path: Optional[str] = None) -> str:
     if output_path is None:
         output_dir = Path(__file__).parent.parent.parent / "experiences"
         output_dir.mkdir(exist_ok=True)
-        output_path = output_dir / f"{graph.scenario_id}.json"
+        role_list = sorted(roles) if roles else sorted(
+            set(task.get("assigned_role", "") for task in graph_dict.get("tasks", []))
+        )
+        roles_part = "_".join(role_list)
+        output_path = output_dir / f"generated_{graph.scenario_id}_{roles_part}.json"
     else:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)

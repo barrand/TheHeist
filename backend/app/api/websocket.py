@@ -291,10 +291,11 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
     try:
         loader = ExperienceLoader(experiences_dir="experiences")
 
-        # Check if the experience file exists; generate it if not
-        player_count = len(selected_roles)
-        md_file = loader.experiences_dir / f"generated_{scenario}_{player_count}players.md"
-        json_file = loader.experiences_dir / f"{scenario}.json"
+        # Check if the experience file exists for this exact scenario + role combo
+        from app.services.experience_loader import scenario_cache_filename
+        cache_base = scenario_cache_filename(scenario, selected_roles)
+        md_file = loader.experiences_dir / (cache_base + ".md")
+        json_file = loader.experiences_dir / (cache_base + ".json")
         if not md_file.exists() and not json_file.exists():
             from app.services.scenario_generator_service import generate_scenario
 

@@ -10,6 +10,20 @@ from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 from collections import defaultdict
 
+
+def scenario_cache_filename(scenario_id: str, roles: List[str]) -> str:
+    """
+    Build the base filename (no extension) for a cached scenario.
+    Cache key = scenario_id + sorted role list, so the exact same combination
+    of scenario and roles always reuses the same file, but any difference
+    (different roles, different count) generates a fresh scenario.
+
+    Example: scenario_cache_filename("museum_gala_vault", ["hacker", "mastermind"])
+             → "generated_museum_gala_vault_hacker_mastermind"
+    """
+    roles_part = "_".join(sorted(roles))
+    return f"generated_{scenario_id}_{roles_part}"
+
 from app.models.game_state import (
     GameState,
     Task,
@@ -89,21 +103,23 @@ class ExperienceLoader:
         Returns:
             Parsed GameState
         """
-        # Try loading JSON first (procedurally generated)
-        json_path = self.experiences_dir / f"{scenario}.json"
+        # Cache key includes scenario + exact sorted role list so different role
+        # combinations always get their own generated file.
+        filename = scenario_cache_filename(scenario, selected_roles)
+
+        # Try role-specific JSON first, then markdown
+        json_path = self.experiences_dir / (filename + ".json")
+        md_path = self.experiences_dir / (filename + ".md")
+
         if json_path.exists():
             logger.info(f"Loading experience from JSON: {json_path}")
             return self._load_from_json(json_path, scenario, selected_roles)
-        
-        # Fall back to markdown file
-        # Format: generated_{scenario}_{player_count}players.md
-        player_count = len(selected_roles)
-        filename = f"generated_{scenario}_{player_count}players.md"
-        filepath = self.experiences_dir / filename
+
+        filepath = md_path
         
         if not filepath.exists():
             logger.error(f"Experience file not found: {filepath}")
-            raise FileNotFoundError(f"Experience file not found: {filename}")
+            raise FileNotFoundError(f"Experience file not found: {filename}.md")
         
         logger.info(f"Loading experience from markdown: {filepath}")
         

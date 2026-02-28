@@ -74,7 +74,7 @@ def discover_scenarios() -> List[ScenarioInfo]:
                 task_count=len(data.get("tasks", [])),
                 roles=sorted(list(roles)),
                 has_json=True,
-                has_md=(EXPERIENCES_DIR / f"generated_{scenario_id}_{len(roles)}players.md").exists()
+                has_md=(EXPERIENCES_DIR / f"generated_{scenario_id}_{'_'.join(sorted(roles))}.md").exists()
             )
         except Exception as e:
             print(f"Error loading {json_file}: {e}")
@@ -178,10 +178,10 @@ def generate_scenario():
             yield _progress(f"Graph valid" + (f" ({fixed_count} issues auto-fixed)" if fixed_count else ""))
 
             yield _progress("Exporting to JSON and markdown...")
-            export_to_json(fixed_graph)
-            export_to_markdown(fixed_graph)
-            player_count = len(roles)
-            exported_filename = f"generated_{scenario_id}_{player_count}players.md"
+            export_to_json(fixed_graph, roles=roles)
+            export_to_markdown(fixed_graph, roles=roles)
+            roles_part = "_".join(sorted(roles))
+            exported_filename = f"generated_{scenario_id}_{roles_part}.md"
             yield _progress(f"Exported: {exported_filename}")
 
             yield _progress("Validating scenario markdown...")

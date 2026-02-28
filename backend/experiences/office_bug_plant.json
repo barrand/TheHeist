@@ -1,0 +1,657 @@
+{
+  "scenario_id": "office_bug_plant",
+  "objective": "Infiltrate the secure corporate tower to plant a micro-bug on the reclusive Director's encrypted communication device.",
+  "locations": [
+    {
+      "id": "service_alley_dumpster",
+      "name": "The Serpent's Mouth Alley",
+      "description": "Foul-smelling refuse bins and overflowing recycling dumpsters line this dimly lit alley, a common shortcut for deliveries and illicit activities.",
+      "category": "Exterior",
+      "visual": "Grimy brick alley, overflowing dumpsters, flickering fluorescent light, rain-slicked pavement."
+    },
+    {
+      "id": "sub_basement_tunnels",
+      "name": "The Rattlesnake's Den",
+      "description": "A maze of condensation-dripping pipes and humming conduits, leading to the building's skeletal underbelly, rarely traversed by human foot.",
+      "category": "Interior",
+      "visual": "Dark, narrow utility tunnels, thick pipes overhead, flickering emergency lights, damp concrete."
+    },
+    {
+      "id": "freight_elevator_vestibule",
+      "name": "The Buzzard's Perch",
+      "description": "Steel doors scarred with countless impacts open into a stark, utilitarian waiting area, often empty but occasionally used by maintenance crews.",
+      "category": "Interior",
+      "visual": "Large industrial freight elevator, scuffed concrete floor, overhead fluorescent lights, security camera in corner."
+    },
+    {
+      "id": "skyline_executive_lounge",
+      "name": "The Raven's Roost Lounge",
+      "description": "Plush leather sofas and expensive art adorn this panoramic lounge, where high-level executives unwind, oblivious to the watchful eyes and subtle machinations.",
+      "category": "Interior",
+      "visual": "Opulent executive lounge, floor-to-ceiling windows with city view, modern art, well-dressed people sipping drinks."
+    },
+    {
+      "id": "restricted_data_corridor",
+      "name": "The Spider's Thread Corridor",
+      "description": "Pristine white walls and hushed silence define this sterile corridor, punctuated by card-reader panels and security cameras guarding sensitive data servers.",
+      "category": "Interior",
+      "visual": "Long, brightly lit, minimalist corridor, frosted glass doors, embedded wall screens, discreet cameras."
+    },
+    {
+      "id": "biometric_lockout_chamber",
+      "name": "The Vulture's Lockbox",
+      "description": "A reinforced antechamber designed to bottleneck intruders, featuring multiple layers of biometric scanners and an oppressive pressure-plate floor.",
+      "category": "Interior",
+      "visual": "Small, circular room, glowing biometric scanners, heavy blast door, pressure plate floor, sterile white walls."
+    }
+  ],
+  "items": [
+    {
+      "id": "item_1",
+      "name": "Discarded Maintenance Tool Kit",
+      "description": "A forgotten kit of basic tools, possibly useful for prying or cutting.",
+      "location": "service_alley_dumpster",
+      "hidden": false,
+      "visual": "A grubby, plastic toolbox, slightly ajar, revealing a rusty wrench, a pair of bent pliers, and a roll of electrical tape, sitting against a graffiti-covered brick wall in a dark alley.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_2",
+      "name": "Alley Cat's Lockpick Set",
+      "description": "A professional set of lockpicks, small enough to be concealed, perfect for intricate locks.",
+      "location": "service_alley_dumpster",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "G4"
+        }
+      ],
+      "visual": "A compact, black leather case, barely visible under a loose paving stone in the alley, containing an array of polished, slender metal picks and tension wrenches.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_3",
+      "name": "The Shadow's Veil Hood",
+      "description": "A lightweight, dark fabric hood designed for anonymity and quick concealment.",
+      "location": "service_alley_dumpster",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "L2"
+        },
+        {
+          "type": "task",
+          "id": "G4"
+        }
+      ],
+      "visual": "A folded, dark grey, almost black, lightweight fabric hood, tucked snugly behind a rusted dumpster, blending into the shadows.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_4",
+      "name": "Unsecured Network Drive",
+      "description": "A generic external hard drive, left haphazardly near a server rack, likely containing system backups.",
+      "location": "sub_basement_tunnels",
+      "hidden": false,
+      "visual": "A standard, black external hard drive, its indicator light faintly blinking, resting precariously on a stack of manuals next to a humming server rack in a cold, blue-lit room.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_5",
+      "name": "Security Guard's Coffee Mug",
+      "description": "A mundane mug, but its placement might reveal a guard's blind spot or routine.",
+      "location": "freight_elevator_vestibule",
+      "hidden": false,
+      "visual": "A ceramic coffee mug, half-empty, with a generic corporate logo, sitting on a cluttered desk in front of a bank of security monitors, some displaying static.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_6",
+      "name": "Master Keycard Duplicator",
+      "description": "A small, illicit device capable of cloning RFID keycards for unauthorized access.",
+      "location": "freight_elevator_vestibule",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "CB4"
+        },
+        {
+          "type": "task",
+          "id": "L2"
+        }
+      ],
+      "visual": "A sleek, credit-card sized black device with a single LED, hidden beneath a stack of old security reports in a locked drawer in the security office.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_7",
+      "name": "Silent Eye Bug",
+      "description": "A miniature, high-fidelity audio bug designed for covert surveillance, barely detectable.",
+      "location": "freight_elevator_vestibule",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "CB1"
+        },
+        {
+          "type": "task",
+          "id": "G2"
+        }
+      ],
+      "visual": "A minuscule, almost invisible black disc, no larger than a button, with a tiny antenna, magnetically attached to the underside of a security console's desk.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_8",
+      "name": "Executive's Forgotten Tablet",
+      "description": "A high-end tablet, left unattended, potentially logged into sensitive corporate networks.",
+      "location": "skyline_executive_lounge",
+      "hidden": false,
+      "visual": "A sleek, silver tablet with a cracked screen protector, resting on a plush, empty armchair in a dimly lit, luxurious executive lounge, a half-finished drink beside it.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_9",
+      "name": "Confidential Client Roster",
+      "description": "A discreet binder containing a list of high-value clients and their contact details.",
+      "location": "skyline_executive_lounge",
+      "hidden": false,
+      "visual": "A slim, leather-bound folder with embossed initials, lying casually on a polished mahogany coffee table amidst scattered business magazines.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_10",
+      "name": "Janitor's Master Key-ring",
+      "description": "A bulky ring of keys, granting access to various utility closets and maintenance panels.",
+      "location": "restricted_data_corridor",
+      "hidden": false,
+      "visual": "A heavy metal key-ring with a dozen different keys, some worn smooth, dangling from a hook on a cleaning cart parked in a long, sterile office corridor.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_11",
+      "name": "Visitor Logbook",
+      "description": "A binder detailing all recent visitors, their times, and who they met with.",
+      "location": "biometric_lockout_chamber",
+      "hidden": false,
+      "visual": "A thick, open logbook with columns for names and times, resting on the polished counter of a modern reception desk, next to a vase of artificial flowers.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_12",
+      "name": "The CEO's Personal Comm-Link",
+      "description": "A bespoke, encrypted communication device, likely containing sensitive executive directives.",
+      "location": "service_alley_dumpster",
+      "hidden": true,
+      "unlock_prerequisites": [
+        {
+          "type": "task",
+          "id": "L2"
+        }
+      ],
+      "visual": "A sleek, metallic smartphone, slightly thicker than a standard model, with a glowing green power button, hidden within a false bottom of a decorative antique globe on the CEO's imposing desk.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_13",
+      "name": "Server Rack Access Key",
+      "description": "A standard key for opening the protective cages around critical server racks.",
+      "location": "service_alley_dumpster",
+      "hidden": false,
+      "visual": "A simple, silver-colored key with a plastic grip, hanging conspicuously from a small hook near a labeled server rack, glinting under the harsh fluorescent lights.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_14",
+      "name": "Network Operations Manual",
+      "description": "A comprehensive guide detailing the network's architecture, security protocols, and vulnerabilities.",
+      "location": "service_alley_dumpster",
+      "hidden": false,
+      "visual": "A thick, well-worn technical manual with a faded cover, its pages dog-eared, sitting on a stool next to a blinking, whirring bank of network equipment.",
+      "quantity": 1,
+      "transferable": true
+    },
+    {
+      "id": "item_15",
+      "name": "The 'Heart' Mainframe Console",
+      "description": "The primary interface for the company's central processing unit, crucial for planting the bug.",
+      "location": "service_alley_dumpster",
+      "hidden": false,
+      "visual": "A large, imposing server console with multiple glowing screens displaying complex code and network activity, surrounded by a maze of cables and indicator lights, humming with power.",
+      "quantity": 1,
+      "transferable": true
+    }
+  ],
+  "npcs": [
+    {
+      "id": "receptionist",
+      "name": "Eleanor Vance",
+      "role": "receptionist",
+      "personality": "Professional and helpful",
+      "location": "biometric_lockout_chamber",
+      "information_known": [
+        {
+          "info_id": "receptionist_info_1",
+          "confidence": "MEDIUM",
+          "description": "Information from Receptionist"
+        },
+        {
+          "info_id": "receptionist_info_2",
+          "confidence": "MEDIUM",
+          "description": "Information from Receptionist"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "receptionist_action_1",
+          "confidence": "MEDIUM",
+          "description": "Action performed by Receptionist"
+        },
+        {
+          "action_id": "receptionist_action_2",
+          "confidence": "MEDIUM",
+          "description": "Action performed by Receptionist"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "person",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "stern",
+      "attitude": "casual",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "manager",
+      "name": "Mr. Sterling Thorne",
+      "role": "manager",
+      "personality": "Busy and authoritative",
+      "location": "skyline_executive_lounge",
+      "information_known": [
+        {
+          "info_id": "manager_info_1",
+          "confidence": "MEDIUM",
+          "description": "Information from Manager"
+        },
+        {
+          "info_id": "manager_info_2",
+          "confidence": "HIGH",
+          "description": "Information from Manager"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "manager_action_1",
+          "confidence": "LOW",
+          "description": "Action performed by Manager"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "man",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "neutral",
+      "attitude": "professional",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    },
+    {
+      "id": "janitor",
+      "name": "Gus Finch",
+      "role": "maintenance",
+      "personality": "Friendly but observant",
+      "location": "freight_elevator_vestibule",
+      "information_known": [
+        {
+          "info_id": "janitor_info_1",
+          "confidence": "LOW",
+          "description": "Information from Janitor"
+        },
+        {
+          "info_id": "janitor_info_2",
+          "confidence": "MEDIUM",
+          "description": "Information from Janitor"
+        }
+      ],
+      "actions_available": [
+        {
+          "action_id": "janitor_action_1",
+          "confidence": "MEDIUM",
+          "description": "Action performed by Janitor"
+        },
+        {
+          "action_id": "janitor_action_2",
+          "confidence": "LOW",
+          "description": "Action performed by Janitor"
+        }
+      ],
+      "cover_options": [
+        {
+          "cover_id": "direct",
+          "description": "Be direct and honest",
+          "npc_reaction": "Suspicious but may help if convinced"
+        },
+        {
+          "cover_id": "lie",
+          "description": "Use a false cover story",
+          "npc_reaction": "May believe or may see through it"
+        }
+      ],
+      "gender": "person",
+      "ethnicity": "",
+      "clothing": "",
+      "expression": "stern",
+      "attitude": "suspicious",
+      "details": "",
+      "relationships": "",
+      "story_context": ""
+    }
+  ],
+  "tasks": [
+    {
+      "id": "CB1",
+      "type": "search",
+      "description": "Locate hidden access panel schematics.",
+      "assigned_role": "cat_burglar",
+      "location": "restricted_data_corridor",
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_10"
+      ]
+    },
+    {
+      "id": "CB2",
+      "type": "npc_llm",
+      "description": "Distract Eleanor for office access.",
+      "assigned_role": "cat_burglar",
+      "location": "biometric_lockout_chamber",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "CB1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "receptionist",
+      "npc_name": "Receptionist",
+      "npc_personality": "Professional and helpful",
+      "target_outcomes": [
+        "receptionist_info_1"
+      ]
+    },
+    {
+      "id": "CB3",
+      "type": "minigame",
+      "description": "Bypass lounge security camera feed.",
+      "assigned_role": "cat_burglar",
+      "location": "skyline_executive_lounge",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "CB2"
+        },
+        {
+          "type": "task",
+          "id": "CB1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "CB4",
+      "type": "npc_llm",
+      "description": "Coax Gus for cleaning cart keys.",
+      "assigned_role": "cat_burglar",
+      "location": "freight_elevator_vestibule",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "CB3"
+        },
+        {
+          "type": "task",
+          "id": "CB1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "janitor",
+      "npc_name": "Janitor",
+      "npc_personality": "Friendly but observant",
+      "target_outcomes": [
+        "janitor_info_1"
+      ]
+    },
+    {
+      "id": "CB5",
+      "type": "search",
+      "description": "Find executive's secure data device.",
+      "assigned_role": "cat_burglar",
+      "location": "service_alley_dumpster",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "CB4"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_12"
+      ]
+    },
+    {
+      "id": "L1",
+      "type": "minigame",
+      "description": "Scan surveillance feeds for patrol routes.",
+      "assigned_role": "lookout",
+      "location": "freight_elevator_vestibule",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "L2",
+      "type": "search",
+      "description": "Identify alley's blind spot for entry.",
+      "assigned_role": "lookout",
+      "location": "service_alley_dumpster",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "receptionist_info_1"
+        },
+        {
+          "type": "task",
+          "id": "CB5"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_2",
+        "item_1"
+      ]
+    },
+    {
+      "id": "L3",
+      "type": "search",
+      "description": "Locate main server room entry point.",
+      "assigned_role": "lookout",
+      "location": "service_alley_dumpster",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "CB1"
+        },
+        {
+          "type": "task",
+          "id": "CB3"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_15"
+      ]
+    },
+    {
+      "id": "L4",
+      "type": "search",
+      "description": "Identify active network security protocols.",
+      "assigned_role": "lookout",
+      "location": "service_alley_dumpster",
+      "prerequisites": [
+        {
+          "type": "outcome",
+          "id": "janitor_info_1"
+        },
+        {
+          "type": "task",
+          "id": "CB3"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_13"
+      ]
+    },
+    {
+      "id": "L5",
+      "type": "minigame",
+      "description": "Disable motion sensors on perimeter.",
+      "assigned_role": "lookout",
+      "location": "freight_elevator_vestibule",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "CB2"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "safe_cracking"
+    },
+    {
+      "id": "G1",
+      "type": "minigame",
+      "description": "Hack corridor's smart lighting system.",
+      "assigned_role": "grifter",
+      "location": "restricted_data_corridor",
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "alarm_disable"
+    },
+    {
+      "id": "G2",
+      "type": "npc_llm",
+      "description": "Obtain visitor badge from Eleanor.",
+      "assigned_role": "grifter",
+      "location": "biometric_lockout_chamber",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "G1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "npc_id": "receptionist",
+      "npc_name": "Receptionist",
+      "npc_personality": "Professional and helpful",
+      "target_outcomes": [
+        "receptionist_info_1"
+      ]
+    },
+    {
+      "id": "G3",
+      "type": "minigame",
+      "description": "Manipulate server room climate controls.",
+      "assigned_role": "grifter",
+      "location": "sub_basement_tunnels",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "CB2"
+        },
+        {
+          "type": "task",
+          "id": "CB3"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "minigame_id": "alarm_disable"
+    },
+    {
+      "id": "G4",
+      "type": "search",
+      "description": "Discover vulnerable network port access.",
+      "assigned_role": "grifter",
+      "location": "sub_basement_tunnels",
+      "prerequisites": [
+        {
+          "type": "task",
+          "id": "CB1"
+        },
+        {
+          "type": "task",
+          "id": "L1"
+        }
+      ],
+      "status": "locked",
+      "detail_description": "",
+      "search_items": [
+        "item_4"
+      ]
+    }
+  ],
+  "timeline_minutes": 120
+}
