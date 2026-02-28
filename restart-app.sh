@@ -70,7 +70,7 @@ echo ""
 
 # Start Flutter instance with web-server (doesn't auto-open browser)
 cd "$SCRIPT_DIR/frontend"
-flutter run -d web-server --web-hostname=localhost --web-port=8087 --profile > /tmp/theheist-flutter.log 2>&1 &
+flutter run -d web-server --web-hostname=localhost --web-port=8087 > /tmp/theheist-flutter.log 2>&1 &
 FLUTTER_PID=$!
 echo -e "${GREEN}   ✓ Flutter starting (PID: $FLUTTER_PID)${NC}"
 echo ""
