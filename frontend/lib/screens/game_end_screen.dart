@@ -85,7 +85,7 @@ class GameEndScreen extends StatelessWidget {
         height: 200,
         decoration: BoxDecoration(
           color: AppColors.bgSecondary,
-          borderRadius: BorderRadius.circular(AppDimensions.borderRadiusLG),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
           border: Border.all(
             color: AppColors.danger,
             width: 2,
@@ -123,7 +123,7 @@ class GameEndScreen extends StatelessWidget {
       height: 200,
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppDimensions.borderRadiusLG),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
         border: Border.all(
           color: AppColors.success,
           width: 2,
@@ -199,7 +199,7 @@ class GameEndScreen extends StatelessWidget {
       padding: EdgeInsets.all(AppDimensions.spaceMD),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppDimensions.borderRadiusMD),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
         border: Border.all(
           color: success 
               ? AppColors.success.withValues(alpha: 0.3)
@@ -224,7 +224,7 @@ class GameEndScreen extends StatelessWidget {
       padding: EdgeInsets.all(AppDimensions.spaceMD),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppDimensions.borderRadiusMD),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,7 +269,7 @@ class GameEndScreen extends StatelessWidget {
       padding: EdgeInsets.all(AppDimensions.spaceMD),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppDimensions.borderRadiusMD),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
         border: Border.all(
           color: AppColors.danger.withValues(alpha: 0.3),
         ),
@@ -321,7 +321,7 @@ class GameEndScreen extends StatelessWidget {
       padding: EdgeInsets.all(AppDimensions.spaceMD),
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppDimensions.borderRadiusMD),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
