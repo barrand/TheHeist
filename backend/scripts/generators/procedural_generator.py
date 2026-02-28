@@ -724,8 +724,17 @@ class ProceduralGraphGenerator:
             other_roles = [r for r in role_ids if r != role]
             if other_roles and available_items:
                 target_role = random.choice(other_roles)
-                handoff_item = random.choice(list(available_items))
-                
+                # Prefer non-hidden items at THIS task's location so the player can
+                # actually find the item before handing it off. Fall back to the
+                # global non-hidden pool only if no local items are available.
+                items_at_location = [
+                    item.id for item in items
+                    if item.location == location.id and not item.hidden
+                    and item.id in available_items
+                ]
+                handoff_pool = items_at_location if items_at_location else list(available_items)
+                handoff_item = random.choice(handoff_pool)
+
                 return Task(
                     id=task_id,
                     type=task_type,
@@ -914,8 +923,62 @@ class ProceduralGraphGenerator:
             if t.type == TaskType.NPC_LLM.value:
                 available_outcomes.extend(t.target_outcomes)
 
-        # Build a pool of non-hidden item IDs that can be handed off
-        handoff_item_pool = [item.id for item in (items or []) if not item.hidden] if items else []
+        # Build per-role ordered task lists so we can determine which search tasks
+        # PRECEDE a given handoff task. A role can only hand off items they have
+        # already picked up — items from search tasks that come AFTER the handoff
+        # in the chain are not yet in the player's inventory.
+        items_by_id: Dict[str, "Item"] = {item.id: item for item in (items or [])}
+        role_task_order: Dict[str, List[str]] = {}
+        for t in tasks:
+            role_task_order.setdefault(t.assigned_role, []).append(t.id)
+        for role_key in role_task_order:
+            role_code = ROLE_CODES.get(role_key, role_key[:2].upper())
+            role_task_order[role_key].sort(
+                key=lambda tid: int(tid[len(role_code):]) if tid[len(role_code):].isdigit() else 0
+            )
+
+        def _items_available_before(role: str, task_id: str) -> List[str]:
+            """Return non-hidden item IDs role R will have acquired before reaching task_id.
+
+            Only includes items from search tasks that appear earlier in the role's
+            ordered task chain. Hidden items are excluded — they require prerequisites
+            and can't be reliably pre-acquired for a handoff.
+            """
+            ordered = role_task_order.get(role, [])
+            try:
+                cutoff = ordered.index(task_id)
+            except ValueError:
+                return []
+            result = []
+            for earlier_id in ordered[:cutoff]:
+                for t2 in tasks:
+                    if t2.id == earlier_id and t2.type == TaskType.SEARCH.value:
+                        for item_id in (t2.search_items or []):
+                            item_obj = items_by_id.get(item_id)
+                            if item_obj and not item_obj.hidden:
+                                result.append(item_id)
+            return result
+
+        items_in_any_search: Set[str] = {
+            item_id
+            for t in tasks
+            if t.type == TaskType.SEARCH.value
+            for item_id in (t.search_items or [])
+        }
+
+        # Items already claimed by a handoff task (from the initial graph build)
+        items_in_handoffs: Set[str] = {
+            t.handoff_item for t in tasks
+            if t.type == TaskType.HANDOFF.value and t.handoff_item
+        }
+
+        # Global pool of non-hidden, unclaimed items as a fallback
+        all_non_hidden = [
+            item.id for item in (items or [])
+            if not item.hidden
+            and item.id not in items_in_any_search
+            and item.id not in items_in_handoffs
+        ]
 
         # Candidates: dependent tasks (have prerequisites), not escape tasks.
         # Include npc_llm so we can always find candidates even in mastermind-heavy scenarios.
@@ -931,22 +994,49 @@ class ProceduralGraphGenerator:
         idx = 0
 
         while handoff_count < MIN_HANDOFF and idx < len(candidates):
-            other_roles = [r for r in role_ids if r != candidates[idx].assigned_role]
+            t = candidates[idx]
+            role = t.assigned_role
+            other_roles = [r for r in role_ids if r != role]
             if not other_roles:
                 idx += 1
                 continue
-            if not handoff_item_pool:
-                # No items available — use info_share instead of a broken itemless handoff
-                logger.info(f"[cross-role] No items available for handoff — skipping handoff conversion for {candidates[idx].id}")
+
+            # Only use items the role has already picked up BEFORE reaching this task.
+            # _items_available_before returns non-hidden items from earlier search tasks only.
+            role_pool = [
+                item_id for item_id in _items_available_before(role, t.id)
+                if item_id not in items_in_handoffs
+            ]
+            # Fallback: non-hidden items at this task's location that aren't in any search
+            if not role_pool:
+                location_items = [
+                    item.id for item in (items or [])
+                    if item.location == t.location and not item.hidden
+                    and item.id not in items_in_any_search
+                    and item.id not in items_in_handoffs
+                ]
+                role_pool = location_items
+
+            chosen_item = None
+            if role_pool:
+                chosen_item = random.choice(role_pool)
+            elif all_non_hidden:
+                chosen_item = random.choice(all_non_hidden)
+                all_non_hidden.remove(chosen_item)
+
+            if not chosen_item:
+                logger.info(f"[cross-role] No acquirable item for {role} handoff — skipping {t.id}")
                 idx += 1
                 continue
-            t = candidates[idx]
-            # Clear NPC/minigame fields that don't apply to handoff
+
+            items_in_handoffs.add(chosen_item)
+            # Remove from role search items so the same item isn't used twice
+            if chosen_item in role_search_items.get(role, []):
+                role_search_items[role].remove(chosen_item)
+
             t.type = TaskType.HANDOFF.value
             t.handoff_to_role = random.choice(other_roles)
-            chosen_item = random.choice(handoff_item_pool)
             t.handoff_item = chosen_item
-            handoff_item_pool.remove(chosen_item)  # each item can only be handed off once
             t.npc_id = None
             t.npc_name = None
             t.minigame_id = None
@@ -954,7 +1044,7 @@ class ProceduralGraphGenerator:
             t.description = f"Hand off to {t.handoff_to_role.replace('_', ' ')}"
             handoff_count += 1
             candidates.pop(idx)
-            logger.info(f"[cross-role] Converted {t.id} ({t.assigned_role}) to handoff → {t.handoff_to_role} (item: {t.handoff_item})")
+            logger.info(f"[cross-role] Converted {t.id} ({role}) to handoff → {t.handoff_to_role} (item: {t.handoff_item})")
 
         while info_share_count < MIN_INFO_SHARE and idx < len(candidates):
             if available_outcomes:
