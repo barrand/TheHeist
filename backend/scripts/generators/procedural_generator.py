@@ -9,6 +9,7 @@ import json
 import logging
 import random
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional
 from enum import Enum
 
@@ -92,6 +93,7 @@ class NPC:
     cover_options: List[NPCCoverOption] = field(default_factory=list)
     gender: str = "person"
     ethnicity: str = ""
+    age: int = 35
     clothing: str = ""
     expression: str = "neutral"
     attitude: str = "professional"
@@ -143,11 +145,11 @@ class GeneratorConfig:
     tasks_per_role: Tuple[int, int] = (3, 6)
     hidden_item_ratio: float = 0.3
     task_type_distribution: Dict[str, float] = field(default_factory=lambda: {
-        "minigame": 0.40,
-        "npc_llm": 0.35,
-        "search": 0.25,
-        "handoff": 0.00,  # Disabled: requires complex item prerequisite chains
-        "info_share": 0.00,  # Disabled: requires outcome tracking complexity
+        "minigame": 0.30,
+        "npc_llm": 0.30,
+        "search": 0.20,
+        "handoff": 0.10,
+        "info_share": 0.10,
     })
     timeline_minutes: int = 120
     seed: Optional[int] = None
@@ -171,6 +173,21 @@ MINIGAMES = [
 ]
 
 
+def _load_role_minigames() -> Dict[str, List[str]]:
+    """Load per-role minigame lists from shared_data/roles.json."""
+    try:
+        roles_path = Path(__file__).parent.parent.parent.parent / "shared_data" / "roles.json"
+        with open(roles_path) as f:
+            data = json.load(f)
+        return {
+            role["role_id"]: [mg["id"] for mg in role.get("minigames", [])]
+            for role in data.get("roles", [])
+        }
+    except Exception as e:
+        logger.warning(f"[minigames] Could not load roles.json, using global fallback: {e}")
+        return {}
+
+
 class ProceduralGraphGenerator:
     """Generates valid scenario graphs using deterministic algorithms"""
     
@@ -178,11 +195,28 @@ class ProceduralGraphGenerator:
         self.config = config or GeneratorConfig()
         if self.config.seed is not None:
             random.seed(self.config.seed)
+        self._role_minigames: Dict[str, List[str]] = _load_role_minigames()
+
+    def _pick_minigame(self, role: str) -> str:
+        """Return a valid minigame ID for a given role, falling back to the global list."""
+        role_mgs = self._role_minigames.get(role, [])
+        if role_mgs:
+            return random.choice(role_mgs)
+        # Fallback: use the global list but only IDs that could plausibly exist
+        return random.choice(MINIGAMES)
+
+    def _role_can_do_minigame(self, role: str) -> bool:
+        """Return False for roles (like Mastermind) that have no minigames in roles.json."""
+        role_mgs = self._role_minigames.get(role)
+        # If roles.json was loaded and the role explicitly has an empty list, no minigames
+        if role_mgs is not None and len(role_mgs) == 0:
+            return False
+        return True
     
     def generate(self, scenario_id: str, role_ids: List[str]) -> ScenarioGraph:
         """Generate a complete scenario graph"""
 
-        # 1. LLM generates the creative setting: locations, objective, and NPC roster.
+        # 1. LLM generates the creative setting: locations, objective, and NPC placement.
         #    Falls back to templates if the LLM call fails.
         llm_setting = _generate_setting_with_llm(scenario_id, role_ids, self.config)
 
@@ -202,16 +236,22 @@ class ProceduralGraphGenerator:
         else:
             locations = self._generate_locations_fallback(scenario_id)
             objective = self._generate_objective(scenario_id)
-        
+
+        # npc_placement maps archetype_id -> location_id (from LLM, may be None/empty)
+        npc_placement = llm_setting.get("npc_placement", {}) if llm_setting else {}
+
         # 3. Generate items with unlock chains
         items = self._generate_items(locations)
         
-        # 4. Generate NPCs with outcomes
-        npcs = self._generate_npcs(locations)
+        # 4. Generate NPCs with contextual placement
+        npcs = self._generate_npcs(locations, npc_placement)
         
         # 5. Generate task graph (the critical part)
         tasks = self._generate_task_graph(role_ids, locations, items, npcs)
-        
+
+        # 6. Append one escape task per role (exit through first/entry location)
+        tasks = self._append_escape_tasks(tasks, role_ids, locations)
+
         graph = ScenarioGraph(
             scenario_id=scenario_id,
             objective=objective,
@@ -222,7 +262,7 @@ class ProceduralGraphGenerator:
             timeline_minutes=self.config.timeline_minutes
         )
         
-        # 6. Enrich item/NPC/task names with a single LLM call
+        # 7. Enrich item/NPC/task names and full NPC profiles via LLM
         _enrich_graph_with_llm(graph, role_ids)
         
         return graph
@@ -269,9 +309,16 @@ class ProceduralGraphGenerator:
         
         return items
     
-    def _generate_npcs(self, locations: List[Location]) -> List[NPC]:
-        """Generate NPCs with outcomes (information and actions)"""
+    def _generate_npcs(self, locations: List[Location], npc_placement: Dict[str, str] = None) -> List[NPC]:
+        """Generate NPCs with outcomes (information and actions).
+
+        npc_placement maps archetype_id -> location_id from the LLM setting call.
+        Falls back to random.choice when an archetype has no placement or the dict is empty.
+        """
+        npc_placement = npc_placement or {}
         npc_count = random.randint(*self.config.npc_count)
+        location_id_set = {loc.id for loc in locations}
+        location_by_id = {loc.id: loc for loc in locations}
         
         # Common NPC archetypes
         npc_templates = [
@@ -290,8 +337,12 @@ class ProceduralGraphGenerator:
         
         npcs = []
         for i, (npc_id, name, role, personality) in enumerate(selected_npc_templates):
-            # Assign to random location
-            location = random.choice(locations)
+            # Use LLM-suggested placement if valid, else fall back to random
+            suggested_loc_id = npc_placement.get(npc_id)
+            if suggested_loc_id and suggested_loc_id in location_id_set:
+                location = location_by_id[suggested_loc_id]
+            else:
+                location = random.choice(locations)
             
             # Each NPC has 1-2 information items and 1-2 actions
             info_count = random.randint(1, 2)
@@ -395,7 +446,7 @@ class ProceduralGraphGenerator:
                 # First task for each role is a starting task
                 if task_num == 1:
                     task = self._create_starting_task(
-                        task_id, role, locations
+                        task_id, role, locations, npcs
                     )
                 else:
                     # Create task with dependencies on previous tasks
@@ -432,10 +483,15 @@ class ProceduralGraphGenerator:
                         task.search_items = selected_items
                         assigned_items.update(selected_items)
                     else:
-                        # No items available - convert to minigame instead
-                        task.type = TaskType.MINIGAME.value
-                        task.minigame_id = random.choice(MINIGAMES)
-                        task.description = f"Complete {task.minigame_id.replace('_', ' ')}"
+                        # No items available - convert to minigame or npc_llm for no-minigame roles
+                        if self._role_can_do_minigame(task.assigned_role):
+                            mg = self._pick_minigame(task.assigned_role)
+                            task.type = TaskType.MINIGAME.value
+                            task.minigame_id = mg
+                            task.description = f"Complete {mg.replace('_', ' ')}"
+                        else:
+                            task.type = TaskType.NPC_LLM.value
+                            task.description = "Gather information from a contact"
                         task.search_items = []
                 
                 tasks.append(task)
@@ -458,16 +514,48 @@ class ProceduralGraphGenerator:
         self,
         task_id: str,
         role: str,
-        locations: List[Location]
+        locations: List[Location],
+        npcs: List[NPC] = None
     ) -> Task:
         """Create a starting task (no prerequisites)"""
-        
+        location = random.choice(locations)
+
+        # Roles with no minigames (e.g. Mastermind) start with an NPC or search task
+        if not self._role_can_do_minigame(role):
+            if npcs:
+                npc = random.choice(npcs)
+                npc_outcomes = [i.info_id for i in npc.information_known if i.info_id]
+                target_outcomes = [random.choice(npc_outcomes)] if npc_outcomes else []
+                return Task(
+                    id=task_id,
+                    type=TaskType.NPC_LLM.value,
+                    description=f"Talk to {npc.name}",
+                    assigned_role=role,
+                    location=npc.location,
+                    prerequisites=[],
+                    status="locked",
+                    npc_id=npc.id,
+                    npc_name=npc.name,
+                    npc_personality=npc.personality,
+                    target_outcomes=target_outcomes,
+                )
+            # Fallback to search if no NPCs yet
+            return Task(
+                id=task_id,
+                type=TaskType.SEARCH.value,
+                description=f"Search for items at {location.name}",
+                assigned_role=role,
+                location=location.id,
+                prerequisites=[],
+                status="locked",
+                search_items=[],
+            )
+
         # Starting tasks are usually minigames or searches
         task_type = random.choice([TaskType.MINIGAME, TaskType.SEARCH])
-        location = random.choice(locations)
-        
+
         if task_type == TaskType.MINIGAME:
-            minigame = random.choice(MINIGAMES)
+            minigame = self._pick_minigame(role)
             return Task(
                 id=task_id,
                 type=task_type.value,
@@ -504,8 +592,10 @@ class ProceduralGraphGenerator:
     ) -> Task:
         """Create a task with dependencies"""
         
-        # Choose task type based on distribution
+        # Choose task type based on distribution; re-roll if role can't do minigames
         task_type = self._weighted_choice(self.config.task_type_distribution)
+        if task_type == "minigame" and not self._role_can_do_minigame(role):
+            task_type = "npc_llm"
         location = random.choice(locations)
         
         # Create prerequisites (1-3 prerequisites from available sources)
@@ -518,7 +608,7 @@ class ProceduralGraphGenerator:
         )
         
         if task_type == "minigame":
-            minigame = random.choice(MINIGAMES)
+            minigame = self._pick_minigame(role)
             return Task(
                 id=task_id,
                 type=task_type,
@@ -589,23 +679,29 @@ class ProceduralGraphGenerator:
                     handoff_to_role=target_role
                 )
             else:
-                # Can't create handoff, fall back to minigame
-                task_type = "minigame"
+                # Can't create handoff, fall back to role-appropriate task
+                if self._role_can_do_minigame(role):
+                    mg = self._pick_minigame(role)
+                    return Task(
+                        id=task_id,
+                        type="minigame",
+                        description=f"Complete {mg.replace('_', ' ')}",
+                        assigned_role=role,
+                        location=location.id,
+                        prerequisites=prerequisites,
+                        minigame_id=mg
+                    )
                 return Task(
-                    id=task_id,
-                    type=task_type,
-                    description=f"Complete {random.choice(MINIGAMES).replace('_', ' ')}",
-                    assigned_role=role,
-                    location=location.id,
-                    prerequisites=prerequisites,
-                    minigame_id=random.choice(MINIGAMES)
+                    id=task_id, type="search",
+                    description=f"Search {location.name}",
+                    assigned_role=role, location=location.id,
+                    prerequisites=prerequisites, search_items=[],
                 )
         
         elif task_type == "info_share":
             # Verbal information share (requires prior knowledge)
             if available_outcomes:
                 outcome_id = random.choice(list(available_outcomes))
-                
                 return Task(
                     id=task_id,
                     type=task_type,
@@ -616,27 +712,42 @@ class ProceduralGraphGenerator:
                     info_description=f"Information about {outcome_id}"
                 )
             else:
-                # No info to share yet, fall back to minigame
-                task_type = "minigame"
+                # No info to share yet, fall back to role-appropriate task
+                if self._role_can_do_minigame(role):
+                    mg = self._pick_minigame(role)
+                    return Task(
+                        id=task_id,
+                        type="minigame",
+                        description=f"Complete {mg.replace('_', ' ')}",
+                        assigned_role=role,
+                        location=location.id,
+                        prerequisites=prerequisites,
+                        minigame_id=mg
+                    )
                 return Task(
-                    id=task_id,
-                    type=task_type,
-                    description=f"Complete {random.choice(MINIGAMES).replace('_', ' ')}",
-                    assigned_role=role,
-                    location=location.id,
-                    prerequisites=prerequisites,
-                    minigame_id=random.choice(MINIGAMES)
+                    id=task_id, type="search",
+                    description=f"Search {location.name}",
+                    assigned_role=role, location=location.id,
+                    prerequisites=prerequisites, search_items=[],
                 )
         
-        # Default fallback
+        # Default fallback — use role-appropriate task
+        if self._role_can_do_minigame(role):
+            mg = self._pick_minigame(role)
+            return Task(
+                id=task_id,
+                type=TaskType.MINIGAME.value,
+                description=f"Complete {mg.replace('_', ' ')}",
+                assigned_role=role,
+                location=location.id,
+                prerequisites=prerequisites,
+                minigame_id=mg
+            )
         return Task(
-            id=task_id,
-            type=TaskType.MINIGAME.value,
-            description="Complete task",
-            assigned_role=role,
-            location=location.id,
-            prerequisites=prerequisites,
-            minigame_id=random.choice(MINIGAMES)
+            id=task_id, type="search",
+            description=f"Search {location.name}",
+            assigned_role=role, location=location.id,
+            prerequisites=prerequisites, search_items=[],
         )
     
     def _create_prerequisites(
@@ -722,6 +833,55 @@ class ProceduralGraphGenerator:
                         description=None
                     ))
     
+    def _append_escape_tasks(
+        self,
+        tasks: List[Task],
+        role_ids: List[str],
+        locations: List[Location],
+    ) -> List[Task]:
+        """Append a final escape task per role after the main graph is complete.
+
+        Each escape task:
+        - Prerequisites: the last task in that role's existing chain
+        - Location: the first location (entry point becomes the exit)
+        - Type: search (all roles can do this; enrichment rewrites it as extraction)
+        - Marked with _is_escape=True so the enrichment prompt uses extraction narrative
+        """
+        exit_location = locations[0].id if locations else "any"
+        tasks_by_role: Dict[str, List[Task]] = {}
+        for t in tasks:
+            tasks_by_role.setdefault(t.assigned_role, []).append(t)
+
+        escape_tasks = []
+        for role in role_ids:
+            role_code = ROLE_CODES.get(role, role[:2].upper())
+            role_tasks = tasks_by_role.get(role, [])
+            # Find the last task in the role's chain (highest task number)
+            if role_tasks:
+                last_task = max(role_tasks, key=lambda t: t.id)
+                prereq = [Prerequisite(type="task", id=last_task.id)]
+                escape_task_id = f"{role_code}{len(role_tasks) + 1}"
+            else:
+                prereq = []
+                escape_task_id = f"{role_code}1"
+
+            escape_task = Task(
+                id=escape_task_id,
+                type=TaskType.SEARCH.value,
+                description=f"Escape with the crew",
+                assigned_role=role,
+                location=exit_location,
+                prerequisites=prereq,
+                status="locked",
+                search_items=[],
+            )
+            # Tag for enrichment prompt to write extraction narrative
+            object.__setattr__(escape_task, "_is_escape", True) if False else None
+            escape_task.__dict__["_is_escape"] = True
+            escape_tasks.append(escape_task)
+
+        return tasks + escape_tasks
+
     def _get_all_npc_outcomes(self, npcs: List[NPC]) -> List[str]:
         """Get all outcome IDs from all NPCs"""
         outcomes = []
@@ -800,11 +960,11 @@ def _generate_setting_with_llm(
     config: "GeneratorConfig",
 ) -> Optional[Dict]:
     """
-    Ask the LLM to invent the physical setting for this heist: locations and objective.
-    Returns a dict with 'locations' and 'objective', or None on failure.
+    Ask the LLM to invent the physical setting for this heist: locations, objective,
+    and contextual NPC placement.
 
-    Locations are creative and specific to this scenario run — not drawn from templates.
-    Each run of the same scenario_id can produce a completely different setting.
+    Returns a dict with 'locations', 'objective', and 'npc_placement', or None on failure.
+    Locations and NPC placement are creative and specific to this scenario run.
     """
     try:
         from config import GEMINI_API_KEY, GEMINI_EXPERIENCE_MODEL
@@ -822,6 +982,13 @@ def _generate_setting_with_llm(
     roles_str = ", ".join(role_ids)
     scenario_name = scenario_id.replace("_", " ")
 
+    # Fixed NPC archetypes that the generator always uses
+    npc_archetypes = [
+        "security_guard", "janitor", "curator",
+        "receptionist", "it_specialist", "manager"
+    ]
+    npc_archetypes_str = ", ".join(npc_archetypes)
+
     prompt = f"""You are a creative heist game designer. Invent a vivid, specific setting for this heist.
 
 SCENARIO: {scenario_name}
@@ -834,6 +1001,12 @@ a real place with character. IDs must be snake_case, unique, and concise.
 
 Also write a single compelling objective sentence (what the crew is trying to accomplish).
 
+Finally, for each NPC archetype below, assign the most contextually appropriate location ID from your list.
+Place people where they would realistically work: a security_guard at an entrance or checkpoint, a janitor
+in maintenance or back corridors, a curator near the exhibit or vault, a manager in an office, etc.
+
+NPC archetypes to place: {npc_archetypes_str}
+
 Return ONLY this JSON:
 {{
   "objective": "One punchy sentence describing the heist goal",
@@ -845,7 +1018,15 @@ Return ONLY this JSON:
       "description": "One atmospheric sentence describing the space",
       "visual": "Short visual prompt for image generation (10-15 words)"
     }}
-  ]
+  ],
+  "npc_placement": {{
+    "security_guard": "location_id_from_above",
+    "janitor": "location_id_from_above",
+    "curator": "location_id_from_above",
+    "receptionist": "location_id_from_above",
+    "it_specialist": "location_id_from_above",
+    "manager": "location_id_from_above"
+  }}
 }}"""
 
     try:
@@ -854,7 +1035,10 @@ Return ONLY this JSON:
         locs = data.get("locations", [])
         if not locs:
             return None
-        logger.info(f"[setting] LLM generated {len(locs)} locations for {scenario_id}")
+        logger.info(
+            f"[setting] LLM generated {len(locs)} locations for {scenario_id} "
+            f"with {len(data.get('npc_placement', {}))} NPC placements"
+        )
         return data
     except Exception as e:
         logger.warning(f"[setting] LLM setting generation failed, using fallback: {e}")
@@ -863,8 +1047,11 @@ Return ONLY this JSON:
 
 def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str]) -> None:
     """
-    Replace placeholder item/NPC/task names with scenario-specific ones via a single LLM call.
-    Mutates the graph in-place. Silently falls back to placeholders if the call fails.
+    Replace placeholder names/descriptions with scenario-specific content via two LLM calls:
+      1. Items + tasks (fast, compact)
+      2. Full NPC profiles (personality, relationships, information_known with named IDs,
+         actions_available with named IDs, 3 cover story options each)
+    Mutates the graph in-place. Silently falls back to placeholders if a call fails.
     """
     try:
         from config import GEMINI_API_KEY, GEMINI_EXPERIENCE_MODEL
@@ -879,50 +1066,44 @@ def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str]) -> None:
         return
 
     scenario_id = graph.scenario_id
+    scenario_name = scenario_id.replace("_", " ")
     location_names = {loc.id: loc.name for loc in graph.locations}
     roles_str = ", ".join(role_ids)
+    locations_str = ", ".join(location_names.values())
 
-    # Build compact context for the LLM
+    # --- Call 1: Items + tasks ---
     items_ctx = [
         {"id": item.id, "location": location_names.get(item.location, item.location), "hidden": item.hidden}
         for item in graph.items
     ]
-    npcs_ctx = [
-        {"id": npc.id, "role": npc.role, "location": location_names.get(npc.location, npc.location)}
-        for npc in graph.npcs
-    ]
     tasks_ctx = [
-        {"id": t.id, "type": t.type, "role": t.assigned_role, "location": location_names.get(t.location, t.location)}
+        {"id": t.id, "type": t.type, "role": t.assigned_role, "location": location_names.get(t.location, t.location),
+         "npc_id": t.npc_id, "is_escape": getattr(t, "_is_escape", False)}
         for t in graph.tasks
     ]
 
-    prompt = f"""You are a heist game writer. Given the structure below, write compelling names and descriptions.
+    items_tasks_prompt = f"""You are a heist game writer. Given the structure below, write compelling names and descriptions.
 
-SCENARIO: {scenario_id.replace("_", " ")}
+SCENARIO: {scenario_name}
 ROLES: {roles_str}
-LOCATIONS: {", ".join(location_names.values())}
+LOCATIONS: {locations_str}
 
-ITEMS (give each a name, short description, and visual description for image generation):
+ITEMS (give each a name, short description, and a visual description for image generation):
 {json.dumps(items_ctx, indent=2)}
 
-NPCS (give each a first name appropriate to their role and location):
-{json.dumps(npcs_ctx, indent=2)}
-
-TASKS (give each a short action-oriented description, 5-8 words):
+TASKS (give each a short action-oriented description, 8-15 words; escape tasks should read as extraction/getaway narrative):
 {json.dumps(tasks_ctx, indent=2)}
 
 Return ONLY this JSON (no markdown):
 {{
   "items": [{{"id": "item_1", "name": "...", "description": "...", "visual": "..."}}],
-  "npcs": [{{"id": "security_guard", "name": "..."}}],
   "tasks": [{{"id": "MM1", "description": "..."}}]
 }}"""
 
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(items_tasks_prompt)
         data = json.loads(response.text)
 
-        # Apply item enrichment (keep IDs, only update display fields)
         item_map = {i["id"]: i for i in data.get("items", [])}
         for item in graph.items:
             if item.id in item_map:
@@ -931,22 +1112,151 @@ Return ONLY this JSON (no markdown):
                 item.description = enriched.get("description", item.description)
                 item.visual = enriched.get("visual", item.visual)
 
-        # Apply NPC name enrichment
-        npc_map = {n["id"]: n for n in data.get("npcs", [])}
-        for npc in graph.npcs:
-            if npc.id in npc_map:
-                npc.name = npc_map[npc.id].get("name", npc.name)
-
-        # Apply task description enrichment
         task_map = {t["id"]: t for t in data.get("tasks", [])}
         for task in graph.tasks:
             if task.id in task_map:
                 task.description = task_map[task.id].get("description", task.description)
 
-        logger.info(f"[enrichment] Enriched {len(item_map)} items, {len(npc_map)} NPCs, {len(task_map)} tasks")
-
+        logger.info(f"[enrichment] Enriched {len(item_map)} items, {len(task_map)} tasks")
     except Exception as e:
-        logger.warning(f"[enrichment] LLM enrichment failed, keeping placeholders: {e}")
+        logger.warning(f"[enrichment] Items/tasks LLM call failed: {e}")
+
+    # --- Call 2: Full NPC profiles ---
+    # Build per-NPC task context so the LLM knows what each NPC needs to provide
+    npc_task_ctx: Dict[str, List[str]] = {}
+    for t in graph.tasks:
+        if t.type == "npc_llm" and t.npc_id:
+            npc_task_ctx.setdefault(t.npc_id, []).append(
+                f"{t.id} ({t.assigned_role}): {t.description}"
+            )
+    # NPC roster summary for cross-references in relationships
+    npc_roster = [
+        {"id": n.id, "role": n.role, "location": location_names.get(n.location, n.location)}
+        for n in graph.npcs
+    ]
+    npcs_ctx = [
+        {
+            "id": npc.id,
+            "role": npc.role,
+            "location": location_names.get(npc.location, npc.location),
+            "tasks_targeting_this_npc": npc_task_ctx.get(npc.id, []),
+        }
+        for npc in graph.npcs
+    ]
+
+    npc_prompt = f"""You are a heist game character writer. Create rich, grounded NPC profiles for this scenario.
+
+SCENARIO: {scenario_name}
+SETTING OBJECTIVE: {graph.objective}
+PLAYER ROLES: {roles_str}
+ALL LOCATIONS: {locations_str}
+ALL NPCS (for cross-references): {json.dumps(npc_roster)}
+
+For each NPC below, write a complete profile. The NPC must feel like a real person embedded in this specific scenario.
+
+RULES:
+- `personality`: 2-3 sentences. Grounded in their job, location, and emotional state right now.
+- `relationships`: 1-2 sentences cross-referencing other NPCs by name. How do they know each other?
+- `story_context`: 1 sentence. What is their role in tonight's events?
+- `information_known`: Real, specific facts this NPC knows about the heist target. Each must have a
+  named snake_case `id` that tasks can reference as a target outcome or prerequisite.
+  Include 1-3 HIGH/MEDIUM/LOW items. Make the descriptions concrete (names, locations, times, codes).
+- `actions_available`: What can players convince this NPC to DO? Each has a named snake_case `id`
+  players unlock by talking to them. 0-2 items. If none, return empty array.
+- `cover_options`: Exactly 3 player cover identities. Each has a `cover_id`, a one-sentence cover
+  identity the player uses, and an `npc_reaction` note on how the NPC behaves differently.
+
+NPCS TO PROFILE:
+{json.dumps(npcs_ctx, indent=2)}
+
+Return ONLY this JSON (no markdown):
+{{
+  "npcs": [
+    {{
+      "id": "security_guard",
+      "name": "First Last",
+      "gender": "male|female|person",
+      "ethnicity": "...",
+      "age": 45,
+      "clothing": "...",
+      "expression": "...",
+      "attitude": "...",
+      "details": "Small physical detail (prop, accessory, posture)",
+      "personality": "...",
+      "relationships": "...",
+      "story_context": "...",
+      "information_known": [
+        {{"id": "snake_case_outcome_id", "confidence": "HIGH", "description": "Specific fact..."}}
+      ],
+      "actions_available": [
+        {{"id": "snake_case_action_id", "confidence": "HIGH", "description": "What they do when convinced..."}}
+      ],
+      "cover_options": [
+        {{"cover_id": "label", "description": "Player's cover identity sentence", "npc_reaction": "How NPC responds"}}
+      ]
+    }}
+  ]
+}}"""
+
+    try:
+        response = model.generate_content(npc_prompt)
+        data = json.loads(response.text)
+
+        npc_map = {n["id"]: n for n in data.get("npcs", [])}
+        for npc in graph.npcs:
+            enriched = npc_map.get(npc.id)
+            if not enriched:
+                continue
+
+            npc.name = enriched.get("name", npc.name)
+            npc.gender = enriched.get("gender", npc.gender)
+            npc.ethnicity = enriched.get("ethnicity", npc.ethnicity)
+            npc.age = int(enriched.get("age", npc.age))
+            npc.clothing = enriched.get("clothing", npc.clothing)
+            npc.expression = enriched.get("expression", npc.expression)
+            npc.attitude = enriched.get("attitude", npc.attitude)
+            npc.details = enriched.get("details", npc.details)
+            npc.personality = enriched.get("personality", npc.personality)
+            npc.relationships = enriched.get("relationships", npc.relationships)
+            npc.story_context = enriched.get("story_context", npc.story_context)
+
+            npc.information_known = [
+                NPCInfoItem(
+                    info_id=info.get("id"),
+                    confidence=info.get("confidence", "MEDIUM"),
+                    description=info.get("description", ""),
+                )
+                for info in enriched.get("information_known", [])
+            ]
+            npc.actions_available = [
+                NPCAction(
+                    action_id=action.get("id", "action"),
+                    confidence=action.get("confidence", "MEDIUM"),
+                    description=action.get("description", ""),
+                )
+                for action in enriched.get("actions_available", [])
+            ]
+            npc.cover_options = [
+                NPCCoverOption(
+                    cover_id=cover.get("cover_id", f"cover_{i}"),
+                    description=cover.get("description", ""),
+                    npc_reaction=cover.get("npc_reaction", ""),
+                )
+                for i, cover in enumerate(enriched.get("cover_options", []))
+            ]
+
+            # Re-wire any npc_llm tasks that target this NPC: if the task has no target_outcomes
+            # yet, assign the first information_known ID so it has a semantic outcome to unlock.
+            if npc.information_known:
+                first_info_id = npc.information_known[0].info_id
+                for task in graph.tasks:
+                    if task.type == "npc_llm" and task.npc_id == npc.id and not task.target_outcomes:
+                        if first_info_id:
+                            task.target_outcomes = [first_info_id]
+
+        logger.info(f"[enrichment] Enriched {len(npc_map)} NPCs with full profiles")
+    except Exception as e:
+        logger.warning(f"[enrichment] NPC profile LLM call failed: {e}")
 
 
 def generate_scenario_graph(

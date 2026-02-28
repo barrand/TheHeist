@@ -62,10 +62,11 @@ def get_location_prompt(location_name: str, visual_description: str = None) -> s
         # Fallback to generic description
         scene_description = f"{location_name}, dramatic lighting, detailed environment, heist atmosphere"
     
-    # Build prompt similar to NPC generation
     prompt = f"""{HEIST_GAME_ART_STYLE},
 environment scene: {scene_description},
-wide establishing shot, cinematic composition, no people visible"""
+wide establishing shot, cinematic composition, no people visible,
+no border, no frame, no vignette, no rounded corners, no panel border,
+image extends to all edges, full bleed"""
     
     return prompt
 

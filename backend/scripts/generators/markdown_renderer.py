@@ -121,7 +121,7 @@ def _render_npcs(graph) -> str:
         output += f"- **ID**: `{npc.id}`\n"
         output += f"- **Role**: {npc.role}\n"
         output += f"- **Location**: `{npc.location}`\n"
-        output += f"- **Age**: 35\n"
+        output += f"- **Age**: {getattr(npc, 'age', 35)}\n"
         output += f"- **Gender**: {npc.gender}\n"
         output += f"- **Ethnicity**: {npc.ethnicity or 'Unknown'}\n"
         output += f"- **Clothing**: {npc.clothing or 'Professional attire'}\n"

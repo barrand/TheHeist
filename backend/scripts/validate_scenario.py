@@ -122,6 +122,11 @@ class ParsedNPC:
     name: str
     location: str
     outcomes: List[str] = field(default_factory=list)  # IDs from Information Known and Actions Available
+    info_known_ids: List[str] = field(default_factory=list)  # IDs only from Information Known
+    action_ids: List[str] = field(default_factory=list)      # IDs only from Actions Available
+    has_personality: bool = False
+    has_relationships: bool = False
+    cover_count: int = 0
 
 
 @dataclass
@@ -323,23 +328,49 @@ class ScenarioValidator:
             npc_text = match.group(4)
             
             # Extract outcomes from Information Known (any confidence level)
-            outcomes = []
+            info_known_ids = []
             info_section = re.search(r'- \*\*Information Known\*\*:(.*?)(?=\n- \*\*|\Z)', npc_text, re.DOTALL)
             if info_section:
                 for outcome_match in re.finditer(r'- `([^`]+)` (?:VERY HIGH|HIGH|MEDIUM|LOW):', info_section.group(1)):
-                    outcomes.append(outcome_match.group(1))
+                    info_known_ids.append(outcome_match.group(1))
 
             # Extract outcomes from Actions Available (any confidence level)
+            action_ids = []
             actions_section = re.search(r'- \*\*Actions Available\*\*:(.*?)(?=\n- \*\*|\Z)', npc_text, re.DOTALL)
             if actions_section:
                 for action_match in re.finditer(r'- `([^`]+)` (?:VERY HIGH|HIGH|MEDIUM|LOW):', actions_section.group(1)):
-                    outcomes.append(action_match.group(1))
-            
+                    action_ids.append(action_match.group(1))
+
+            # Personality — must be non-empty and non-placeholder (>20 chars)
+            personality_match = re.search(r'- \*\*Personality\*\*:\s*(.+)', npc_text)
+            personality_text = personality_match.group(1).strip() if personality_match else ""
+            has_personality = (
+                len(personality_text) >= 20
+                and not personality_text.lower().startswith("personality of")
+                and not personality_text.lower().startswith("placeholder")
+            )
+
+            # Relationships — must be non-empty (>10 chars)
+            rel_match = re.search(r'- \*\*Relationships?\*\*:\s*(.+)', npc_text)
+            rel_text = rel_match.group(1).strip() if rel_match else ""
+            has_relationships = len(rel_text) >= 10
+
+            # Cover story count
+            cover_section = re.search(r'- \*\*Cover Story Options?\*\*:(.*?)(?=\n- \*\*|\Z)', npc_text, re.DOTALL)
+            cover_count = 0
+            if cover_section:
+                cover_count = len(re.findall(r'- `[^`]+`:', cover_section.group(1)))
+
             self.npcs[npc_id] = ParsedNPC(
                 id=npc_id,
                 name=name,
                 location=location,
-                outcomes=outcomes
+                outcomes=info_known_ids + action_ids,
+                info_known_ids=info_known_ids,
+                action_ids=action_ids,
+                has_personality=has_personality,
+                has_relationships=has_relationships,
+                cover_count=cover_count,
             )
     
     def _parse_tasks(self):
@@ -492,7 +523,14 @@ class ScenarioValidator:
         # Run if we have parseable tasks (even if count/balance issues exist)
         if len(self.tasks) > 0 and len(self.roles) > 0:
             self.check_playability_simulation()  # Rules 31-35
-        
+
+        # NPC quality checks (Rules 36-39)
+        if self.npcs:
+            self.check_npc_completeness()       # Rule 36
+            self.check_npc_action_coverage()    # Rule 37
+            self.check_cover_story_depth()      # Rule 38
+            self.check_cross_role_info_chain()  # Rule 39
+
         return self.report
     
     # Validation check methods
@@ -1062,6 +1100,132 @@ class ScenarioValidator:
                     details=[],
                     fix_suggestion="Add more parallel task branches to increase player engagement and reduce turn time"
                 ))
+
+
+    def check_npc_completeness(self):
+        """Rule 36: Each NPC must have personality, relationships, ≥1 named outcome ID, and ≥1 cover option."""
+        incomplete = []
+        for npc_id, npc in self.npcs.items():
+            missing = []
+            if not npc.has_personality:
+                missing.append("personality (missing or placeholder)")
+            if not npc.has_relationships:
+                missing.append("relationships (missing or too short)")
+            # A named outcome can come from either information_known or actions_available
+            if not npc.outcomes:
+                missing.append("no named outcome IDs (add `snake_case_id` CONFIDENCE: description in Information Known or Actions Available)")
+            if npc.cover_count == 0:
+                missing.append("cover_options (none found)")
+            if missing:
+                incomplete.append(f"NPC '{npc_id}' ({npc.name}): missing — {', '.join(missing)}")
+
+        if incomplete:
+            self.report.add_issue(ValidationIssue(
+                rule_number=36,
+                level=ValidationLevel.IMPORTANT,
+                title="Incomplete NPC Profiles",
+                message="NPCs are missing required fields for rich AI conversations",
+                details=incomplete,
+                fix_suggestion=(
+                    "Fill in personality (2-3 grounded sentences), relationships (cross-reference other NPCs), "
+                    "information_known with named IDs (`snake_case` HIGH/MEDIUM/LOW: description), "
+                    "and at least one cover story option."
+                )
+            ))
+
+    def check_npc_action_coverage(self):
+        """Rule 37: NPCs targeted by NPC_LLM tasks must have at least 1 named outcome (info or action)."""
+        targeted_npcs = {task.npc_id for task in self.tasks.values() if task.npc_id}
+        dead_conversations = []
+        for npc_id in targeted_npcs:
+            npc = self.npcs.get(npc_id)
+            if not npc:
+                continue
+            if len(npc.outcomes) == 0:
+                dead_conversations.append(
+                    f"NPC '{npc_id}' ({npc.name}): targeted by NPC_LLM task but has "
+                    f"no named outcome IDs in Information Known or Actions Available — players have nothing to learn/unlock"
+                )
+        if dead_conversations:
+            self.report.add_issue(ValidationIssue(
+                rule_number=37,
+                level=ValidationLevel.IMPORTANT,
+                title="NPCs With No Learnable Outcomes",
+                message="NPC_LLM tasks target NPCs that provide nothing useful to the player",
+                details=dead_conversations,
+                fix_suggestion=(
+                    "Add at least one `actions_available` entry with a named ID "
+                    "(e.g., `leave_post` HIGH: Can be convinced to step away) "
+                    "OR at least 2 `information_known` entries."
+                )
+            ))
+
+    def check_cover_story_depth(self):
+        """Rule 38 (ADVISORY): Each NPC should have at least 3 cover story options."""
+        shallow = []
+        for npc_id, npc in self.npcs.items():
+            if npc.cover_count < 3:
+                shallow.append(f"NPC '{npc_id}' ({npc.name}): {npc.cover_count} cover option(s) (target: 3)")
+        if shallow:
+            self.report.add_issue(ValidationIssue(
+                rule_number=38,
+                level=ValidationLevel.ADVISORY,
+                title="Cover Story Depth",
+                message="NPCs with fewer than 3 cover story options limit player creativity",
+                details=shallow,
+                fix_suggestion=(
+                    "Add cover options until each NPC has 3. Each needs `cover_id`, "
+                    "a one-sentence player cover identity, and an npc_reaction note."
+                )
+            ))
+
+    def check_cross_role_info_chain(self):
+        """Rule 39: At least one outcome must flow from one role to another via info_share or cross-prereq."""
+        if len(self.roles) < 2:
+            return  # Single-player has no cross-role requirement
+
+        # Build: outcome_id -> set of roles that have an NPC_LLM task targeting it
+        outcome_learned_by: Dict[str, set] = {}
+        for task in self.tasks.values():
+            if task.type in ('npc_llm', 'npc') and task.target_outcomes:
+                for oid in task.target_outcomes:
+                    outcome_learned_by.setdefault(oid, set()).add(task.role)
+
+        # Build: outcome_id -> set of roles that have a task with that outcome as a prerequisite
+        outcome_required_by: Dict[str, set] = {}
+        for task in self.tasks.values():
+            for prereq in task.prerequisites:
+                if prereq['type'] == 'outcome':
+                    outcome_required_by.setdefault(prereq['id'], set()).add(task.role)
+
+        # A cross-role info chain exists when an outcome is learned by role A
+        # and required (as a prerequisite) by role B where A != B
+        chains_found = []
+        for oid, learning_roles in outcome_learned_by.items():
+            requiring_roles = outcome_required_by.get(oid, set())
+            for lr in learning_roles:
+                for rr in requiring_roles:
+                    if lr != rr:
+                        chains_found.append(f"outcome `{oid}`: learned by {lr}, needed by {rr}")
+
+        if not chains_found:
+            self.report.add_issue(ValidationIssue(
+                rule_number=39,
+                level=ValidationLevel.IMPORTANT,
+                title="No Cross-Role Information Chain",
+                message=(
+                    "No outcome flows from one role's NPC task to another role's prerequisite. "
+                    "Players are working in isolation — they never need each other's intel."
+                ),
+                details=[
+                    "Need at least one chain: Role A learns outcome X from NPC, Role B has a task "
+                    "that requires Outcome X as a prerequisite (or Role A has an info_share task that passes X to Role B)"
+                ],
+                fix_suggestion=(
+                    "Add an info_share task for Role A (with the NPC outcome as a prerequisite) "
+                    "and add 'Outcome X' as a prerequisite on one of Role B's tasks."
+                )
+            ))
 
 
 def main():

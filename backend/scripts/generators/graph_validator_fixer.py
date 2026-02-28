@@ -119,8 +119,10 @@ class GraphValidator:
             self.warnings.append(f"task_count_low: {count} (expected min {min_tasks})")
     
     def _npc_outcome_ids(self, npc: NPC) -> List[str]:
-        """Return all outcome IDs provided by an NPC"""
-        return [info.info_id for info in npc.information_known if info.info_id]
+        """Return all outcome IDs provided by an NPC (information + actions)."""
+        info_ids = [info.info_id for info in npc.information_known if info.info_id]
+        action_ids = [action.action_id for action in npc.actions_available if action.action_id]
+        return info_ids + action_ids
 
     def _validate_references(self):
         """Validate all ID references exist"""
