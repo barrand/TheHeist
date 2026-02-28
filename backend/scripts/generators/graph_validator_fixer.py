@@ -8,6 +8,7 @@ This ensures the graph is structurally valid before rendering to markdown.
 import re
 import sys
 from pathlib import Path
+from collections import deque
 from typing import List, Dict, Set, Tuple
 from dataclasses import dataclass, field
 
@@ -48,6 +49,11 @@ class GraphValidator:
             self.warnings = []
 
             print(f"🔍 Validation iteration {iteration + 1}/{max_iterations}")
+
+            # Structural checks run first and auto-fix inline (do not emit errors)
+            self._validate_no_cycles()
+            self._validate_no_orphans()
+            self._validate_no_dead_ends()
 
             self._validate_location_count()
             self._validate_task_count()
@@ -91,6 +97,161 @@ class GraphValidator:
             if role:
                 roles.add(role)
         return len(roles)
+
+    # ------------------------------------------------------------------
+    # Structural graph checks (auto-fix inline, never emit to self.errors)
+    # ------------------------------------------------------------------
+
+    def _validate_no_cycles(self):
+        """Detect cycles in task-prerequisite graph via DFS and break back-edges."""
+        task_map = {t.id: t for t in self.graph.tasks}
+
+        def _build_prereq_map() -> Dict[str, List[str]]:
+            return {
+                t.id: [p.id for p in t.prerequisites if p.type == "task" and p.id in task_map]
+                for t in self.graph.tasks
+            }
+
+        # Repeat until no cycles remain (each pass fixes at most one back-edge)
+        for _ in range(len(task_map) + 1):
+            prereqs_of = _build_prereq_map()
+            color: Dict[str, int] = {tid: 0 for tid in task_map}  # 0=white,1=gray,2=black
+            back_edge: Tuple[str, str] | None = None
+
+            def _dfs(tid: str) -> bool:
+                nonlocal back_edge
+                color[tid] = 1
+                for dep_id in prereqs_of.get(tid, []):
+                    if color.get(dep_id, 0) == 1:
+                        back_edge = (tid, dep_id)
+                        return True
+                    if color.get(dep_id, 0) == 0:
+                        if _dfs(dep_id):
+                            return True
+                color[tid] = 2
+                return False
+
+            found = False
+            for tid in list(task_map.keys()):
+                if color[tid] == 0:
+                    if _dfs(tid):
+                        found = True
+                        break
+
+            if not found:
+                break  # No cycles
+
+            if back_edge:
+                owner_id, prereq_id = back_edge
+                task = task_map[owner_id]
+                task.prerequisites = [p for p in task.prerequisites if not (p.type == "task" and p.id == prereq_id)]
+                msg = f"[fix] Broke cycle: removed prerequisite {prereq_id} from task {owner_id}"
+                print(f"   {msg}")
+                self.fixes.append(msg)
+
+    def _validate_no_orphans(self):
+        """Detect tasks unreachable from any starting task and wire them into the chain."""
+        task_map = {t.id: t for t in self.graph.tasks}
+        if not task_map:
+            return
+
+        # Build forward reachability map via BFS
+        dependents_of: Dict[str, Set[str]] = {tid: set() for tid in task_map}
+        for t in self.graph.tasks:
+            for p in t.prerequisites:
+                if p.type == "task" and p.id in dependents_of:
+                    dependents_of[p.id].add(t.id)
+
+        start_ids = {
+            t.id for t in self.graph.tasks
+            if not any(p.type == "task" for p in t.prerequisites)
+        }
+
+        reachable: Set[str] = set()
+        queue: deque = deque(start_ids)
+        reachable.update(start_ids)
+        while queue:
+            tid = queue.popleft()
+            for dep_id in dependents_of.get(tid, set()):
+                if dep_id not in reachable:
+                    reachable.add(dep_id)
+                    queue.append(dep_id)
+
+        orphans = [t for t in self.graph.tasks if t.id not in reachable]
+        if not orphans:
+            return
+
+        for task in orphans:
+            role = task.assigned_role
+            role_tasks = sorted(
+                [t for t in self.graph.tasks if t.assigned_role == role],
+                key=lambda t: t.id,
+            )
+            task_idx = next((i for i, t in enumerate(role_tasks) if t.id == task.id), None)
+
+            if task_idx is not None and task_idx > 0:
+                prev_task = role_tasks[task_idx - 1]
+                # Avoid adding duplicate prerequisite
+                existing = {p.id for p in task.prerequisites if p.type == "task"}
+                if prev_task.id not in existing:
+                    task.prerequisites.append(Prerequisite(type="task", id=prev_task.id, description=None))
+                    msg = f"[fix] Wired orphan {task.id}: added prerequisite Task {prev_task.id}"
+                    print(f"   {msg}")
+                    self.fixes.append(msg)
+            else:
+                # No previous task in role — make it a starting task
+                task.prerequisites = [p for p in task.prerequisites if p.type != "task"]
+                msg = f"[fix] Fixed orphan {task.id}: cleared task prerequisites (now a starting task)"
+                print(f"   {msg}")
+                self.fixes.append(msg)
+
+    def _validate_no_dead_ends(self):
+        """Detect tasks with no dependents that aren't final/escape tasks, and wire them forward."""
+        task_map = {t.id: t for t in self.graph.tasks}
+        if not task_map:
+            return
+
+        # Build reverse dependency map
+        is_prereq_for: Dict[str, Set[str]] = {tid: set() for tid in task_map}
+        for t in self.graph.tasks:
+            for p in t.prerequisites:
+                if p.type == "task" and p.id in is_prereq_for:
+                    is_prereq_for[p.id].add(t.id)
+
+        # Heuristic: last task for each role is a natural endpoint — skip it
+        role_last: Set[str] = set()
+        tasks_by_role: Dict[str, List] = {}
+        for t in self.graph.tasks:
+            tasks_by_role.setdefault(t.assigned_role, []).append(t)
+        for role_tasks in tasks_by_role.values():
+            last = sorted(role_tasks, key=lambda t: t.id)[-1]
+            role_last.add(last.id)
+
+        dead_ends = [
+            t for t in self.graph.tasks
+            if not is_prereq_for[t.id] and t.id not in role_last
+        ]
+        if not dead_ends:
+            return
+
+        for task in dead_ends:
+            role = task.assigned_role
+            role_tasks = sorted(
+                [t for t in self.graph.tasks if t.assigned_role == role],
+                key=lambda t: t.id,
+            )
+            task_idx = next((i for i, t in enumerate(role_tasks) if t.id == task.id), None)
+
+            if task_idx is not None and task_idx < len(role_tasks) - 1:
+                next_task = role_tasks[task_idx + 1]
+                existing = {p.id for p in next_task.prerequisites if p.type == "task"}
+                if task.id not in existing:
+                    next_task.prerequisites.append(Prerequisite(type="task", id=task.id, description=None))
+                    is_prereq_for[task.id].add(next_task.id)
+                    msg = f"[fix] Wired dead-end {task.id} into {next_task.id} prerequisites"
+                    print(f"   {msg}")
+                    self.fixes.append(msg)
+            # If it IS the last task in the role sequence, it's a natural final task — no fix needed
 
     def _validate_location_count(self):
         """Check location count is in valid range"""

@@ -265,6 +265,10 @@ DECISION RULES:
 - If task type is "minigame" or "info_share" → use "complete_task" action  
 - If you have an available task at your current location → complete it or talk to NPC
 - If you have an available task elsewhere → move to that location
+- If task type is "handoff" → you must be in the SAME LOCATION as the target player to hand off an item.
+  - Check TEAMMATES section: if target player is already at your location → use "handoff" action
+  - If target player is at a DIFFERENT location → use "move" action to go to their location first
+  - Never attempt "handoff" if the target player is not at your current location
 - If a task needs an item that a TEAMMATE IS HOLDING → use "request_item" to ask them to drop it
 - If a task needs an item that is in the world (not held by anyone) → search the correct location
 - If stuck with no tasks → wait (teammates need to complete something first)

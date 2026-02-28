@@ -698,6 +698,13 @@ class GameplayTestOrchestrator:
             if decision.target_item and decision.target_player:
                 target_bot = next((b for b in (all_bots or []) if b.role == decision.target_player), None)
                 if target_bot:
+                    # Ensure both bots are in the same location before handing off
+                    if bot.state.current_location != target_bot.state.current_location:
+                        meet_loc = target_bot.state.current_location
+                        logger.info(f"💬 {bot.player_name} → {target_bot.player_name}: 'I have {decision.target_item}, heading to {meet_loc} for the handoff.'")
+                        moved = await bot.move_to_location(meet_loc)
+                        if not moved:
+                            return ActionOutcome.SYSTEM_FAILURE
                     ok = await bot.handoff_item(decision.target_item, target_bot.state.player_id)
                     return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
         

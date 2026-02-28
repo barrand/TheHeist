@@ -186,7 +186,7 @@
                         </p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="runTest('${s.id}', ${s.player_count})" 
+                        <button onclick="runTest('${s.id}', '${s.roles.join(',')}')" 
                                 class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold">
                             ▶ Run E2E Test
                         </button>
@@ -384,8 +384,9 @@
         }
 
         // Run E2E test
-        async function runTest(scenarioId, playerCount) {
-            const scenarioFile = `experiences/generated_${scenarioId}_${playerCount}players.md`;
+        async function runTest(scenarioId, rolesStr) {
+            const sortedRoles = rolesStr.split(',').sort().join('_');
+            const scenarioFile = `experiences/generated_${scenarioId}_${sortedRoles}.md`;
             
             const resp = await fetch('/api/test/start', {
                 method: 'POST',

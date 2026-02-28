@@ -122,6 +122,8 @@ def run_pipeline(
                 f"Graph validation failed: {'; '.join(validation_result.errors)}"
             )
         fix_count = len(validation_result.fixes_applied)
+        for fix_msg in validation_result.fixes_applied:
+            _emit(f"  {fix_msg}")
         _emit("Graph valid" + (f" ({fix_count} issues auto-fixed)" if fix_count else ""))
 
         # ── 4. Export to JSON + markdown ───────────────────────────────────
@@ -153,12 +155,29 @@ def run_pipeline(
             detail = "; ".join(issue.details) if issue.details else ""
             _emit(f"  ℹ️  {issue.title}" + (f": {detail}" if detail else ""))
 
-        # ── 6. Editor pass — fix critical AND important ────────────────────
-        issues_to_fix = critical + important
+        # ── 6. Editor pass — NPC quality issues only (rules 36–39) ───────────
+        # Structural issues (cycles, orphans, dead-ends, task balance) are now
+        # fixed deterministically in graph_validator_fixer BEFORE markdown export,
+        # so the LLM editor is restricted to NPC quality rules where it actually
+        # adds value (creative text, profile completeness, relationship detail).
+        NPC_QUALITY_RULES = {36, 37, 38, 39}
+        issues_to_fix = [
+            i for i in (critical + important)
+            if i.rule_number in NPC_QUALITY_RULES
+        ]
+        structural_remaining = [
+            i for i in (critical + important)
+            if i.rule_number not in NPC_QUALITY_RULES
+        ]
+        if structural_remaining:
+            _emit(
+                f"ℹ️  {len(structural_remaining)} structural issue(s) logged (not sent to editor): "
+                + "; ".join(i.title for i in structural_remaining)
+            )
+
         if issues_to_fix:
             _emit(
-                f"Running editor to fix {len(issues_to_fix)} issue(s) "
-                f"({len(critical)} critical, {len(important)} important)..."
+                f"Running editor to fix {len(issues_to_fix)} NPC quality issue(s)..."
             )
             from scenario_editor_agent import ScenarioEditorAgent
             agent = ScenarioEditorAgent()
@@ -188,7 +207,7 @@ def run_pipeline(
                     _emit(f"  ⚠️  Still open: {i.title}")
             critical, important, advisory = c2, im2, ad2
         else:
-            _emit("✅ No critical or important issues — scenario looks good")
+            _emit("✅ No NPC quality issues — skipping editor")
 
         _emit(
             f"Done! {len(fixed_graph.tasks)} tasks, "
