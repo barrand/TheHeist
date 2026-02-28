@@ -22,7 +22,8 @@ async def get_location_image(experience_id: str, location_id: str):
     Get location image for an experience.
     Returns the image file or 404 if not found.
     """
-    image_path = IMAGES_DIR / experience_id / f"location_{location_id}.png"
+    bare_id = location_id.removeprefix("location_")
+    image_path = IMAGES_DIR / experience_id / f"location_{bare_id}.png"
     
     if not image_path.exists():
         logger.warning(f"Location image not found: {image_path}")
@@ -43,7 +44,9 @@ async def get_item_image(experience_id: str, item_id: str):
     Get item image for an experience.
     Returns the image file or 404 if not found.
     """
-    image_path = IMAGES_DIR / experience_id / f"item_{item_id}.png"
+    # Strip existing prefix to avoid double-prefixing (item_id may already be "item_foo")
+    bare_id = item_id.removeprefix("item_")
+    image_path = IMAGES_DIR / experience_id / f"item_{bare_id}.png"
     
     if not image_path.exists():
         logger.warning(f"Item image not found: {image_path}")
@@ -64,7 +67,8 @@ async def get_npc_image(experience_id: str, npc_id: str):
     Get NPC image for an experience.
     Returns the image file or 404 if not found.
     """
-    image_path = IMAGES_DIR / experience_id / f"npc_{npc_id}.png"
+    bare_id = npc_id.removeprefix("npc_")
+    image_path = IMAGES_DIR / experience_id / f"npc_{bare_id}.png"
     
     if not image_path.exists():
         logger.warning(f"NPC image not found: {image_path}")
