@@ -734,21 +734,18 @@ class ProceduralGraphGenerator:
             other_roles = [r for r in role_ids if r != role]
             if other_roles and available_items:
                 target_role = random.choice(other_roles)
-                # Exclude items already claimed by search tasks or other handoffs
                 _assigned = assigned_items or set()
                 _handoff  = handoff_items or set()
                 claimed   = _assigned | _handoff
-                # Only use items at THIS task's location — the player will search here
-                # before handing off. Items at other locations are unreachable unless
-                # a preceding search task explicitly goes there.
-                items_at_location = [
-                    item.id for item in items
-                    if item.location == location.id and not item.hidden
-                    and item.id in available_items
-                    and item.id not in claimed
+                # Handoff items can come from anywhere — the player already has the
+                # item in inventory from a preceding search task.  The handoff only
+                # requires both players to be in the same room (any room).
+                handoff_candidates = [
+                    item_id for item_id in available_items
+                    if item_id not in claimed
                 ]
-                if items_at_location:
-                    handoff_item = random.choice(items_at_location)
+                if handoff_candidates:
+                    handoff_item = random.choice(handoff_candidates)
                     return Task(
                         id=task_id,
                         type="handoff",
@@ -759,7 +756,6 @@ class ProceduralGraphGenerator:
                         handoff_item=handoff_item,
                         handoff_to_role=target_role
                     )
-                # No unclaimed items at this location — fall through to npc_llm below
                 task_type = "npc_llm"
             else:
                 # Can't create handoff, fall back to role-appropriate task
@@ -1018,22 +1014,23 @@ class ProceduralGraphGenerator:
                 for item_id in (t2.search_items or [])
             }
 
-            # Only use items the role has already picked up BEFORE reaching this task
-            # AND that no other role's search task will also claim.
+            # Items the role picked up from search tasks BEFORE this task.
+            # Handoffs don't require a specific location — the player already
+            # has the item in inventory and just needs to meet the recipient.
             role_pool = [
                 item_id for item_id in _items_available_before(role, t.id)
                 if item_id not in items_in_handoffs
                 and item_id not in other_role_search_items
             ]
-            # Fallback: non-hidden items at this task's location that aren't in any search
+            # Fallback: any non-hidden item not already claimed by a search/handoff
             if not role_pool:
-                location_items = [
+                fallback_items = [
                     item.id for item in (items or [])
-                    if item.location == t.location and not item.hidden
+                    if not item.hidden
                     and item.id not in items_in_any_search
                     and item.id not in items_in_handoffs
                 ]
-                role_pool = location_items
+                role_pool = fallback_items
 
             if not role_pool:
                 logger.info(f"[cross-role] No acquirable item for {role} handoff — skipping {t.id}")

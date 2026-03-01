@@ -810,22 +810,21 @@ class GameplayTestOrchestrator:
                             ok = await self._execute_request_item_from(bot, holder, item_id, all_bots, result)
                             return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
                         else:
-                            search_loc = task_def.get("location", bot.state.current_location)
-                            logger.info(f"   {bot.player_name} doesn't have {item_id} — searching {search_loc}")
-                            if search_loc != bot.state.current_location:
-                                await bot.move_to_location(search_loc)
+                            # Handoffs are location-agnostic — the item should
+                            # already be in inventory from a prior search task.
+                            # Search the bot's current location as a last resort.
+                            logger.info(f"   {bot.player_name} doesn't have {item_id} — searching current location ({bot.state.current_location})")
                             items = await bot.search_location()
                             if items:
                                 for found_item in items:
                                     fid = found_item.get("id")
                                     if fid:
                                         await bot.pickup_item(fid)
-                            # Verify we actually got the needed item
                             got_ids = {inv.get("id") for inv in bot.state.inventory}
                             if item_id not in got_ids:
                                 logger.warning(
-                                    f"   ⚠️ SCENARIO BUG: {bot.role} needs {item_id} for handoff but it's "
-                                    f"not at {search_loc} (found {len(items or [])} other items). "
+                                    f"   ⚠️ SCENARIO BUG: {bot.role} needs {item_id} for handoff but "
+                                    f"doesn't have it and couldn't find it. "
                                     f"Inventory: {sorted(got_ids - {None})}"
                                 )
                             return ActionOutcome.SUCCESS

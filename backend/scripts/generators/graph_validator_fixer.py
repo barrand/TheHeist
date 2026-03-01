@@ -417,8 +417,14 @@ class GraphValidator:
                 self.errors.append(f"item_{item.id}_hidden_no_unlock")
 
     def _validate_handoff_items(self):
-        """Every handoff task must have a valid, acquirable handoff_item."""
-        item_location: Dict[str, str] = {item.id: item.location for item in self.graph.items}
+        """Every handoff task must have an acquirable handoff_item.
+
+        Handoffs are location-agnostic — the player already has the item in
+        inventory from a preceding search task.  We only need to verify the
+        item exists and can be acquired by this role (from a preceding search
+        or as an unclaimed non-hidden item).
+        """
+        item_ids: Set[str] = {item.id for item in self.graph.items}
         item_hidden: Dict[str, bool] = {item.id: item.hidden for item in self.graph.items}
 
         role_task_order: Dict[str, List[str]] = {}
@@ -427,23 +433,25 @@ class GraphValidator:
 
         task_by_id = {t.id: t for t in self.graph.tasks}
 
-        def _items_role_can_acquire(role: str, task_id: str, location: str) -> List[str]:
-            """Items the role can hand off: at task location (non-hidden) or from earlier search tasks."""
-            result = []
-            for item in self.graph.items:
-                if item.location == location and not item.hidden:
-                    result.append(item.id)
+        def _items_role_can_acquire(role: str, task_id: str) -> List[str]:
+            """Non-hidden items the role can hand off: from earlier search tasks
+            or any unclaimed non-hidden item in the scenario."""
+            result: List[str] = []
             ordered = role_task_order.get(role, [])
             try:
                 cutoff = ordered.index(task_id)
             except ValueError:
-                return result
+                cutoff = len(ordered)
             for earlier_id in ordered[:cutoff]:
                 earlier = task_by_id.get(earlier_id)
                 if earlier and earlier.type == "search":
                     for sid in (earlier.search_items or []):
                         if sid not in result and not item_hidden.get(sid, True):
                             result.append(sid)
+            # Fallback: any non-hidden item in the scenario
+            for item in self.graph.items:
+                if not item.hidden and item.id not in result:
+                    result.append(item.id)
             return result
 
         items_already_in_handoffs: Set[str] = set()
@@ -458,14 +466,13 @@ class GraphValidator:
             current_item = getattr(task, "handoff_item", None)
 
             if current_item:
-                loc = item_location.get(current_item)
                 hidden = item_hidden.get(current_item, True)
-                acquirable = _items_role_can_acquire(task.assigned_role, task.id, task.location)
-                if current_item in acquirable and not hidden:
-                    continue  # Valid
+                exists = current_item in item_ids
+                if exists and not hidden:
+                    continue  # Valid — item exists and is acquirable
 
-                # Item exists but role can't acquire it at task location
-                msg_reason = f"item {current_item} at {loc}, task at {task.location}"
+                msg_reason = f"item {current_item} {'hidden' if hidden else 'missing'}"
+                acquirable = _items_role_can_acquire(task.assigned_role, task.id)
                 candidates = [
                     iid for iid in acquirable
                     if iid not in items_already_in_handoffs
@@ -488,8 +495,7 @@ class GraphValidator:
                     print(f"   {msg}")
                     self.fixes.append(msg)
             else:
-                # Missing handoff_item entirely
-                acquirable = _items_role_can_acquire(task.assigned_role, task.id, task.location)
+                acquirable = _items_role_can_acquire(task.assigned_role, task.id)
                 candidates = [
                     iid for iid in acquirable
                     if iid not in items_already_in_handoffs
