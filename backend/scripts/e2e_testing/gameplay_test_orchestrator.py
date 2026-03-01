@@ -711,7 +711,9 @@ class GameplayTestOrchestrator:
                 
                 npc_id = task.get("npc_id")
                 if not npc_id:
-                    logger.error(f"Task {decision.target_task} has no npc_id field")
+                    logger.error(f"Task {decision.target_task} has no npc_id field — removing broken task (scenario bug)")
+                    if decision.target_task in bot.state.available_tasks:
+                        del bot.state.available_tasks[decision.target_task]
                     return ActionOutcome.SYSTEM_FAILURE
                 
                 if self.skip_npc_conversations:

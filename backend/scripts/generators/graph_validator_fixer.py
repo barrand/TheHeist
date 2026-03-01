@@ -65,6 +65,8 @@ class GraphValidator:
             self._validate_task_count()
             self._validate_references()
             self._validate_npc_task_matching()
+            self._validate_npc_llm_has_npc()
+            self._validate_search_item_locations()
             self._validate_hidden_items()
             self._validate_handoff_items()
             self._validate_starting_tasks()
@@ -410,6 +412,25 @@ class GraphValidator:
                                 f"{task.npc_id} but outcome belongs to {expected_npc}"
                             )
     
+    def _validate_npc_llm_has_npc(self):
+        """Every npc_llm task must have a valid npc_id"""
+        for task in self.graph.tasks:
+            if task.type == "npc_llm" and not task.npc_id:
+                self.errors.append(f"task_{task.id}_npc_llm_missing_npc_id")
+
+    def _validate_search_item_locations(self):
+        """Search task items must exist at the task's location"""
+        item_map = {item.id: item for item in self.graph.items}
+        for task in self.graph.tasks:
+            if task.type == "search":
+                for item_id in task.search_items:
+                    item = item_map.get(item_id)
+                    if item and item.location != task.location:
+                        self.errors.append(
+                            f"task_{task.id}_search_item_wrong_location: "
+                            f"{item_id} at {item.location}, task at {task.location}"
+                        )
+
     def _validate_hidden_items(self):
         """Validate hidden items have unlock conditions"""
         for item in self.graph.items:
@@ -730,7 +751,41 @@ class GraphValidator:
                 item.unlock_prerequisites = [p for p in item.unlock_prerequisites if p.id != invalid_task]
                 self.fixes.append(f"Removed invalid unlock prerequisite from {item_id}: {invalid_task}")
                 return True
-        
+
+        # Fix: npc_llm task missing npc_id — assign an NPC or convert to info_share
+        if 'npc_llm_missing_npc_id' in error_type:
+            task_id = error_type.split('_')[1]
+            task = next((t for t in self.graph.tasks if t.id == task_id), None)
+            if task:
+                if self.graph.npcs:
+                    import random as _rng
+                    npc = _rng.choice(self.graph.npcs)
+                    task.npc_id = npc.id
+                    task.npc_name = npc.name
+                    task.npc_personality = npc.personality
+                    npc_outcomes = self._npc_outcome_ids(npc)
+                    task.target_outcomes = [npc_outcomes[0]] if npc_outcomes else []
+                    task.location = npc.location
+                    self.fixes.append(f"Assigned NPC {npc.id} to npc_llm task {task_id}")
+                else:
+                    task.type = "info_share"
+                    task.description = "Share intelligence with the team"
+                    self.fixes.append(f"Converted {task_id} to info_share — no NPCs available")
+                return True
+
+        # Fix: search item at wrong location — move item to task's location
+        if 'search_item_wrong_location' in error_type:
+            task_id = error_type.split('_')[1]
+            task = next((t for t in self.graph.tasks if t.id == task_id), None)
+            if task and details:
+                item_id = details.split(' ')[0]
+                item = next((i for i in self.graph.items if i.id == item_id), None)
+                if item:
+                    old_loc = item.location
+                    item.location = task.location
+                    self.fixes.append(f"Moved {item_id} from {old_loc} to {task.location} (search task {task_id})")
+                    return True
+
         return False
 
 

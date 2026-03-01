@@ -540,9 +540,25 @@ class ProceduralGraphGenerator:
                             task.type = TaskType.MINIGAME.value
                             task.minigame_id = mg
                             task.description = f"Complete {mg.replace('_', ' ')}"
-                        else:
+                        elif npcs:
+                            npc = random.choice(npcs)
+                            npc_outcomes = (
+                                [i.info_id for i in npc.information_known if i.info_id]
+                                + [a.action_id for a in npc.actions_available]
+                            )
                             task.type = TaskType.NPC_LLM.value
-                            task.description = "Gather information from a contact"
+                            task.description = f"Talk to {npc.name}"
+                            task.location = npc.location
+                            task.npc_id = npc.id
+                            task.npc_name = npc.name
+                            task.npc_personality = npc.personality
+                            task.target_outcomes = (
+                                random.sample(npc_outcomes, min(1, len(npc_outcomes)))
+                                if npc_outcomes else []
+                            )
+                        else:
+                            task.type = TaskType.INFO_SHARE.value
+                            task.description = "Share intelligence with the team"
                         task.search_items = []
                 
                 tasks.append(task)
@@ -889,10 +905,16 @@ class ProceduralGraphGenerator:
         
         A hidden item's unlock_prerequisites must NOT include the search task that
         looks for it (would create circular: task needs item, item needs task).
+        
+        After assigning unlock_prerequisites to hidden items, we propagate those
+        prerequisites to the search tasks that reference the item.  This guarantees
+        the search task only becomes available when the item is actually visible.
         """
         # Build map: item_id -> set of task_ids that search for this item
         tasks_searching_for_item: Dict[str, Set[str]] = {}
+        task_by_id: Dict[str, Task] = {}
         for task in tasks:
+            task_by_id[task.id] = task
             if task.type == TaskType.SEARCH.value:
                 for item_id in task.search_items:
                     if item_id not in tasks_searching_for_item:
@@ -908,7 +930,6 @@ class ProceduralGraphGenerator:
                 valid_tasks = list(all_task_ids - forbidden_tasks)
                 
                 if not valid_tasks:
-                    # Cannot create valid chain - make item visible instead
                     item.hidden = False
                     continue
                 
@@ -921,6 +942,30 @@ class ProceduralGraphGenerator:
                         id=task_id,
                         description=None
                     ))
+
+        # Propagate: for every hidden item referenced by a search task,
+        # ensure the search task's prerequisites include the item's
+        # unlock_prerequisites so the task only appears when the item
+        # is visible to the player.
+        for item in items:
+            if not item.hidden or not item.unlock_prerequisites:
+                continue
+            for search_task_id in tasks_searching_for_item.get(item.id, set()):
+                search_task = task_by_id.get(search_task_id)
+                if not search_task:
+                    continue
+                existing_prereq_ids = {
+                    (p.type, p.id) for p in search_task.prerequisites
+                }
+                for unlock_prereq in item.unlock_prerequisites:
+                    key = (unlock_prereq.type, unlock_prereq.id)
+                    if key not in existing_prereq_ids:
+                        search_task.prerequisites.append(Prerequisite(
+                            type=unlock_prereq.type,
+                            id=unlock_prereq.id,
+                            description=unlock_prereq.description,
+                        ))
+                        existing_prereq_ids.add(key)
     
     def _ensure_minimum_cross_role_tasks(self, tasks: List[Task], role_ids: List[str], items: List = None) -> None:
         """Guarantee at least MIN_HANDOFF handoff and MIN_INFO_SHARE info_share tasks exist.
