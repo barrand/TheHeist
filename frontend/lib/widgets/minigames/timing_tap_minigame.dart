@@ -29,19 +29,19 @@ class _TimingTapMinigameState extends State<TimingTapMinigame> with SingleTicker
     // Difficulty: speed, zone size, and target
     switch (widget.difficulty) {
       case MinigameDifficulty.easy:
-        _animationDuration = 3000;
+        _animationDuration = 2000;
         _zoneStart = 0.35;
         _zoneEnd = 0.65;
         _targetSuccesses = 3;
         break;
       case MinigameDifficulty.medium:
-        _animationDuration = 2500;
+        _animationDuration = 1500;
         _zoneStart = 0.40;
         _zoneEnd = 0.60;
         _targetSuccesses = 5;
         break;
       case MinigameDifficulty.hard:
-        _animationDuration = 2000;
+        _animationDuration = 1100;
         _zoneStart = 0.43;
         _zoneEnd = 0.57;
         _targetSuccesses = 7;

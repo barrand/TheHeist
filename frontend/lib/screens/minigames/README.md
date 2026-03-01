@@ -25,10 +25,13 @@ frontend/lib/
         ├── logic_clues_minigame.dart    # Mastermind
         ├── doodle_climb_minigame.dart   # Cat Burglar
         ├── tag_evidence_minigame.dart   # Cleaner
+        ├── wipe_prints_minigame.dart    # Cleaner
         ├── item_matching_minigame.dart  # Fence
         ├── steering_obstacle_minigame.dart  # Driver
+        ├── fuel_pump_minigame.dart         # Driver
         ├── whack_a_threat_minigame.dart    # Lookout
-        └── emotion_matching_minigame.dart  # Grifter
+        ├── emotion_matching_minigame.dart  # Grifter
+        └── pocket_grab_minigame.dart       # Pickpocket
 ```
 
 ## Difficulty System
@@ -65,6 +68,12 @@ Each minigame now accepts a `MinigameDifficulty` parameter with three levels:
 - Medium: 5 successes, 20% zone (2.5s cycle)
 - Hard: 7 successes, 14% zone (2s cycle)
 
+#### Pocket Grab (Pickpocket)
+- Hand sweeps across; tap when aligned with object to grab
+- Easy: 3 grabs, 3 misses, slower hand
+- Medium: 4 grabs, 2 misses, medium speed
+- Hard: 5 grabs, 1 miss, fast hand
+
 #### Wire Connect
 - Easy: 3 wires to connect
 - Medium: 5 wires to connect
@@ -91,6 +100,12 @@ Each minigame now accepts a `MinigameDifficulty` parameter with three levels:
 - Medium: 9 markers, 10s, 4 decoys (-3s each)
 - Hard: 12 markers, 11s, 6 decoys (-4s each)
 
+#### Wipe Prints (Cleaner)
+- Swipe over fingerprints only; don't touch "do not clean" items (⛔) or you fail
+- Easy: 5 prints, 2 decoys, 6s
+- Medium: 8 prints, 4 decoys, 5s
+- Hard: 12 prints, 6 decoys, 4s
+
 #### Item Match
 - Each difficulty uses a different item set (no duplicates across levels); items align with companies
 - Easy: 3 pairs (Oil Painting→Metro Gallery, Diamond Ring→Brilliant Acquisitions, Vintage Watch→Chrono Trade), 1 strike allowed
@@ -114,6 +129,12 @@ Each minigame now accepts a `MinigameDifficulty` parameter with three levels:
 - Easy: 4000m, speed ramps
 - Medium: 6000m, faster ramp
 - Hard: 8000m, fastest ramp
+
+#### Fuel Pump (Driver)
+- Hold to fill; release in green zone; overflow or time out = fail
+- Easy: 80–95% zone, 12s
+- Medium: 85–97% zone, 10s
+- Hard: 90–98% zone, 8s
 
 #### Doodle Climb
 - Easy: Target 200, 80px platforms, slower gravity, bigger jump

@@ -12,10 +12,13 @@ import 'package:the_heist/widgets/minigames/rhythm_climb_minigame.dart';
 import 'package:the_heist/widgets/minigames/logic_clues_minigame.dart';
 import 'package:the_heist/widgets/minigames/doodle_climb_minigame.dart';
 import 'package:the_heist/widgets/minigames/tag_evidence_minigame.dart';
+import 'package:the_heist/widgets/minigames/wipe_prints_minigame.dart';
 import 'package:the_heist/widgets/minigames/item_matching_minigame.dart';
 import 'package:the_heist/widgets/minigames/steering_obstacle_minigame.dart';
+import 'package:the_heist/widgets/minigames/fuel_pump_minigame.dart';
 import 'package:the_heist/widgets/minigames/whack_a_threat_minigame.dart';
 import 'package:the_heist/widgets/minigames/emotion_matching_minigame.dart';
+import 'package:the_heist/widgets/minigames/pocket_grab_minigame.dart';
 /// Hub screen showing all minigames organized by role
 class MinigameHubScreen extends StatefulWidget {
   const MinigameHubScreen({super.key});
@@ -40,10 +43,13 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
     'logic_clues': (diff) => LogicCluesMinigame(difficulty: diff),
     'doodle_climb': (diff) => DoodleClimbMinigame(difficulty: diff),
     'tap_evidence_markers': (diff) => TagEvidenceMinigame(difficulty: diff),
+    'swipe_fingerprints': (diff) => WipePrintsMinigame(difficulty: diff),
     'item_matching': (diff) => ItemMatchingMinigame(difficulty: diff),
     'steering_obstacle_course': (diff) => SteeringObstacleMinigame(difficulty: diff),
+    'fuel_pump': (diff) => FuelPumpMinigame(difficulty: diff),
     'whack_a_mole_threats': (diff) => WhackAThreatMinigame(difficulty: diff),
     'emotion_matching': (diff) => EmotionMatchingMinigame(difficulty: diff),
+    'pocket_grab': (diff) => PocketGrabMinigame(difficulty: diff),
   };
   
   // All roles and their minigames from roles.json
@@ -135,6 +141,7 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
           name: 'Fuel Pump',
           description: 'Fill tank without overflow',
           roleId: 'driver',
+          isImplemented: true,
         ),
         MinigameInfo(
           id: 'parking_precision',
@@ -310,6 +317,7 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
           name: 'Wipe Prints',
           description: 'Swipe over fingerprints',
           roleId: 'cleaner',
+          isImplemented: true,
         ),
         MinigameInfo(
           id: 'tap_evidence_markers',
@@ -342,6 +350,13 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
           name: 'Pocket Search',
           description: 'Drag items from pocket fast',
           roleId: 'pickpocket',
+        ),
+        MinigameInfo(
+          id: 'pocket_grab',
+          name: 'Pocket Grab',
+          description: 'Tap when hand aligns with object',
+          roleId: 'pickpocket',
+          isImplemented: true,
         ),
         MinigameInfo(
           id: 'distraction_meter',
