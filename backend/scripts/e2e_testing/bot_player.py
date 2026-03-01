@@ -297,6 +297,9 @@ class BotPlayer:
         For E2E testing, assumes success to avoid message queue congestion.
         The backend broadcasts task_completed which _handle_message processes.
         """
+        # Snapshot the task before removing it — we need search_items below
+        task_def = self.state.available_tasks.get(task_id, {})
+
         await self._send({
             "type": "complete_task",
             "task_id": task_id
@@ -310,6 +313,14 @@ class BotPlayer:
         self.state.completed_tasks.add(task_id)
         if task_id in self.state.available_tasks:
             del self.state.available_tasks[task_id]
+
+        # Sync search items to local inventory.  The backend grants these
+        # on completion, but the bot's local state won't have them unless
+        # it did search_location + pickup_item (which E2E mode skips).
+        if task_def.get("type") == "search":
+            for item_id in (task_def.get("search_items") or []):
+                if not any(i.get("id") == item_id for i in self.state.inventory):
+                    self.state.inventory.append({"id": item_id, "name": item_id})
         
         logger.info(f"Bot {self.player_name} completed task {task_id} (E2E instant mode)")
         return True
