@@ -901,6 +901,50 @@ class GameplayTestOrchestrator:
                                         if item_id:
                                             await bot.pickup_item(item_id)
                                 return ActionOutcome.SUCCESS
+
+            # General safety net: LLM said "wait" but there ARE available tasks.
+            # The flash-lite model sometimes hallucinates "no tasks available."
+            # Force progress instead of idling.
+            override_tasks = bot.get_available_tasks()
+            if override_tasks:
+                task = override_tasks[0]
+                t_id = task.get("id", "?")
+                t_type = task.get("type", "")
+                t_loc = task.get("location", "")
+
+                if t_loc and t_loc != bot.state.current_location:
+                    logger.info(f"   ⚠️ {bot.player_name} (wait→override) LLM chose wait but has task {t_id} — moving to {t_loc}")
+                    await bot.move_to_location(t_loc)
+                    return ActionOutcome.SUCCESS
+
+                if t_type in ("minigame", "info_share"):
+                    logger.info(f"   ⚠️ {bot.player_name} (wait→override) LLM chose wait but has {t_type} {t_id} — completing")
+                    ok = await bot.complete_task(t_id)
+                    if ok:
+                        if bot.role not in result.tasks_completed_per_role:
+                            result.tasks_completed_per_role[bot.role] = 0
+                        result.tasks_completed_per_role[bot.role] += 1
+                    return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
+
+                if t_type == "npc_llm" and self.skip_npc_conversations:
+                    logger.info(f"   ⚠️ {bot.player_name} (wait→override) LLM chose wait but has NPC task {t_id} — auto-completing")
+                    ok = await bot.complete_task(t_id)
+                    if ok:
+                        if bot.role not in result.tasks_completed_per_role:
+                            result.tasks_completed_per_role[bot.role] = 0
+                        result.tasks_completed_per_role[bot.role] += 1
+                    return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
+
+                if t_type == "search":
+                    logger.info(f"   ⚠️ {bot.player_name} (wait→override) LLM chose wait but has search {t_id} — searching")
+                    items = await bot.search_location()
+                    if items:
+                        for found_item in items:
+                            fid = found_item.get("id")
+                            if fid:
+                                await bot.pickup_item(fid)
+                    return ActionOutcome.SUCCESS
+
             logger.info(f"{bot.player_name} waiting")
             return ActionOutcome.SUCCESS
 
