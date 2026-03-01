@@ -434,8 +434,8 @@ class GraphValidator:
         task_by_id = {t.id: t for t in self.graph.tasks}
 
         def _items_role_can_acquire(role: str, task_id: str) -> List[str]:
-            """Non-hidden items the role can hand off: from earlier search tasks
-            or any unclaimed non-hidden item in the scenario."""
+            """Items the role actually has: from earlier search tasks only.
+            The player must have the item in inventory to hand it off."""
             result: List[str] = []
             ordered = role_task_order.get(role, [])
             try:
@@ -448,10 +448,6 @@ class GraphValidator:
                     for sid in (earlier.search_items or []):
                         if sid not in result and not item_hidden.get(sid, True):
                             result.append(sid)
-            # Fallback: any non-hidden item in the scenario
-            for item in self.graph.items:
-                if not item.hidden and item.id not in result:
-                    result.append(item.id)
             return result
 
         items_already_in_handoffs: Set[str] = set()

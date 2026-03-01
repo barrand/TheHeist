@@ -460,10 +460,14 @@ class ProceduralGraphGenerator:
         npc_outcomes = self._get_all_npc_outcomes(npcs)
         available_outcomes: Set[str] = set(npc_outcomes)
 
-        # Pre-seed with all non-hidden items — visible items exist in locations from the
-        # start, so handoff tasks can reference them before a search task has run.
-        available_items: Set[str] = {item.id for item in items if not item.hidden}
-        
+        # Items acquired by ANY role's search tasks so far (used for prerequisite
+        # tracking and search-item deconfliction — NOT for handoff eligibility).
+        available_items: Set[str] = set()
+
+        # Items acquired by EACH role's search tasks — only these can be
+        # handed off, since the player must actually have the item in inventory.
+        role_acquired_items: Dict[str, Set[str]] = {}
+
         # Build items_by_location mapping (ALL items - hidden and non-hidden)
         items_by_location = {}
         items_by_id = {item.id: item for item in items}
@@ -505,6 +509,7 @@ class ProceduralGraphGenerator:
                         prev_task_id=prev_task_id,
                         assigned_items=assigned_items,
                         handoff_items=handoff_items,
+                        role_acquired_items=role_acquired_items,
                     )
                 
                 # If it's a search task, populate items (ensuring no duplicates)
@@ -551,6 +556,7 @@ class ProceduralGraphGenerator:
                 # If this is a search task, add its items as available
                 if task.type == TaskType.SEARCH.value and task.search_items:
                     available_items.update(task.search_items)
+                    role_acquired_items.setdefault(role, set()).update(task.search_items)
 
                 # If this is a handoff task, reserve its item so search tasks can't claim it
                 if task.type == TaskType.HANDOFF.value and task.handoff_item:
@@ -643,6 +649,7 @@ class ProceduralGraphGenerator:
         prev_task_id: Optional[str] = None,
         assigned_items: Optional[Set[str]] = None,
         handoff_items: Optional[Set[str]] = None,
+        role_acquired_items: Optional[Dict[str, Set[str]]] = None,
     ) -> Task:
         """Create a task with dependencies"""
         
@@ -732,17 +739,16 @@ class ProceduralGraphGenerator:
         elif task_type == "handoff":
             # Pick another role to hand off to
             other_roles = [r for r in role_ids if r != role]
-            if other_roles and available_items:
+            my_items = (role_acquired_items or {}).get(role, set())
+            if other_roles and my_items:
                 target_role = random.choice(other_roles)
-                _assigned = assigned_items or set()
                 _handoff  = handoff_items or set()
-                claimed   = _assigned | _handoff
-                # Handoff items can come from anywhere — the player already has the
-                # item in inventory from a preceding search task.  The handoff only
-                # requires both players to be in the same room (any room).
+                # Only items THIS role acquired from search tasks can be
+                # handed off — items from other roles' searches aren't in
+                # this player's inventory.
                 handoff_candidates = [
-                    item_id for item_id in available_items
-                    if item_id not in claimed
+                    item_id for item_id in my_items
+                    if item_id not in _handoff
                 ]
                 if handoff_candidates:
                     handoff_item = random.choice(handoff_candidates)
@@ -1014,23 +1020,13 @@ class ProceduralGraphGenerator:
                 for item_id in (t2.search_items or [])
             }
 
-            # Items the role picked up from search tasks BEFORE this task.
-            # Handoffs don't require a specific location — the player already
-            # has the item in inventory and just needs to meet the recipient.
+            # Only items the role picked up from search tasks BEFORE this task.
+            # The player must actually have the item in inventory to hand it off.
             role_pool = [
                 item_id for item_id in _items_available_before(role, t.id)
                 if item_id not in items_in_handoffs
                 and item_id not in other_role_search_items
             ]
-            # Fallback: any non-hidden item not already claimed by a search/handoff
-            if not role_pool:
-                fallback_items = [
-                    item.id for item in (items or [])
-                    if not item.hidden
-                    and item.id not in items_in_any_search
-                    and item.id not in items_in_handoffs
-                ]
-                role_pool = fallback_items
 
             if not role_pool:
                 logger.info(f"[cross-role] No acquirable item for {role} handoff — skipping {t.id}")
