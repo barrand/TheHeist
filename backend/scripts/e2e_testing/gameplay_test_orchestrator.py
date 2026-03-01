@@ -316,11 +316,20 @@ class GameplayTestOrchestrator:
             
             # Progress indicator every 5 turns
             if turn % 5 == 0:
+                total_done = sum(len(b.state.completed_tasks) for b in bots)
+                # Best-effort total: completed + currently available (locked tasks not counted)
+                total_visible = total_done + sum(len(b.state.available_tasks) for b in bots)
+                role_lines = "  |  ".join(
+                    f"{b.role}: {len(b.state.completed_tasks)}✓"
+                    + (f"+{len(b.state.available_tasks)}" if b.state.available_tasks else " done")
+                    for b in bots
+                )
                 logger.info(f"")
                 logger.info(f"{'='*60}")
                 logger.info(f"  TURN {turn} / {max_turns}")
                 logger.info(f"  Active: {sum(1 for b in bots if b.has_available_tasks())}/{len(bots)} bots")
-                logger.info(f"  Completed: {sum(result.tasks_completed_per_role.values())} tasks")
+                logger.info(f"  Tasks: {total_done} done / {total_visible} visible (locked tasks not shown)")
+                logger.info(f"  {role_lines}")
                 logger.info(f"{'='*60}")
             else:
                 logger.info(f"")
@@ -489,8 +498,9 @@ class GameplayTestOrchestrator:
             team_status=team_status
         )
         
-        # Format action nicely
-        action_str = self._format_action(decision)
+        # Format action nicely — pass tasks so complete_task can show the task type
+        task_lookup = {t["id"]: t for t in tasks if "id" in t}
+        action_str = self._format_action(decision, task_lookup)
         logger.info(f"     → {action_str}")
         logger.debug(f"     Reasoning: {decision.reasoning}")
         
@@ -552,24 +562,47 @@ class GameplayTestOrchestrator:
 
         return False  # Continue normally
     
-    def _format_action(self, decision: ActionDecision) -> str:
+    def _format_action(self, decision: ActionDecision, task_lookup: dict = None) -> str:
         """Format action for display"""
+        task_lookup = task_lookup or {}
+
+        TYPE_ICONS = {
+            "minigame":   "🎮",
+            "search":     "🔍",
+            "handoff":    "🤝",
+            "info_share": "🗣️",
+            "npc_llm":    "💬",
+        }
+
+        def _task_label(task_id: str) -> str:
+            """Return 'ICON TYPE (task_id)' for a task if its definition is known."""
+            if not task_id:
+                return task_id or "?"
+            td = task_lookup.get(task_id)
+            if not td:
+                return task_id
+            t_type = td.get("type", "")
+            icon = TYPE_ICONS.get(t_type, "📋")
+            mg = td.get("minigame_id") or ""
+            label = mg if mg else t_type.upper()
+            return f"{icon} {label} ({task_id})"
+
         if decision.action == "move":
             return f"Move to {decision.target_location}"
         elif decision.action == "search":
-            return f"Search location"
+            return f"🔍 Search location"
         elif decision.action == "pickup":
-            return f"Pickup {decision.target_item}"
+            return f"📦 Pickup {decision.target_item}"
         elif decision.action == "talk":
-            return f"Talk to {decision.target_npc} for task {decision.target_task}"
+            return f"💬 Talk to {decision.target_npc} [{decision.target_task}]"
         elif decision.action == "complete_task":
-            return f"Complete task {decision.target_task}"
+            return f"✔ Complete {_task_label(decision.target_task)}"
         elif decision.action == "handoff":
-            return f"Handoff {decision.target_item} to {decision.target_player}"
+            return f"🤝 Handoff {decision.target_item} → {decision.target_player}"
         elif decision.action == "request_item":
-            return f"💬 Ask {decision.target_player} to drop {decision.target_item} at {decision.target_location or 'current location'}"
+            return f"💬 Ask {decision.target_player} to drop {decision.target_item}"
         elif decision.action == "wait":
-            return f"Wait (no available actions)"
+            return f"⏳ Wait"
         else:
             return decision.action
     
