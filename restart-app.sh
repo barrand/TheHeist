@@ -16,6 +16,18 @@ echo ""
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
+# Write a build stamp so every running process knows exactly when it was started
+BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+cat > "$SCRIPT_DIR/backend/build_info.json" <<EOF
+{
+  "build_time": "$BUILD_TIME",
+  "git_hash": "$GIT_HASH"
+}
+EOF
+echo -e "${GREEN}🏗️  Build: ${BUILD_TIME} (${GIT_HASH})${NC}"
+echo ""
+
 # Kill any existing Flutter/backend/E2E portal processes
 echo -e "${YELLOW}1. Stopping existing processes...${NC}"
 pkill -9 -f "flutter run" 2>/dev/null
@@ -111,6 +123,8 @@ echo ""
 echo -e "  📱 Frontend:  ${GREEN}http://localhost:8087${NC}"
 echo -e "  🔧 Backend:   ${GREEN}http://localhost:8000${NC}"
 echo -e "  🧪 E2E Portal:${GREEN}http://localhost:5555${NC}"
+echo ""
+echo -e "  🏗️  Build:     ${YELLOW}${BUILD_TIME} (${GIT_HASH})${NC}"
 echo ""
 echo -e "  ${YELLOW}Quick Test:${NC}"
 echo -e "    1. Browser 1: Click 🎭 Test as Mastermind"

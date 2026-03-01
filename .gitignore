@@ -34,5 +34,8 @@ backend/scripts/output/
 # Generated images (can be regenerated)
 backend/generated_images/
 
+# Runtime build stamp — written by restart-app.sh, not version controlled
+backend/build_info.json
+
 # Prototype files (contains API keys for testing)
 prototype/
