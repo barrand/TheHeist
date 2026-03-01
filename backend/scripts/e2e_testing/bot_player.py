@@ -221,14 +221,26 @@ class BotPlayer:
             "item_id": item_id
         })
         
-        # Wait for item_picked_up broadcast
-        msg = await self._wait_for_message("item_picked_up", timeout=3)
-        if msg and msg.get("player_id") == self.state.player_id:
-            item = msg.get("item")
-            self.state.inventory.append(item)
-            logger.info(f"Bot {self.player_name} picked up {item.get('name', item_id)}")
-            return True
+        # item_picked_up is broadcast to ALL bots in the room. With parallel turns,
+        # another bot's pickup broadcast may arrive first. Keep consuming messages
+        # of this type until we find our own or the deadline passes.
+        deadline = asyncio.get_event_loop().time() + 4.0
+        while asyncio.get_event_loop().time() < deadline:
+            remaining = deadline - asyncio.get_event_loop().time()
+            if remaining <= 0:
+                break
+            msg = await self._wait_for_message("item_picked_up", timeout=remaining)
+            if msg is None:
+                break
+            if msg.get("player_id") == self.state.player_id:
+                item = msg.get("item")
+                if item:
+                    self.state.inventory.append(item)
+                    logger.info(f"Bot {self.player_name} picked up {item.get('name', item_id)}")
+                return True
+            # Another bot's pickup broadcast — discard and keep waiting for ours
         
+        logger.debug(f"Bot {self.player_name}: pickup timed out waiting for {item_id}")
         return False
     
     async def drop_item(self, item_id: str) -> bool:
@@ -237,11 +249,20 @@ class BotPlayer:
             "type": "drop_item",
             "item_id": item_id
         })
-        msg = await self._wait_for_message("item_dropped", timeout=3)
-        if msg and msg.get("item_id") == item_id:
-            self.state.inventory = [i for i in self.state.inventory if i.get("id") != item_id]
-            logger.info(f"Bot {self.player_name} dropped {item_id} at {self.state.current_location}")
-            return True
+        # item_dropped is broadcast to all bots — loop until we see our own drop
+        deadline = asyncio.get_event_loop().time() + 4.0
+        while asyncio.get_event_loop().time() < deadline:
+            remaining = deadline - asyncio.get_event_loop().time()
+            if remaining <= 0:
+                break
+            msg = await self._wait_for_message("item_dropped", timeout=remaining)
+            if msg is None:
+                break
+            if msg.get("item_id") == item_id and msg.get("player_id") == self.state.player_id:
+                self.state.inventory = [i for i in self.state.inventory if i.get("id") != item_id]
+                logger.info(f"Bot {self.player_name} dropped {item_id} at {self.state.current_location}")
+                return True
+            # Another bot's drop — discard and keep waiting for ours
         return False
 
     async def handoff_item(self, item_id: str, to_player_id: str) -> bool:
@@ -252,13 +273,20 @@ class BotPlayer:
             "to_player_id": to_player_id
         })
         
-        # Wait for item_transferred broadcast
-        msg = await self._wait_for_message("item_transferred", timeout=3)
-        if msg and msg.get("from_player_id") == self.state.player_id:
-            # Remove from inventory
-            self.state.inventory = [i for i in self.state.inventory if i["id"] != item_id]
-            logger.info(f"Bot {self.player_name} handed off {item_id} to {to_player_id}")
-            return True
+        # item_transferred is broadcast to all bots — loop until we see our own
+        deadline = asyncio.get_event_loop().time() + 4.0
+        while asyncio.get_event_loop().time() < deadline:
+            remaining = deadline - asyncio.get_event_loop().time()
+            if remaining <= 0:
+                break
+            msg = await self._wait_for_message("item_transferred", timeout=remaining)
+            if msg is None:
+                break
+            if msg.get("from_player_id") == self.state.player_id:
+                self.state.inventory = [i for i in self.state.inventory if i["id"] != item_id]
+                logger.info(f"Bot {self.player_name} handed off {item_id} to {to_player_id}")
+                return True
+            # Another bot's transfer — discard and keep waiting for ours
         
         return False
     
