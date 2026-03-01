@@ -309,6 +309,13 @@ class GameplayTestOrchestrator:
         empty_search_counts: Dict[str, Dict[str, int]] = {bot.player_name: {} for bot in bots}
         SEARCH_DEPLETED_THRESHOLD = 3   # Hide task from LLM after this many empty searches
         SEARCH_FAILURE_THRESHOLD = 10   # Report as a real issue after this many
+
+        # No-progress detection: abort if total completed tasks hasn't increased
+        # in this many consecutive turns. Prevents endless loops when items are
+        # missing or tasks are permanently blocked.
+        NO_PROGRESS_LIMIT = 20
+        no_progress_turns = 0
+        last_completed_count = 0
         
         while turn < max_turns:
             turn += 1
@@ -410,6 +417,31 @@ class GameplayTestOrchestrator:
                 logger.debug(f"  {newly_done} task(s) completed — resetting depleted search counts")
                 for counts in empty_search_counts.values():
                     counts.clear()
+
+            # No-progress detection: abort if nothing has advanced in too long
+            if completed_after > last_completed_count:
+                last_completed_count = completed_after
+                no_progress_turns = 0
+            else:
+                no_progress_turns += 1
+                if no_progress_turns >= NO_PROGRESS_LIMIT:
+                    total_done = completed_after
+                    stuck_roles = [
+                        f"{b.role}({len(b.state.available_tasks)} tasks pending)"
+                        for b in bots if b.state.available_tasks
+                    ]
+                    msg = (
+                        f"No progress for {NO_PROGRESS_LIMIT} consecutive turns "
+                        f"({total_done} tasks done). Still blocked: {', '.join(stuck_roles) or 'none'}"
+                    )
+                    result.status = "STUCK"
+                    result.issues.append(f"Turn {turn}: {msg}")
+                    logger.error(f"")
+                    logger.error(f"🛑 {'='*60}")
+                    logger.error(f"   STUCK — aborting test")
+                    logger.error(f"   {msg}")
+                    logger.error(f"{'='*60}")
+                    break
 
             # Brief yield to let backend WebSocket messages flush between turns
             await asyncio.sleep(0.1)
