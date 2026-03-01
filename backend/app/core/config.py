@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = "../.env"  # Load from project root
         case_sensitive = False
+        extra = "ignore"
 
 
 @lru_cache()

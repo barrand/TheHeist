@@ -451,6 +451,12 @@ class GraphValidator:
         role_task_order: Dict[str, List[str]] = {}
         for t in self.graph.tasks:
             role_task_order.setdefault(t.assigned_role, []).append(t.id)
+        _NUM_SUFFIX = re.compile(r'(\d+)$')
+        def _task_sort_key(tid: str) -> int:
+            m = _NUM_SUFFIX.search(tid)
+            return int(m.group(1)) if m else 0
+        for role_key in role_task_order:
+            role_task_order[role_key].sort(key=_task_sort_key)
 
         task_by_id = {t.id: t for t in self.graph.tasks}
 
@@ -485,11 +491,16 @@ class GraphValidator:
             if current_item:
                 hidden = item_hidden.get(current_item, True)
                 exists = current_item in item_ids
-                if exists and not hidden:
-                    continue  # Valid — item exists and is acquirable
-
-                msg_reason = f"item {current_item} {'hidden' if hidden else 'missing'}"
                 acquirable = _items_role_can_acquire(task.assigned_role, task.id)
+                if exists and not hidden and current_item in acquirable:
+                    continue  # Valid — item exists, visible, AND role can acquire it
+
+                if not exists:
+                    msg_reason = f"item {current_item} missing"
+                elif hidden:
+                    msg_reason = f"item {current_item} hidden"
+                else:
+                    msg_reason = f"item {current_item} not acquirable by {task.assigned_role}"
                 candidates = [
                     iid for iid in acquirable
                     if iid not in items_already_in_handoffs

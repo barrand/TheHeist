@@ -280,16 +280,39 @@ def print_summary(results: List[RunResult], aborted: bool):
 
 # ─── CLI ─────────────────────────────────────────────────────────────────────
 
+def parse_include_config(spec: str, scenarios: list) -> dict:
+    """Parse 'scenario_id:role1,role2,...' into a config dict."""
+    parts = spec.split(":", 1)
+    if len(parts) != 2:
+        raise ValueError(f"Invalid --include format: {spec!r} (expected 'scenario_id:role1,role2,...')")
+    scenario_id, roles_str = parts
+    roles = [r.strip() for r in roles_str.split(",")]
+    scenario_name = scenario_id
+    for s in scenarios:
+        if s["scenario_id"] == scenario_id:
+            scenario_name = s["name"]
+            break
+    return {
+        "scenario_id": scenario_id,
+        "scenario_name": scenario_name,
+        "roles": roles,
+        "player_count": len(roles),
+    }
+
+
 async def main_async(args):
     scenarios = _load_scenarios()
     all_roles = _load_roles()
 
-    configs = [
+    included = [parse_include_config(spec, scenarios) for spec in args.include]
+    random_configs = [
         pick_random_config(scenarios, all_roles, args.min_players, args.max_players)
         for _ in range(args.count)
     ]
+    configs = included + random_configs
 
-    logger.info(f"Stress test: {args.count} random scenarios, "
+    total = len(configs)
+    logger.info(f"Stress test: {len(included)} targeted + {args.count} random = {total} scenarios, "
                 f"{args.min_players}-{args.max_players} players, "
                 f"abort after {args.abort_after} consecutive failures")
     logger.info(f"Backend: {args.backend_url}")
@@ -338,6 +361,10 @@ def main():
                         help="Backend URL (default: http://localhost:8000)")
     parser.add_argument("--seed", type=int, default=None,
                         help="Random seed for reproducibility")
+    parser.add_argument("--include", type=str, action="append", default=[],
+                        help="Specific configs to prepend: 'scenario_id:role1,role2,...' "
+                             "(e.g. 'train_robbery_car:fence,cat_burglar,mastermind,muscle'). "
+                             "Repeat --include for multiple configs.")
     parser.add_argument("--verbose", action="store_true",
                         help="Enable verbose (DEBUG) logging")
 
