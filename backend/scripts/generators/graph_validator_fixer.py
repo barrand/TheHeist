@@ -417,21 +417,93 @@ class GraphValidator:
                 self.errors.append(f"item_{item.id}_hidden_no_unlock")
 
     def _validate_handoff_items(self):
-        """Every handoff task must have a handoff_item assigned."""
-        non_hidden_items = [item.id for item in self.graph.items if not item.hidden]
+        """Every handoff task must have a valid, acquirable handoff_item."""
+        item_location: Dict[str, str] = {item.id: item.location for item in self.graph.items}
+        item_hidden: Dict[str, bool] = {item.id: item.hidden for item in self.graph.items}
+
+        role_task_order: Dict[str, List[str]] = {}
+        for t in self.graph.tasks:
+            role_task_order.setdefault(t.assigned_role, []).append(t.id)
+
+        task_by_id = {t.id: t for t in self.graph.tasks}
+
+        def _items_role_can_acquire(role: str, task_id: str, location: str) -> List[str]:
+            """Items the role can hand off: at task location (non-hidden) or from earlier search tasks."""
+            result = []
+            for item in self.graph.items:
+                if item.location == location and not item.hidden:
+                    result.append(item.id)
+            ordered = role_task_order.get(role, [])
+            try:
+                cutoff = ordered.index(task_id)
+            except ValueError:
+                return result
+            for earlier_id in ordered[:cutoff]:
+                earlier = task_by_id.get(earlier_id)
+                if earlier and earlier.type == "search":
+                    for sid in (earlier.search_items or []):
+                        if sid not in result and not item_hidden.get(sid, True):
+                            result.append(sid)
+            return result
+
+        items_already_in_handoffs: Set[str] = set()
         for task in self.graph.tasks:
-            if task.type == "handoff" and not getattr(task, "handoff_item", None):
-                if non_hidden_items:
-                    # Auto-fix: assign the first available non-hidden item
-                    task.handoff_item = non_hidden_items[0]
+            if task.type == "handoff" and getattr(task, "handoff_item", None):
+                items_already_in_handoffs.add(task.handoff_item)
+
+        for task in self.graph.tasks:
+            if task.type != "handoff":
+                continue
+
+            current_item = getattr(task, "handoff_item", None)
+
+            if current_item:
+                loc = item_location.get(current_item)
+                hidden = item_hidden.get(current_item, True)
+                acquirable = _items_role_can_acquire(task.assigned_role, task.id, task.location)
+                if current_item in acquirable and not hidden:
+                    continue  # Valid
+
+                # Item exists but role can't acquire it at task location
+                msg_reason = f"item {current_item} at {loc}, task at {task.location}"
+                candidates = [
+                    iid for iid in acquirable
+                    if iid not in items_already_in_handoffs
+                ]
+                if candidates:
+                    old_item = task.handoff_item
+                    items_already_in_handoffs.discard(old_item)
+                    task.handoff_item = candidates[0]
+                    items_already_in_handoffs.add(task.handoff_item)
+                    msg = f"[fix] Reassigned {task.id} handoff_item {old_item} → {task.handoff_item} ({msg_reason})"
+                    print(f"   {msg}")
+                    self.fixes.append(msg)
+                else:
+                    items_already_in_handoffs.discard(current_item)
+                    task.type = "info_share"
+                    task.handoff_item = None
+                    task.handoff_to_role = None
+                    task.info_description = "Share team intelligence"
+                    msg = f"[fix] Converted {task.id} to info_share — no acquirable item ({msg_reason})"
+                    print(f"   {msg}")
+                    self.fixes.append(msg)
+            else:
+                # Missing handoff_item entirely
+                acquirable = _items_role_can_acquire(task.assigned_role, task.id, task.location)
+                candidates = [
+                    iid for iid in acquirable
+                    if iid not in items_already_in_handoffs
+                ]
+                if candidates:
+                    task.handoff_item = candidates[0]
+                    items_already_in_handoffs.add(task.handoff_item)
                     msg = f"[fix] Assigned handoff_item {task.handoff_item} to task {task.id} (was missing)"
                     print(f"   {msg}")
                     self.fixes.append(msg)
                 else:
-                    # No items at all — convert to info_share so it's at least completable
                     task.type = "info_share"
                     task.info_description = "Share team intelligence"
-                    msg = f"[fix] Converted itemless handoff {task.id} to info_share (no items in scenario)"
+                    msg = f"[fix] Converted itemless handoff {task.id} to info_share (no acquirable items)"
                     print(f"   {msg}")
                     self.fixes.append(msg)
 

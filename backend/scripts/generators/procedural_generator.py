@@ -1046,6 +1046,7 @@ class ProceduralGraphGenerator:
             t.type = TaskType.HANDOFF.value
             t.handoff_to_role = random.choice(other_roles)
             t.handoff_item = chosen_item
+            t.search_items = []
             t.npc_id = None
             t.npc_name = None
             t.minigame_id = None

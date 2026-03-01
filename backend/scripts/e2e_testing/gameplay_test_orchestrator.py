@@ -810,8 +810,8 @@ class GameplayTestOrchestrator:
                             ok = await self._execute_request_item_from(bot, holder, item_id, all_bots, result)
                             return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
                         else:
-                            logger.info(f"   {bot.player_name} doesn't have {item_id} — searching {task_def.get('location', bot.state.current_location)}")
                             search_loc = task_def.get("location", bot.state.current_location)
+                            logger.info(f"   {bot.player_name} doesn't have {item_id} — searching {search_loc}")
                             if search_loc != bot.state.current_location:
                                 await bot.move_to_location(search_loc)
                             items = await bot.search_location()
@@ -820,6 +820,14 @@ class GameplayTestOrchestrator:
                                     fid = found_item.get("id")
                                     if fid:
                                         await bot.pickup_item(fid)
+                            # Verify we actually got the needed item
+                            got_ids = {inv.get("id") for inv in bot.state.inventory}
+                            if item_id not in got_ids:
+                                logger.warning(
+                                    f"   ⚠️ SCENARIO BUG: {bot.role} needs {item_id} for handoff but it's "
+                                    f"not at {search_loc} (found {len(items or [])} other items). "
+                                    f"Inventory: {sorted(got_ids - {None})}"
+                                )
                             return ActionOutcome.SUCCESS
                     # Ensure both bots are in the same location before handing off
                     if bot.state.current_location != target_bot.state.current_location:
