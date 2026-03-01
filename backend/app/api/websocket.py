@@ -715,14 +715,21 @@ async def handle_search_room(room_code: str, player_id: str, data: Dict[str, Any
     visible_items = [item for item in all_items_here if game_state.check_item_visible(item)]
 
     # Further filter to items relevant to this player's role.
-    # Items that appear in any search task's search_items are "claimed" by that task's role;
-    # only the owning role (or tasks with no role claim) should be able to find them.
-    # This prevents one player from accidentally picking up items intended for another role.
+    # Items claimed by a task (via search_items or handoff_item) are reserved for the
+    # role that owns that task. Other roles cannot pick them up accidentally.
+    # This prevents one player from accidentally taking items intended for another role.
     role_claimed_items: Dict[str, str] = {}  # item_id -> assigned_role that needs it
     for task in game_state.tasks.values():
+        # Search tasks claim their search_items for their assigned role
         if task.type.value == "search" and task.search_items:
             for item_id in task.search_items:
                 role_claimed_items[item_id] = task.assigned_role
+        # Handoff tasks claim their handoff_item for the role that performs the handoff.
+        # These items are not in any search_items list (by design), but must still be
+        # reserved so another role cannot accidentally pick them up first.
+        if task.type.value == "handoff" and task.handoff_item:
+            if task.handoff_item not in role_claimed_items:
+                role_claimed_items[task.handoff_item] = task.assigned_role
 
     player_role = room.players[player_id].role if player_id in room.players else None
     role_filtered = [

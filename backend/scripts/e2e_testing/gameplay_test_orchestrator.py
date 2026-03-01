@@ -591,16 +591,17 @@ class GameplayTestOrchestrator:
                 # Room is empty — bad bot decision, not a system bug.
                 logger.debug(f"     (search returned 0 items — room is empty or already looted)")
                 return ActionOutcome.EMPTY_SEARCH
-            # Found items — try to pick up the first one
-            item_id = items[0].get("id")
-            if item_id:
-                picked_up = await bot.pickup_item(item_id)
-                if picked_up:
-                    return ActionOutcome.SUCCESS
-                # Item was visible but pickup failed — likely an async timing race.
-                logger.debug(f"     (found {item_id} but pickup timed out — transient)")
-                return ActionOutcome.PICKUP_TIMEOUT
-            return ActionOutcome.SUCCESS
+            # Pick up ALL found items so nothing gets left behind in the room.
+            # Only picking up items[0] could leave role-claimed items in the room
+            # for another bot to accidentally collect on a later search.
+            any_picked_up = False
+            for found_item in items:
+                item_id = found_item.get("id")
+                if item_id:
+                    picked_up = await bot.pickup_item(item_id)
+                    if picked_up:
+                        any_picked_up = True
+            return ActionOutcome.SUCCESS if any_picked_up else ActionOutcome.PICKUP_TIMEOUT
         
         elif decision.action == "pickup":
             if decision.target_item:
@@ -729,8 +730,13 @@ class GameplayTestOrchestrator:
                             search_loc = task_def.get("location", bot.state.current_location)
                             if search_loc != bot.state.current_location:
                                 await bot.move_to_location(search_loc)
-                            ok = await bot.search_room()
-                            return ActionOutcome.SUCCESS if ok else ActionOutcome.FAILURE
+                            items = await bot.search_location()
+                            if items:
+                                for found_item in items:
+                                    fid = found_item.get("id")
+                                    if fid:
+                                        await bot.pickup_item(fid)
+                            return ActionOutcome.SUCCESS
                     # Ensure both bots are in the same location before handing off
                     if bot.state.current_location != target_bot.state.current_location:
                         meet_loc = target_bot.state.current_location
@@ -770,6 +776,36 @@ class GameplayTestOrchestrator:
             return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
 
         elif decision.action == "wait":
+            # Before truly waiting, check if any available handoff task is blocked because
+            # the bot doesn't have the required item. If so, search at that task's location
+            # rather than idling — the item should be there (per generator guarantees).
+            for task_id, task_def in bot.state.available_tasks.items():
+                if task_def.get("type") == "handoff":
+                    needed_item = task_def.get("handoff_item")
+                    if needed_item:
+                        bot_item_ids = {inv_item.get("id") for inv_item in bot.state.inventory}
+                        if needed_item not in bot_item_ids:
+                            # Check if a teammate has it — prefer request_item over search
+                            holder = next(
+                                (b for b in (all_bots or []) if b != bot and any(i.get("id") == needed_item for i in b.state.inventory)),
+                                None
+                            )
+                            if holder:
+                                logger.info(f"   {bot.player_name} (wait→request) needs {needed_item} from {holder.player_name}")
+                                ok = await self._execute_request_item_from(bot, holder, needed_item, all_bots, result)
+                                return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
+                            else:
+                                search_loc = task_def.get("location", bot.state.current_location)
+                                logger.info(f"   {bot.player_name} (wait→search) searching {search_loc} for {needed_item} (task {task_id})")
+                                if search_loc != bot.state.current_location:
+                                    await bot.move_to_location(search_loc)
+                                items = await bot.search_location()
+                                if items:
+                                    for found_item in items:
+                                        item_id = found_item.get("id")
+                                        if item_id:
+                                            await bot.pickup_item(item_id)
+                                return ActionOutcome.SUCCESS
             logger.info(f"{bot.player_name} waiting")
             return ActionOutcome.SUCCESS
 
