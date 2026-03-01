@@ -1001,11 +1001,21 @@ class ProceduralGraphGenerator:
                 idx += 1
                 continue
 
-            # Only use items the role has already picked up BEFORE reaching this task.
-            # _items_available_before returns non-hidden items from earlier search tasks only.
+            # Items in OTHER roles' search tasks — grabbing these would cause a conflict
+            # because the other role will pick up the item first, leaving none for us.
+            other_role_search_items: Set[str] = {
+                item_id
+                for t2 in tasks
+                if t2.assigned_role != role and t2.type == TaskType.SEARCH.value
+                for item_id in (t2.search_items or [])
+            }
+
+            # Only use items the role has already picked up BEFORE reaching this task
+            # AND that no other role's search task will also claim.
             role_pool = [
                 item_id for item_id in _items_available_before(role, t.id)
                 if item_id not in items_in_handoffs
+                and item_id not in other_role_search_items
             ]
             # Fallback: non-hidden items at this task's location that aren't in any search
             if not role_pool:
