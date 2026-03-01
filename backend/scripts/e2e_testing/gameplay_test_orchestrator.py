@@ -217,7 +217,7 @@ class GameplayTestOrchestrator:
                     return result
                 # Small delay between connections for stability
                 if i < len(bots) - 1:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.3)
             
             # All bots select roles
             logger.info("Bots selecting roles...")
@@ -372,21 +372,26 @@ class GameplayTestOrchestrator:
             # bots to search those rooms again.
             completed_before = sum(len(b.state.completed_tasks) for b in bots)
 
-            # Each active bot takes a turn
-            for bot in active_bots:
+            # All active bots take their turn in parallel.
+            # LLM calls are non-blocking (asyncio.to_thread), so this cuts per-turn
+            # wall time from (N_bots × LLM_latency) down to roughly max(LLM_latency).
+            async def _safe_turn(bot):
                 try:
-                    should_abort = await self._bot_take_turn(
+                    return await self._bot_take_turn(
                         bot, result, consecutive_failures, MAX_CONSECUTIVE_FAILURES,
                         all_bots=bots,
                         empty_search_counts=empty_search_counts,
                         search_depleted_threshold=SEARCH_DEPLETED_THRESHOLD,
                         search_failure_threshold=SEARCH_FAILURE_THRESHOLD,
                     )
-                    if should_abort:
-                        return result
                 except Exception as e:
                     logger.error(f"❌ Error during {bot.player_name} turn: {e}")
                     result.issues.append(f"Turn {turn}: {bot.player_name} error: {str(e)}")
+                    return False
+
+            turn_results = await asyncio.gather(*[_safe_turn(b) for b in active_bots])
+            if any(r is True for r in turn_results):
+                return result
 
             # If any task was completed this round, a hidden item may now be visible.
             # Reset all depleted-location search counts so bots will try again.
@@ -397,8 +402,8 @@ class GameplayTestOrchestrator:
                 for counts in empty_search_counts.values():
                     counts.clear()
 
-            # Small delay for backend processing
-            await asyncio.sleep(0.5)
+            # Brief yield to let backend WebSocket messages flush between turns
+            await asyncio.sleep(0.1)
         
         if turn >= max_turns:
             result.status = "TIMEOUT"

@@ -5,13 +5,14 @@ Uses Gemini to analyze game state and make intelligent decisions about
 what action the bot should take next.
 """
 
+import asyncio
 import json
 import logging
 from typing import Dict, List, Optional, Literal
 from dataclasses import dataclass
 import google.generativeai as genai
 
-from ..config import GEMINI_API_KEY, GEMINI_EXPERIENCE_MODEL
+from ..config import GEMINI_API_KEY, GEMINI_EXPERIENCE_MODEL, GEMINI_NPC_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,10 @@ class LLMDecisionMaker:
     """
     
     def __init__(self, model_name: str = None):
-        self.model_name = model_name or GEMINI_EXPERIENCE_MODEL
+        # Use the lightweight NPC model for bot decisions — the prompt is short,
+        # structured JSON, and doesn't need the full reasoning power of the
+        # experience model. This is ~3x faster and cheaper per turn.
+        self.model_name = model_name or GEMINI_NPC_MODEL
         self.model = genai.GenerativeModel(
             model_name=self.model_name,
             generation_config={
@@ -109,8 +113,9 @@ class LLMDecisionMaker:
         )
         
         try:
-            # Get decision from LLM
-            response = self.model.generate_content(prompt)
+            # Run in a thread so the synchronous Gemini SDK doesn't block the
+            # event loop — this allows all bots' LLM calls to run concurrently.
+            response = await asyncio.to_thread(self.model.generate_content, prompt)
             decision_data = json.loads(response.text)
             
             # Parse into ActionDecision
