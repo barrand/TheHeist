@@ -1030,9 +1030,6 @@ class ProceduralGraphGenerator:
                 continue
 
             items_in_handoffs.add(chosen_item)
-            # Remove from role search items so the same item isn't used twice
-            if chosen_item in role_search_items.get(role, []):
-                role_search_items[role].remove(chosen_item)
 
             t.type = TaskType.HANDOFF.value
             t.handoff_to_role = random.choice(other_roles)
