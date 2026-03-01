@@ -4,6 +4,7 @@ Serializes scenario graphs to JSON format for backend consumption
 """
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 from dataclasses import asdict
@@ -27,6 +28,9 @@ def export_to_json(graph, output_path: Optional[str] = None, roles=None) -> str:
     
     # Clean up None values and empty lists for readability
     graph_dict = _clean_dict(graph_dict)
+
+    # Stamp generation time so we can tell exactly when a scenario was built
+    graph_dict["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     
     # Determine output path
     if output_path is None:

@@ -472,8 +472,9 @@ class ProceduralGraphGenerator:
                 items_by_location[item.location] = []
             items_by_location[item.location].append(item.id)
         
-        assigned_items: Set[str] = set()
-        
+        assigned_items: Set[str] = set()   # items claimed by search tasks
+        handoff_items: Set[str] = set()    # items claimed by handoff tasks
+
         for role in role_ids:
             role_code = ROLE_CODES.get(role, role[:2].upper())
             tasks_for_role = random.randint(*self.config.tasks_per_role)
@@ -502,6 +503,8 @@ class ProceduralGraphGenerator:
                         available_outcomes,
                         available_items,
                         prev_task_id=prev_task_id,
+                        assigned_items=assigned_items,
+                        handoff_items=handoff_items,
                     )
                 
                 # If it's a search task, populate items (ensuring no duplicates)
@@ -510,6 +513,7 @@ class ProceduralGraphGenerator:
                     available_location_items = [
                         item_id for item_id in location_items
                         if item_id not in assigned_items
+                        and item_id not in handoff_items  # don't search for items already reserved by a handoff
                     ]
                     # Starting search tasks (no prerequisites) can only use non-hidden items
                     # - no "earlier" tasks exist to unlock hidden items
@@ -547,6 +551,10 @@ class ProceduralGraphGenerator:
                 # If this is a search task, add its items as available
                 if task.type == TaskType.SEARCH.value and task.search_items:
                     available_items.update(task.search_items)
+
+                # If this is a handoff task, reserve its item so search tasks can't claim it
+                if task.type == TaskType.HANDOFF.value and task.handoff_item:
+                    handoff_items.add(task.handoff_item)
         
         # Link hidden items to task prerequisites (avoid circular: unlock tasks must not include search task for this item)
         self._link_hidden_items_to_tasks(items, tasks)
@@ -633,6 +641,8 @@ class ProceduralGraphGenerator:
         available_outcomes: Set[str],
         available_items: Set[str],
         prev_task_id: Optional[str] = None,
+        assigned_items: Optional[Set[str]] = None,
+        handoff_items: Optional[Set[str]] = None,
     ) -> Task:
         """Create a task with dependencies"""
         
@@ -724,27 +734,38 @@ class ProceduralGraphGenerator:
             other_roles = [r for r in role_ids if r != role]
             if other_roles and available_items:
                 target_role = random.choice(other_roles)
+                # Exclude items already claimed by search tasks or other handoffs
+                _assigned = assigned_items or set()
+                _handoff  = handoff_items or set()
+                claimed   = _assigned | _handoff
                 # Prefer non-hidden items at THIS task's location so the player can
-                # actually find the item before handing it off. Fall back to the
-                # global non-hidden pool only if no local items are available.
+                # find the item at the same place they're doing the handoff.
+                # Fall back to the global non-hidden pool only if needed.
                 items_at_location = [
                     item.id for item in items
                     if item.location == location.id and not item.hidden
                     and item.id in available_items
+                    and item.id not in claimed
                 ]
-                handoff_pool = items_at_location if items_at_location else list(available_items)
-                handoff_item = random.choice(handoff_pool)
-
-                return Task(
-                    id=task_id,
-                    type=task_type,
-                    description=f"Hand off item to {target_role}",
-                    assigned_role=role,
-                    location=location.id,
-                    prerequisites=prerequisites,
-                    handoff_item=handoff_item,
-                    handoff_to_role=target_role
-                )
+                fallback_pool = [
+                    item_id for item_id in available_items
+                    if item_id not in claimed
+                ]
+                handoff_pool = items_at_location if items_at_location else fallback_pool
+                if handoff_pool:
+                    handoff_item = random.choice(handoff_pool)
+                    return Task(
+                        id=task_id,
+                        type="handoff",
+                        description=f"Hand off item to {target_role}",
+                        assigned_role=role,
+                        location=location.id,
+                        prerequisites=prerequisites,
+                        handoff_item=handoff_item,
+                        handoff_to_role=target_role
+                    )
+                # No unclaimed items available — fall through to npc_llm below
+                task_type = "npc_llm"
             else:
                 # Can't create handoff, fall back to role-appropriate task
                 if self._role_can_do_minigame(role):

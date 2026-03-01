@@ -4,6 +4,7 @@ Converts procedural scenario graphs to human-readable markdown format
 """
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from collections import defaultdict
 
@@ -36,6 +37,7 @@ def _render_header(graph) -> str:
     role_names = ', '.join([r.replace('_', ' ').title() for r in roles])
     player_count = len(roles)
     
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return f"""---
 ---
 ---
@@ -48,6 +50,7 @@ def _render_header(graph) -> str:
 **Scenario**: {graph.objective}
 **Selected Roles**: {role_names}
 **Player Count**: {player_count} players
+**Generated**: {generated_at}
 
 ## Objective
 {graph.objective}
