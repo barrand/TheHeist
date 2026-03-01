@@ -480,7 +480,21 @@ class GameplayTestOrchestrator:
         """
         # Get available tasks
         tasks = bot.get_available_tasks()
-        
+
+        # Auto-complete any search tasks where the bot already has all required items.
+        # get_available_tasks() filters these out to avoid pointless re-searches, but
+        # they still need to be completed — otherwise they block prerequisite chains.
+        all_tasks = list(bot.state.available_tasks.values())
+        inventory_ids = {item.get("id") for item in bot.state.inventory}
+        for task in all_tasks:
+            if task.get("type") == "search" and task.get("search_items"):
+                if all(iid in inventory_ids for iid in task["search_items"]):
+                    task_id = task["id"]
+                    logger.info(f"  👤 {bot.role}: auto-completing search {task_id} (all items already in inventory)")
+                    await bot.complete_task(task_id)
+                    # Refresh task list after completion
+                    tasks = bot.get_available_tasks()
+
         if not tasks:
             logger.debug(f"  {bot.role}: (no available tasks)")
             return
