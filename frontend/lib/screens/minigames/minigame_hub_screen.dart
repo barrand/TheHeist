@@ -11,6 +11,11 @@ import 'package:the_heist/widgets/minigames/card_swipe_minigame.dart';
 import 'package:the_heist/widgets/minigames/rhythm_climb_minigame.dart';
 import 'package:the_heist/widgets/minigames/logic_clues_minigame.dart';
 import 'package:the_heist/widgets/minigames/doodle_climb_minigame.dart';
+import 'package:the_heist/widgets/minigames/tag_evidence_minigame.dart';
+import 'package:the_heist/widgets/minigames/item_matching_minigame.dart';
+import 'package:the_heist/widgets/minigames/steering_obstacle_minigame.dart';
+import 'package:the_heist/widgets/minigames/whack_a_threat_minigame.dart';
+import 'package:the_heist/widgets/minigames/emotion_matching_minigame.dart';
 /// Hub screen showing all minigames organized by role
 class MinigameHubScreen extends StatefulWidget {
   const MinigameHubScreen({super.key});
@@ -34,6 +39,11 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
     'climbing_rhythm': (diff) => RhythmClimbMinigame(difficulty: diff),
     'logic_clues': (diff) => LogicCluesMinigame(difficulty: diff),
     'doodle_climb': (diff) => DoodleClimbMinigame(difficulty: diff),
+    'tap_evidence_markers': (diff) => TagEvidenceMinigame(difficulty: diff),
+    'item_matching': (diff) => ItemMatchingMinigame(difficulty: diff),
+    'steering_obstacle_course': (diff) => SteeringObstacleMinigame(difficulty: diff),
+    'whack_a_mole_threats': (diff) => WhackAThreatMinigame(difficulty: diff),
+    'emotion_matching': (diff) => EmotionMatchingMinigame(difficulty: diff),
   };
   
   // All roles and their minigames from roles.json
@@ -118,6 +128,7 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
           name: 'Obstacle Course',
           description: 'Avoid obstacles while driving',
           roleId: 'driver',
+          isImplemented: true,
         ),
         MinigameInfo(
           id: 'fuel_pump',
@@ -173,6 +184,7 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
           name: 'Emotion Match',
           description: 'Match facial expression',
           roleId: 'grifter',
+          isImplemented: true,
         ),
         MinigameInfo(
           id: 'convincing_sequence',
@@ -222,6 +234,7 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
           name: 'Whack-a-Threat',
           description: 'Tap threats on camera feeds',
           roleId: 'lookout',
+          isImplemented: true,
         ),
         MinigameInfo(
           id: 'pattern_memorization',
@@ -240,6 +253,7 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
           name: 'Item Match',
           description: 'Match items to buyers',
           roleId: 'fence',
+          isImplemented: true,
         ),
         MinigameInfo(
           id: 'haggling_slider',
@@ -302,6 +316,7 @@ class _MinigameHubScreenState extends State<MinigameHubScreen> {
           name: 'Tag Evidence',
           description: 'Tap all markers before timeout',
           roleId: 'cleaner',
+          isImplemented: true,
         ),
         MinigameInfo(
           id: 'trash_disposal',
