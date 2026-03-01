@@ -280,8 +280,17 @@ class ProceduralGraphGenerator:
         #    LLM enrichment calls on a structurally broken graph.
         raw_cycles = _detect_cycles_raw(graph.tasks)
         if raw_cycles:
-            _p(f"  Raw graph has {len(raw_cycles)} cycle(s) — aborting before enrichment")
-            raise ValueError(f"Raw graph has unresolvable cycles: {raw_cycles}")
+            _p(f"  Raw graph has {len(raw_cycles)} cycle(s) — attempting auto-fix...")
+            from generators.graph_validator_fixer import GraphValidator
+            fixer = GraphValidator(graph)
+            fixer._validate_no_cycles()
+            for fix_msg in fixer.fixes:
+                _p(f"    {fix_msg}")
+            remaining = _detect_cycles_raw(graph.tasks)
+            if remaining:
+                _p(f"  Could not break {len(remaining)} cycle(s) — aborting")
+                raise ValueError(f"Raw graph has unresolvable cycles: {remaining}")
+            _p(f"  Cycles resolved via auto-fix")
 
         # 7. Enrich item/NPC/task names and full NPC profiles via LLM.
         #    This rewrites NPC info IDs (placeholder → real LLM names) and updates
@@ -295,11 +304,20 @@ class ProceduralGraphGenerator:
         self._ensure_minimum_cross_role_tasks(graph.tasks, role_ids, graph.items)
 
         # 8b. Post-enrichment structural check — the cross-role wiring in step 8 can
-        #     introduce new edges. Abort now rather than wasting export + validation.
+        #     introduce new edges. Try to fix before aborting.
         post_cycles = _detect_cycles_raw(graph.tasks)
         if post_cycles:
-            _p(f"  Post-enrichment cross-role wiring introduced {len(post_cycles)} cycle(s) — aborting")
-            raise ValueError(f"Post-enrichment cycles: {post_cycles}")
+            _p(f"  Post-enrichment cross-role wiring introduced {len(post_cycles)} cycle(s) — attempting auto-fix...")
+            from generators.graph_validator_fixer import GraphValidator
+            fixer = GraphValidator(graph)
+            fixer._validate_no_cycles()
+            for fix_msg in fixer.fixes:
+                _p(f"    {fix_msg}")
+            remaining = _detect_cycles_raw(graph.tasks)
+            if remaining:
+                _p(f"  Could not break {len(remaining)} cycle(s) — aborting")
+                raise ValueError(f"Post-enrichment cycles: {remaining}")
+            _p(f"  Post-enrichment cycles resolved via auto-fix")
 
         return graph
     

@@ -670,6 +670,19 @@ class GameplayTestOrchestrator:
                 return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
         
         elif decision.action == "search":
+            # Redirect: if bot has a search task at a different location,
+            # move there instead of searching the wrong room.
+            for t in bot.get_available_tasks():
+                if t.get("type") == "search":
+                    t_loc = t.get("location", "")
+                    if t_loc and t_loc != bot.state.current_location:
+                        logger.info(
+                            f"   {bot.player_name} (search→redirect) "
+                            f"has search task {t['id']} at {t_loc}, moving there first"
+                        )
+                        await bot.move_to_location(t_loc)
+                        return ActionOutcome.SUCCESS
+
             items = await bot.search_location()
             if not items:
                 # Room is empty — bad bot decision, not a system bug.
