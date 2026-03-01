@@ -738,22 +738,17 @@ class ProceduralGraphGenerator:
                 _assigned = assigned_items or set()
                 _handoff  = handoff_items or set()
                 claimed   = _assigned | _handoff
-                # Prefer non-hidden items at THIS task's location so the player can
-                # find the item at the same place they're doing the handoff.
-                # Fall back to the global non-hidden pool only if needed.
+                # Only use items at THIS task's location — the player will search here
+                # before handing off. Items at other locations are unreachable unless
+                # a preceding search task explicitly goes there.
                 items_at_location = [
                     item.id for item in items
                     if item.location == location.id and not item.hidden
                     and item.id in available_items
                     and item.id not in claimed
                 ]
-                fallback_pool = [
-                    item_id for item_id in available_items
-                    if item_id not in claimed
-                ]
-                handoff_pool = items_at_location if items_at_location else fallback_pool
-                if handoff_pool:
-                    handoff_item = random.choice(handoff_pool)
+                if items_at_location:
+                    handoff_item = random.choice(items_at_location)
                     return Task(
                         id=task_id,
                         type="handoff",
@@ -764,7 +759,7 @@ class ProceduralGraphGenerator:
                         handoff_item=handoff_item,
                         handoff_to_role=target_role
                     )
-                # No unclaimed items available — fall through to npc_llm below
+                # No unclaimed items at this location — fall through to npc_llm below
                 task_type = "npc_llm"
             else:
                 # Can't create handoff, fall back to role-appropriate task
@@ -993,14 +988,6 @@ class ProceduralGraphGenerator:
             if t.type == TaskType.HANDOFF.value and t.handoff_item
         }
 
-        # Global pool of non-hidden, unclaimed items as a fallback
-        all_non_hidden = [
-            item.id for item in (items or [])
-            if not item.hidden
-            and item.id not in items_in_any_search
-            and item.id not in items_in_handoffs
-        ]
-
         # Candidates: dependent tasks (have prerequisites), not escape tasks.
         # Include npc_llm so we can always find candidates even in mastermind-heavy scenarios.
         candidates = [
@@ -1048,18 +1035,12 @@ class ProceduralGraphGenerator:
                 ]
                 role_pool = location_items
 
-            chosen_item = None
-            if role_pool:
-                chosen_item = random.choice(role_pool)
-            elif all_non_hidden:
-                chosen_item = random.choice(all_non_hidden)
-                all_non_hidden.remove(chosen_item)
-
-            if not chosen_item:
+            if not role_pool:
                 logger.info(f"[cross-role] No acquirable item for {role} handoff — skipping {t.id}")
                 idx += 1
                 continue
 
+            chosen_item = random.choice(role_pool)
             items_in_handoffs.add(chosen_item)
 
             t.type = TaskType.HANDOFF.value
