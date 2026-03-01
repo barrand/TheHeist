@@ -794,13 +794,11 @@ class GameplayTestOrchestrator:
                                 )
                             item_id = canonical_item
                     if not item_id:
-                        # A handoff task with no item is a generator defect — surface it clearly
                         logger.warning(f"handoff: task {decision.target_task} has no handoff_item — generator produced an invalid handoff task")
                         return ActionOutcome.SYSTEM_FAILURE
-                    # Safety net: verify the bot actually holds the item before attempting handoff
                     bot_item_ids = {inv_item.get("id") for inv_item in bot.state.inventory}
                     if item_id not in bot_item_ids:
-                        # Check if a teammate has it — if so, redirect to request_item
+                        # Check if a teammate has it
                         holder = next(
                             (b for b in (all_bots or []) if b != bot and any(i.get("id") == item_id for i in b.state.inventory)),
                             None
@@ -809,25 +807,31 @@ class GameplayTestOrchestrator:
                             logger.info(f"   {bot.player_name} doesn't have {item_id} — requesting it from {holder.player_name}")
                             ok = await self._execute_request_item_from(bot, holder, item_id, all_bots, result)
                             return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
-                        else:
-                            # Handoffs are location-agnostic — the item should
-                            # already be in inventory from a prior search task.
-                            # Search the bot's current location as a last resort.
-                            logger.info(f"   {bot.player_name} doesn't have {item_id} — searching current location ({bot.state.current_location})")
-                            items = await bot.search_location()
-                            if items:
-                                for found_item in items:
-                                    fid = found_item.get("id")
-                                    if fid:
-                                        await bot.pickup_item(fid)
-                            got_ids = {inv.get("id") for inv in bot.state.inventory}
-                            if item_id not in got_ids:
-                                logger.warning(
-                                    f"   ⚠️ SCENARIO BUG: {bot.role} needs {item_id} for handoff but "
-                                    f"doesn't have it and couldn't find it. "
-                                    f"Inventory: {sorted(got_ids - {None})}"
-                                )
-                            return ActionOutcome.SUCCESS
+
+                        # Last resort: search current location
+                        logger.info(f"   {bot.player_name} doesn't have {item_id} — searching current location ({bot.state.current_location})")
+                        items = await bot.search_location()
+                        if items:
+                            for found_item in items:
+                                fid = found_item.get("id")
+                                if fid:
+                                    await bot.pickup_item(fid)
+
+                        got_ids = {inv.get("id") for inv in bot.state.inventory}
+                        if item_id not in got_ids:
+                            # Item is unobtainable — remove the task so we
+                            # don't loop on it forever.
+                            task_key = decision.target_task
+                            logger.error(
+                                f"   ⚠️ SCENARIO BUG: {bot.role} needs {item_id} for "
+                                f"task {task_key} but can't acquire it. "
+                                f"Removing task from available list. "
+                                f"Inventory: {sorted(got_ids - {None})}"
+                            )
+                            if task_key and task_key in bot.state.available_tasks:
+                                del bot.state.available_tasks[task_key]
+                            return ActionOutcome.SYSTEM_FAILURE
+                        return ActionOutcome.SUCCESS
                     # Ensure both bots are in the same location before handing off
                     if bot.state.current_location != target_bot.state.current_location:
                         meet_loc = target_bot.state.current_location
