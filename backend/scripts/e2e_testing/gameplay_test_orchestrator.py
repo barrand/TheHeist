@@ -665,6 +665,32 @@ class GameplayTestOrchestrator:
         """
         
         if decision.action == "move":
+            # Redirect: if bot has a ready handoff (holds the item), execute the
+            # handoff instead of bouncing between locations indefinitely.
+            for t in bot.get_available_tasks():
+                if t.get("type") == "handoff":
+                    needed = t.get("handoff_item")
+                    target_role = t.get("handoff_target")
+                    if needed and target_role:
+                        bot_items = {i.get("id") for i in bot.state.inventory}
+                        if needed in bot_items:
+                            target_bot = next(
+                                (b for b in (all_bots or []) if b.role == target_role), None
+                            )
+                            if target_bot:
+                                logger.info(
+                                    f"   ⚠️ {bot.player_name} (move→handoff redirect) "
+                                    f"has {needed} for {target_role} — forcing handoff"
+                                )
+                                if bot.state.current_location != target_bot.state.current_location:
+                                    await bot.move_to_location(target_bot.state.current_location)
+                                ok = await bot.handoff_item(needed, target_bot.state.player_id)
+                                if ok:
+                                    if bot.role not in result.tasks_completed_per_role:
+                                        result.tasks_completed_per_role[bot.role] = 0
+                                    result.tasks_completed_per_role[bot.role] += 1
+                                return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE
+
             if decision.target_location:
                 ok = await bot.move_to_location(decision.target_location)
                 return ActionOutcome.SUCCESS if ok else ActionOutcome.SYSTEM_FAILURE

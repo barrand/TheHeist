@@ -53,13 +53,19 @@ class GraphValidator:
             # Structural checks run in a tight inner loop until the graph is stable.
             # Each pass can introduce new issues (e.g. orphan-wiring adds a prereq
             # that creates a new cycle), so we repeat until no new fixes are applied.
-            for _inner in range(len(self.graph.tasks) + 1):
+            max_structural_passes = min(len(self.graph.tasks) + 1, 30)
+            for _inner in range(max_structural_passes):
                 fixes_before = len(self.fixes)
                 self._validate_no_cycles()
                 self._validate_no_orphans()
                 self._validate_no_dead_ends()
                 if len(self.fixes) == fixes_before:
                     break  # Stable — no new structural fixes this pass
+            else:
+                print(
+                    f"   ⚠️  Structural fix loop hit cap ({max_structural_passes} passes, "
+                    f"{len(self.fixes)} total fixes) — possible oscillation"
+                )
 
             self._validate_location_count()
             self._validate_task_count()
@@ -159,21 +165,20 @@ class GraphValidator:
                 self.fixes.append(msg)
 
     def _would_create_cycle(self, from_id: str, to_id: str) -> bool:
-        """Return True if adding the edge 'to_id requires from_id' would create a cycle.
+        """Return True if adding 'from_id' as a prerequisite of 'to_id' would create a cycle.
 
-        Equivalently: can we already reach from_id starting from to_id in the current graph?
-        If yes, adding from_id as a prerequisite of to_id closes a cycle.
+        If from_id can already reach to_id via the prerequisite graph, adding
+        to_id -> from_id closes a cycle: from_id -> ... -> to_id -> from_id.
         """
         prereqs_of: Dict[str, List[str]] = {
             t.id: [p.id for p in t.prerequisites if p.type == "task"]
             for t in self.graph.tasks
         }
-        # BFS from to_id following PREREQUISITE edges
         visited: Set[str] = set()
-        queue: deque = deque([to_id])
+        queue: deque = deque([from_id])
         while queue:
             cur = queue.popleft()
-            if cur == from_id:
+            if cur == to_id:
                 return True
             for prereq in prereqs_of.get(cur, []):
                 if prereq not in visited:
