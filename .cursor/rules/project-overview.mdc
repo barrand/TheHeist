@@ -99,6 +99,13 @@ Bots use Gemini to decide actions. Results report WIN / DEADLOCK / TIMEOUT / ERR
 
 ## Image Lifecycle
 
+| Type | Aspect | Resolution |
+|------|--------|-------------|
+| **Locations** | 16:9 | 1024×576 (1K) |
+| **Items** | 1:1 | 512×512 |
+| **NPCs** | 1:1 | 1024×1024 (1K) |
+| **Player roles** | 1:1 | 1024×1024 (1K) |
+
 | Type | Storage | Lifecycle |
 |------|---------|-----------|
 | **Permanent** | `static_images/`, `frontend/assets/static/` | Scenario type cards, role avatars — shared across all experiences, never deleted |

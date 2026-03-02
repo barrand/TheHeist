@@ -1,17 +1,19 @@
 #!/bin/bash
 # Quick start script for Image Playground
 
-echo "🎨 Starting Image Playground..."
+echo "Starting Image Playground..."
 echo ""
 
-# Check if venv exists, if not suggest creating one
+cd "$(dirname "$0")"
+
+# Check if venv exists
 if [ ! -d "venv" ]; then
-    echo "💡 Tip: Create a virtual environment first:"
-    echo "   python3 -m venv venv"
-    echo "   source venv/bin/activate"
-    echo "   pip install -r requirements.txt"
-    echo ""
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+else
+    source venv/bin/activate
 fi
 
-# Start the app
 python3 app.py

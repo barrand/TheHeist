@@ -60,8 +60,10 @@ GEMINI_NPC_MODEL = os.getenv('GEMINI_NPC_MODEL', 'gemini-2.0-flash-lite')
 #   GEMINI_IMAGE_MODEL — Gemini Flash Image for locations, items, and NPC portraits.
 #   Uses the text-generation quota pool, so it is NOT subject to the 10 req/min
 #   Imagen limit and is significantly cheaper at scale.
+#   GEMINI_IMAGE_MODEL_31 — Gemini 3.1 Flash Image Preview (Nano Banana 2) for comparison.
 IMAGEN_MODEL = 'imagen-4.0-generate-001'
 GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
+GEMINI_IMAGE_MODEL_31 = 'gemini-3.1-flash-image-preview'
 
 # ============================================================================
 
@@ -82,4 +84,4 @@ SCRIPTS_DIR = project_root / 'backend' / 'scripts'
 print(f"✓ Loaded config:")
 print(f"  - Experience Model: {GEMINI_EXPERIENCE_MODEL}")
 print(f"  - NPC Model: {GEMINI_NPC_MODEL} (used by backend)")
-print(f"  - Image Models: {IMAGEN_MODEL}, {GEMINI_IMAGE_MODEL}")
+print(f"  - Image Models: {IMAGEN_MODEL}, {GEMINI_IMAGE_MODEL}, {GEMINI_IMAGE_MODEL_31}")

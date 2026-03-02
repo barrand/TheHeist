@@ -3,6 +3,7 @@
 Generate NPC images for an experience using Gemini Flash Image.
 Images are stored per experience ID for reusability across games.
 
+Spec: 1:1 aspect ratio, 1024x1024 (1K)
 Uses GEMINI_IMAGE_MODEL (cheap/fast) — avoids the strict Imagen 10 req/min
 quota limit. Centralized model name comes from config.py.
 """
@@ -32,7 +33,8 @@ bold thick outlines, cell-shaded, flat colors with subtle gradients,
 Borderlands game aesthetic, graphic novel style,
 vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details, expressive characters,
-set in year 2020, contemporary clothing and technology (not futuristic)"""
+set in year 2020, contemporary clothing and technology (not futuristic),
+no thought bubbles, no speech bubbles, no titles, no captions (environmental text like signs is fine)"""
 
 
 def _parse_retry_after(error_str: str, default: float = 15.0) -> float:
@@ -87,6 +89,7 @@ def get_npc_prompt(npc: Dict) -> str:
     
     # Add art style
     prompt += f", {HEIST_GAME_ART_STYLE}"
+    prompt += ", no thought bubbles, no speech bubbles, no titles, no captions"
     
     return prompt
 
@@ -124,7 +127,8 @@ async def generate_npc_image(
                 model=GEMINI_IMAGE_MODEL,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
-                    response_modalities=["Text", "Image"]
+                    response_modalities=["Text", "Image"],
+                    image_config=types.ImageConfig(aspect_ratio="1:1"),
                 ),
             )
             
@@ -135,6 +139,11 @@ async def generate_npc_image(
                 if part.inline_data is not None:
                     image = part.as_image()
                     image.save(str(output_path))
+                    # Resize to 1K (1024x1024)
+                    from PIL import Image
+                    img = Image.open(output_path)
+                    img = img.resize((1024, 1024), Image.Resampling.LANCZOS)
+                    img.save(output_path)
                     print(f"   ✅ Saved: {output_path}")
                     return str(output_path)
             

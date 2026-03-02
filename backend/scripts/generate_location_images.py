@@ -3,6 +3,7 @@
 Generate location images for an experience using Gemini Flash Image.
 Images are stored per experience ID for reusability across games.
 
+Spec: 16:9 aspect ratio, 1024x576 (1K)
 Uses GEMINI_IMAGE_MODEL (cheap/fast) — same quota pool as text generation,
 not subject to the strict Imagen 10 req/min limit.
 """
@@ -32,7 +33,8 @@ bold thick outlines, cell-shaded, flat colors with subtle gradients,
 Borderlands game aesthetic, graphic novel style,
 vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details,
-set in year 2020, contemporary styling (not futuristic)"""
+set in year 2020, contemporary styling (not futuristic),
+no thought bubbles, no speech bubbles, no titles, no captions (environmental text like signs is fine)"""
 
 
 def _parse_retry_after(error_str: str, default: float = 15.0) -> float:
@@ -104,7 +106,8 @@ async def generate_location_image(
                 model=GEMINI_IMAGE_MODEL,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
-                    response_modalities=["Text", "Image"]
+                    response_modalities=["Text", "Image"],
+                    image_config=types.ImageConfig(aspect_ratio="16:9"),
                 ),
             )
             
@@ -115,6 +118,11 @@ async def generate_location_image(
                 if part.inline_data is not None:
                     image = part.as_image()
                     image.save(str(output_path))
+                    # Resize to 1K (1024x576 for 16:9)
+                    from PIL import Image
+                    img = Image.open(output_path)
+                    img = img.resize((1024, 576), Image.Resampling.LANCZOS)
+                    img.save(output_path)
                     print(f"   ✅ Saved: {output_path}")
                     return str(output_path)
             

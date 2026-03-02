@@ -8,6 +8,8 @@ Art style: Borderlands-style 2D illustration (cell-shaded comic book aesthetic)
 - Integrates UI theme accent colors for visual consistency
 - Set in the year 2020 (contemporary, not futuristic)
 
+Spec: 1:1 aspect ratio, 1024x1024 (1K) — used for player roles and NPCs
+
 Benefits of Imagen 4.0:
 - 🎨 High-quality, detailed images
 - 🎯 Excellent prompt adherence
@@ -40,7 +42,8 @@ bold thick outlines, cell-shaded, flat colors with subtle gradients,
 Borderlands game aesthetic, graphic novel style,
 vibrant saturated colors, stylized proportions, hand-drawn look,
 inked linework, simplified details, expressive characters,
-set in year 2020, contemporary clothing and technology (not futuristic)"""
+set in year 2020, contemporary clothing and technology (not futuristic),
+no thought bubbles, no speech bubbles, no titles, no captions (environmental text like signs is fine)"""
 
 
 def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=None, 
@@ -133,7 +136,8 @@ def generate_npc_image(name, role, gender="person", ethnicity=None, clothing=Non
 {expression} expression, {attitude} personality,
 character: {character_description},
 background: {background},
-portrait view, centered, waist-up composition"""
+portrait view, centered, waist-up composition,
+no thought bubbles, no speech bubbles, no titles, no captions"""
     
     print("📝 Prompt:")
     print(f"   {gender} {role} in Borderlands art style")
@@ -158,6 +162,8 @@ portrait view, centered, waist-up composition"""
             prompt=prompt,
             config=types.GenerateImagesConfig(
                 number_of_images=1,
+                aspect_ratio="1:1",
+                image_size="1K",
             )
         )
         
@@ -176,6 +182,14 @@ portrait view, centered, waist-up composition"""
         for generated_image in response.generated_images:
             # Save the image
             generated_image.image.save(str(output_path))
+            # Resize to 1K (1024x1024) for consistency
+            try:
+                from PIL import Image
+                img = Image.open(output_path)
+                img = img.resize((1024, 1024), Image.Resampling.LANCZOS)
+                img.save(output_path)
+            except Exception:
+                pass
             
             print(f"✅ Generated character portrait!")
             print(f"💾 Saved to: {output_path}")
