@@ -2,8 +2,10 @@
 REST API endpoints for room management
 """
 
+import json
 import logging
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
@@ -57,6 +59,47 @@ async def create_room(request: CreateRoomRequest):
     except Exception as e:
         logger.error(f"Error creating room: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Could not create room")
+
+
+class QuickScenarioResponse(BaseModel):
+    id: str
+    scenario_id: str
+    player_count: int
+    roles: List[str]
+    ready: bool
+
+
+@router.get("/quick-scenarios")
+async def get_quick_scenarios(player_count: int = Query(..., ge=2, le=12)):
+    """Return quick-start scenarios available for a given player count."""
+    config_path = Path(__file__).parent.parent.parent.parent / "shared_data" / "quick_scenarios.json"
+    try:
+        with open(config_path) as f:
+            data = json.load(f)
+    except Exception:
+        return []
+
+    from app.services.experience_loader import scenario_cache_filename
+
+    results: List[QuickScenarioResponse] = []
+    for entry in data.get("scenarios", []):
+        if entry["player_count"] != player_count:
+            continue
+
+        cache_base = scenario_cache_filename(entry["scenario_id"], sorted(entry["roles"]))
+        experiences_dir = Path(__file__).parent.parent.parent / "experiences"
+        md_exists = (experiences_dir / f"{cache_base}.md").exists()
+        json_exists = (experiences_dir / f"{cache_base}.json").exists()
+
+        results.append(QuickScenarioResponse(
+            id=entry["id"],
+            scenario_id=entry["scenario_id"],
+            player_count=entry["player_count"],
+            roles=entry["roles"],
+            ready=md_exists or json_exists,
+        ))
+
+    return results
 
 
 @router.get("/{room_code}", response_model=RoomInfoResponse)

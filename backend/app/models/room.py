@@ -10,7 +10,8 @@ from datetime import datetime
 
 class RoomStatus(str, Enum):
     """Current status of a game room"""
-    LOBBY = "lobby"              # Players joining and selecting roles
+    LOBBY = "lobby"              # Players joining, scenario selection
+    SETUP = "setup"              # Scenario details + role claiming (room locked)
     IN_PROGRESS = "in_progress"  # Game actively being played
     COMPLETED = "completed"      # Game finished
     ABANDONED = "abandoned"      # All players disconnected

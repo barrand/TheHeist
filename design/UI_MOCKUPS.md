@@ -2702,3 +2702,288 @@ Icon size:              24px
 - Lazy load images to improve performance
 - Use placeholder images while loading
 
+---
+---
+
+# LOBBY OVERHAUL — New Screens (replaces Screen 3)
+
+> Replaces the old "Room Lobby" (Screen 3 above) with two new screens:
+> a simplified **Lobby** and a **Scenario Details + Role Claim** screen.
+
+## Updated Screen Flow
+
+```
+Landing Page
+    ↓
+    ├─→ Create Room → New Lobby (Host)
+    └─→ Join Room  → New Lobby (Player)
+                ↓
+        (Host hits Continue — room locks)
+                ↓
+        Scenario Details + Role Claim
+           ├─→ Quick Start: roles pre-assigned, claim one
+           └─→ Custom: pick any role, wait for generation
+                ↓
+        (Host hits Start Game)
+                ↓
+           Game Screen
+                ↓
+           (same as before)
+```
+
+---
+
+## New Screen 3: Lobby (Host View)
+
+**Purpose**: Assemble the crew and choose a scenario. No role selection here.
+
+```
+┌─────────────────────────────────┐
+│  ←                   Room Lobby │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │  Room Code: DECK      📋  │  │  ← Large, copyable
+│  │  (2 of 12 players)         │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  🎬 SCENARIO                    │
+│  ┌───────────────────────────┐  │
+│  │ ┌─────┐                    │  │
+│  │ │ 🏛️  │ Museum Gala Vault  │  │  ← Tap opens selector
+│  │ │     │ Steal the jewels   │  │    (host only)
+│  │ └─────┘ from the vault...  >  │
+│  └───────────────────────────┘  │
+│  Tap to browse all scenarios     │
+│                                 │
+│  👥 PLAYERS                     │
+│  ┌───────────────────────────┐  │
+│  │ 👑 Brandon        ● online│  │  ← Host (crown)
+│  │ 👤 Alex           ● online│  │
+│  └───────────────────────────┘  │
+│                                 │
+│  When your crew is here,        │
+│  hit Continue                   │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │      CONTINUE  →           │  │  ← Enabled (2+ players
+│  └───────────────────────────┘  │    + scenario selected)
+│                                 │
+│        Leave Room               │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Room code (large, prominent, copyable)
+- [ ] Player count indicator
+- [ ] Scenario card (host: tappable opens ScenarioSelectionModal; non-host: read-only)
+- [ ] Player list (name + online indicator, no roles)
+- [ ] Hint text: "When your crew is here, hit Continue"
+- [ ] "Continue" button (host only; enabled when 2+ players AND scenario selected)
+- [ ] "Leave Room" link
+
+**Actions:**
+- Host taps scenario card → opens existing ScenarioSelectionModal
+- Host taps "Continue" → sends `lobby_advance` WS → room locks → all navigate to Scenario Details
+- Non-host sees "Waiting for host to continue..." instead of button
+
+---
+
+## New Screen 3: Lobby (Non-Host View)
+
+```
+┌─────────────────────────────────┐
+│  ←                   Room Lobby │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │  Room Code: DECK      📋  │  │
+│  │  (2 of 12 players)         │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  🎬 SCENARIO                    │
+│  ┌───────────────────────────┐  │
+│  │ ┌─────┐                    │  │
+│  │ │ 🏛️  │ Museum Gala Vault  │  │  ← Read-only
+│  │ │     │ Steal the jewels   │  │    (can see, can't change)
+│  │ └─────┘ from the vault...  │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  👥 PLAYERS                     │
+│  ┌───────────────────────────┐  │
+│  │ 👑 Brandon        ● online│  │
+│  │ 👤 You            ● online│  │
+│  └───────────────────────────┘  │
+│                                 │
+│                                 │
+│   ⏳ Waiting for host            │
+│      to continue...              │
+│                                 │
+│                                 │
+│        Leave Room               │
+└─────────────────────────────────┘
+```
+
+---
+
+## New Screen 4: Scenario Details + Role Claim
+
+**Purpose**: Choose Quick Start (pre-generated, instant play) or Custom (any role, generation wait). Claim roles and pick difficulty here.
+
+### Host View — Before Roles Claimed
+
+```
+┌─────────────────────────────────┐
+│  ←  Scenario Details            │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │                            │  │
+│  │    [scenario art image]    │  │  ← Museum Gala Vault art
+│  │                            │  │
+│  │  Museum Gala Vault Heist   │  │
+│  │  Steal the jewels from     │  │
+│  │  the vault during a        │  │
+│  │  black-tie event.          │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ⚡ QUICK START                  │
+│  Ready to play — no wait!       │
+│  ┌───────────────────────────┐  │
+│  │                            │  │
+│  │  Museum Gala Vault         │  │
+│  │  2 Players                 │  │
+│  │                            │  │
+│  │  ┌──────┐  ┌──────┐       │  │
+│  │  │ 🔐   │  │ 🐱   │       │  │  ← Role avatars
+│  │  │Safe  │  │Cat   │       │  │
+│  │  │Crack.│  │Burg. │       │  │
+│  │  │      │  │      │       │  │
+│  │  │ CLAIM│  │ CLAIM│       │  │  ← Tap to claim
+│  │  └──────┘  └──────┘       │  │
+│  │                            │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  🎨 CUSTOM GAME                 │
+│  ┌───────────────────────────┐  │
+│  │  Choose any role with any  │  │
+│  │  scenario backdrop.        │  │
+│  │                            │  │
+│  │  ⚠️ ~2 min to generate     │  │
+│  │                            │  │
+│  │  [ Choose Your Role  > ]   │  │  ← Opens role picker
+│  └───────────────────────────┘  │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │    START GAME  🚀          │  │  ← Disabled until all
+│  └───────────────────────────┘  │    players have roles
+│                                 │
+└─────────────────────────────────┘
+```
+
+### After Claiming a Quick Start Role
+
+```
+┌─────────────────────────────────┐
+│  ←  Scenario Details            │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │    [scenario art image]    │  │
+│  │  Museum Gala Vault Heist   │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ⚡ QUICK START                  │
+│  ┌───────────────────────────┐  │
+│  │                            │  │
+│  │  ┌──────┐  ┌──────┐       │  │
+│  │  │ 🔐   │  │ 🐱   │       │  │
+│  │  │Safe  │  │Cat   │       │  │
+│  │  │Crack.│  │Burg. │       │  │
+│  │  │      │  │      │       │  │
+│  │  │👑 You│  │ CLAIM│       │  │  ← You claimed this
+│  │  └──────┘  └──────┘       │  │
+│  │                            │  │
+│  │  Difficulty:               │  │
+│  │  [Easy] [MEDIUM] [Hard]    │  │  ← Appears after claim
+│  │                            │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  🎨 CUSTOM GAME                 │
+│  ┌───────────────────────────┐  │
+│  │  [ Choose Your Role  > ]   │  │
+│  │  ⚠️ ~2 min to generate     │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  Waiting for 1 more player      │
+│  to claim a role...             │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │    START GAME  🚀          │  │  ← Still disabled
+│  └───────────────────────────┘  │
+│                                 │
+└─────────────────────────────────┘
+```
+
+### All Roles Claimed — Ready to Start
+
+```
+┌─────────────────────────────────┐
+│  ←  Scenario Details            │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │    [scenario art image]    │  │
+│  │  Museum Gala Vault Heist   │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ⚡ QUICK START                  │
+│  ┌───────────────────────────┐  │
+│  │                            │  │
+│  │  ┌──────┐  ┌──────┐       │  │
+│  │  │ 🔐   │  │ 🐱   │       │  │
+│  │  │Safe  │  │Cat   │       │  │
+│  │  │Crack.│  │Burg. │       │  │
+│  │  │      │  │      │       │  │
+│  │  │👑 You│  │👤Alex│       │  │  ← Both claimed
+│  │  └──────┘  └──────┘       │  │
+│  │                            │  │
+│  │  Your difficulty:          │  │
+│  │  [Easy] [MEDIUM] [Hard]    │  │
+│  │                            │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ✅ All players ready!           │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │    START GAME  🚀          │  │  ← ENABLED (host)
+│  └───────────────────────────┘  │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Components:**
+- [ ] Back arrow (host only — sends `lobby_retreat`, re-opens room, returns to Lobby)
+- [ ] Scenario header with art image and description
+- [ ] Quick Start section (only shown if pre-generated package exists for this player count)
+  - [ ] Role cards with avatars
+  - [ ] "CLAIM" button on unclaimed roles
+  - [ ] Player name on claimed roles
+  - [ ] Difficulty toggle (Easy / Medium / Hard) — appears after you claim a role
+- [ ] Custom Game section
+  - [ ] "Choose Your Role" button → opens existing RoleSelectionModal
+  - [ ] Generation time warning
+- [ ] Status text ("Waiting for N more players..." / "All players ready!")
+- [ ] "Start Game" button (host only; enabled when all players have roles)
+
+**Actions:**
+- Tap "CLAIM" on a Quick Start role → sends `select_role` WS message
+- Tap difficulty → sends updated `select_role` with new difficulty
+- Tap "Choose Your Role" in Custom → opens RoleSelectionModal → sends `select_role`
+- Host taps "Start Game":
+  - Quick Start path → loads pre-generated scenario (instant)
+  - Custom path → triggers generation pipeline (shows progress modal)
+- Host taps Back arrow → sends `lobby_retreat` → room re-opens → everyone returns to Lobby
+
+**State Rules:**
+- A player can only have one role (Quick Start OR Custom, not both)
+- If a player switches from Quick Start to Custom (or vice versa), their previous role is released
+- Quick Start "CLAIM" buttons are first-come-first-served; if taken, shows "Taken by [name]"
+- Non-host sees "Waiting for host to start..." instead of Start Game button
+- If a player disconnects, their claimed role is released
+

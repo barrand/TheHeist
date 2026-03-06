@@ -128,8 +128,8 @@ class RoomManager:
             logger.warning(f"❌ Room {room_code} not found")
             return None
         
-        if room.status != RoomStatus.LOBBY:
-            logger.warning(f"❌ Room {room_code} is not in lobby (status: {room.status})")
+        if room.status not in (RoomStatus.LOBBY,):
+            logger.warning(f"❌ Room {room_code} is not joinable (status: {room.status})")
             return None
         
         # Check player limit (3-12 players)
@@ -209,8 +209,8 @@ class RoomManager:
         if not room or player_id not in room.players:
             return False
         
-        if room.status != RoomStatus.LOBBY:
-            logger.warning(f"❌ Cannot change role - room {room_code} not in lobby")
+        if room.status not in (RoomStatus.LOBBY, RoomStatus.SETUP):
+            logger.warning(f"❌ Cannot change role - room {room_code} not in lobby/setup")
             return False
         
         # Check if role already taken
@@ -244,16 +244,12 @@ class RoomManager:
             logger.warning(f"❌ Player {player_id} is not host of room {room_code}")
             return False
         
-        # Check if in lobby
-        if room.status != RoomStatus.LOBBY:
-            logger.warning(f"❌ Room {room_code} not in lobby status")
+        if room.status not in (RoomStatus.LOBBY, RoomStatus.SETUP):
+            logger.warning(f"❌ Room {room_code} not in lobby/setup status")
             return False
         
-        # Load scenario to check minimum players (all scenarios now require 2 players minimum)
-        # In the future, this could be more dynamic by loading scenarios.json
-        # For now, all scenarios have been updated to require exactly 2 roles
         player_count = room.get_player_count()
-        min_players = 2  # All scenarios now require 2 players minimum
+        min_players = 2
         
         if player_count < min_players:
             logger.warning(f"❌ Room {room_code} needs at least {min_players} players (has {player_count})")
@@ -272,6 +268,61 @@ class RoomManager:
         logger.info(f"🎮 Game started in room {room_code} - scenario: {scenario}, players: {player_count}")
         return True
     
+    def advance_lobby(self, room_code: str, player_id: str) -> bool:
+        """Move room from LOBBY to SETUP (host only). Locks the room."""
+        room = self.get_room(room_code)
+        if not room:
+            return False
+        if not room.is_host(player_id):
+            logger.warning(f"❌ Player {player_id} is not host of room {room_code}")
+            return False
+        if room.status != RoomStatus.LOBBY:
+            logger.warning(f"❌ Room {room_code} not in lobby status (is {room.status})")
+            return False
+        if room.get_player_count() < 2:
+            logger.warning(f"❌ Room {room_code} needs at least 2 players")
+            return False
+        if not room.scenario:
+            logger.warning(f"❌ Room {room_code} has no scenario selected")
+            return False
+
+        room.status = RoomStatus.SETUP
+        logger.info(f"➡️ Room {room_code} advanced to SETUP (locked)")
+        return True
+
+    def retreat_lobby(self, room_code: str, player_id: str) -> bool:
+        """Move room from SETUP back to LOBBY (host only). Re-opens and clears roles."""
+        room = self.get_room(room_code)
+        if not room:
+            return False
+        if not room.is_host(player_id):
+            logger.warning(f"❌ Player {player_id} is not host of room {room_code}")
+            return False
+        if room.status != RoomStatus.SETUP:
+            logger.warning(f"❌ Room {room_code} not in setup status")
+            return False
+
+        for player in room.players.values():
+            player.role = None
+        room.status = RoomStatus.LOBBY
+        logger.info(f"⬅️ Room {room_code} retreated to LOBBY (re-opened, roles cleared)")
+        return True
+
+    def set_scenario(self, room_code: str, player_id: str, scenario_id: str) -> bool:
+        """Set the scenario for a room (host only, lobby phase)."""
+        room = self.get_room(room_code)
+        if not room:
+            return False
+        if not room.is_host(player_id):
+            logger.warning(f"❌ Player {player_id} is not host of room {room_code}")
+            return False
+        if room.status != RoomStatus.LOBBY:
+            logger.warning(f"❌ Cannot change scenario - room {room_code} not in lobby")
+            return False
+        room.scenario = scenario_id
+        logger.info(f"🎬 Scenario set to {scenario_id} in room {room_code}")
+        return True
+
     def end_game(self, room_code: str, result: str) -> bool:
         """
         End the game

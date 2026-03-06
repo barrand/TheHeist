@@ -21,6 +21,26 @@ class BackendService {
   }
 
   // ============================================================
+  // Quick scenarios
+  // ============================================================
+
+  /// Fetch available quick-start scenarios for a given player count
+  Future<List<Map<String, dynamic>>> getQuickScenarios(int playerCount) async {
+    try {
+      final url = Uri.parse('$_baseUrl/api/rooms/quick-scenarios?player_count=$playerCount');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('❌ BackendService: Failed to fetch quick scenarios: $e');
+      return [];
+    }
+  }
+
+  // ============================================================
   // New conversation system
   // ============================================================
 

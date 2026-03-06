@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:the_heist/core/app_config.dart';
@@ -10,25 +11,24 @@ import 'package:the_heist/services/scenarios_service.dart';
 import 'package:the_heist/services/websocket_service.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
 import 'package:the_heist/widgets/common/top_toast.dart';
-import 'package:the_heist/widgets/common/heist_secondary_button.dart';
 import 'package:the_heist/widgets/common/section_header.dart';
-import 'package:the_heist/widgets/modals/role_selection_modal.dart';
 import 'package:the_heist/widgets/modals/scenario_selection_modal.dart';
-import 'package:the_heist/screens/game_screen.dart';
+import 'package:the_heist/screens/scenario_details_screen.dart';
 
-/// Room lobby where players join, select roles, and wait for game to start
+/// Simplified lobby: room code, player list, scenario picker, Continue button.
+/// Role selection now lives on ScenarioDetailsScreen.
 class RoomLobbyScreen extends StatefulWidget {
   final String roomCode;
   final String playerName;
   final WebSocketService wsService;
-  
+
   const RoomLobbyScreen({
     super.key,
     required this.roomCode,
     required this.playerName,
     required this.wsService,
   });
-  
+
   @override
   State<RoomLobbyScreen> createState() => _RoomLobbyScreenState();
 }
@@ -36,401 +36,136 @@ class RoomLobbyScreen extends StatefulWidget {
 class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   List<Map<String, dynamic>> _players = [];
   String? _myPlayerId;
-  String? _myRole;
-  String _myDifficulty = 'easy';  // Player difficulty: easy, medium, hard
   bool _isHost = false;
-  String _selectedScenarioId = 'museum_gala_vault';  // Default to Museum Gala
-  
-  // Available roles - loaded from roles.json
+  String _selectedScenarioId = 'museum_gala_vault';
+
   List<Role> _availableRoles = [];
-  bool _rolesLoading = true;
-  
-  // Available scenarios - loaded from scenarios.json
   List<Scenario> _availableScenarios = [];
   bool _scenariosLoading = true;
-  
-  // Loading state for image generation
-  bool _isGeneratingImages = false;
-  int _loadingMessageIndex = 0;
-  String _generationProgressMessage = '';
-  String _generationTitle = '🎲 Building Your Scenario';
-  
+
+  final List<StreamSubscription> _subs = [];
+
   @override
   void initState() {
     super.initState();
-    debugPrint('🔧 LOBBY: initState - Setting up room lobby');
-    debugPrint('🔧 LOBBY: Room code: ${widget.roomCode}');
-    debugPrint('🔧 LOBBY: Player name: ${widget.playerName}');
-    _loadRoles();
-    _loadScenarios();
+    _loadData();
     _setupWebSocketListeners();
-    
-    // Request initial room state
-    Future.delayed(Duration(milliseconds: 500), () {
-      debugPrint('🔧 LOBBY: Requesting room state update');
-      // The WebSocket should have already sent room_state, but let's ensure we have it
-    });
   }
-  
-  Future<void> _loadRoles() async {
+
+  @override
+  void dispose() {
+    for (final sub in _subs) {
+      sub.cancel();
+    }
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
     final roles = await RolesService.loadRoles();
+    final scenarios = await ScenariosService.loadScenarios();
+    if (!mounted) return;
     setState(() {
       _availableRoles = roles;
-      _rolesLoading = false;
-    });
-  }
-  
-  Future<void> _loadScenarios() async {
-    final scenarios = await ScenariosService.loadScenarios();
-    setState(() {
       _availableScenarios = scenarios;
       _scenariosLoading = false;
     });
   }
-  
+
   void _setupWebSocketListeners() {
-    debugPrint('🔧 LOBBY: Setting up WebSocket listeners');
-    
-    // CRITICAL: Check if we already have a room state from before navigation
     final latestState = widget.wsService.latestRoomState;
     if (latestState != null) {
-      debugPrint('🏠 LOBBY: Using cached room_state from WebSocket service');
       _processRoomState(latestState);
     }
-    
-    // Room state (initial and updates)
-    widget.wsService.roomState.listen((message) {
-      debugPrint('🏠 LOBBY: Received room_state message: $message');
-      _processRoomState(message);
-    });
-    
-    // Player joined
-    widget.wsService.playerJoined.listen((message) {
-      debugPrint('👤 LOBBY: Player joined message: $message');
+
+    _subs.add(widget.wsService.roomState.listen((msg) {
+      _processRoomState(msg);
+    }));
+
+    _subs.add(widget.wsService.playerJoined.listen((msg) {
+      setState(() => _players.add(msg['player']));
+      _showToast('${msg['player']['name']} joined');
+    }));
+
+    _subs.add(widget.wsService.scenarioSelected.listen((msg) {
       setState(() {
-        _players.add(message['player']);
-        debugPrint('👤 LOBBY: Added player, now have ${_players.length} players');
+        _selectedScenarioId = msg['scenario_id'] as String;
       });
-      _showSnackBar('${message['player']['name']} joined');
-    });
-    
-    // Role selected
-    widget.wsService.roleSelected.listen((message) {
-      debugPrint('🎭 LOBBY: Received role_selected message: $message');
-      setState(() {
-        final playerId = message['player_id'];
-        final playerName = message['player_name'];
-        final role = message['role'];
-        
-        debugPrint('🎭 LOBBY: Player $playerName ($playerId) selected role: $role');
-        debugPrint('🎭 LOBBY: Current players before update: $_players');
-        
-        // Update player's role and difficulty
-        final difficulty = message['difficulty'] ?? 'easy';
-        final playerIndex = _players.indexWhere((p) => p['id'] == playerId);
-        if (playerIndex != -1) {
-          _players[playerIndex]['role'] = role;
-          _players[playerIndex]['difficulty'] = difficulty;
-          debugPrint('🎭 LOBBY: Updated player at index $playerIndex (difficulty: $difficulty)');
-          
-          // Update my role/difficulty if it's me
-          if (playerId == _myPlayerId) {
-            _myRole = role;
-            _myDifficulty = difficulty;
-            debugPrint('🎭 LOBBY: Updated my role to: $role, difficulty: $difficulty');
-          }
-        } else {
-          debugPrint('❌ LOBBY: Could not find player $playerId in players list!');
-        }
-        
-        debugPrint('🎭 LOBBY: Current players after update: $_players');
-      });
-    });
-    
-    // Listen for on-the-fly scenario/image generation progress
-    widget.wsService.scenarioGenerating.listen((message) {
-      final msg = message['message'] as String? ?? '';
-      final isImageMsg = msg.startsWith('🎨 Generating images');
-      final newTitle = isImageMsg ? '🎨 Creating Images' : '🎲 Building Your Scenario';
-      if (!_isGeneratingImages) {
-        setState(() {
-          _isGeneratingImages = true;
-          _generationTitle = newTitle;
-        });
-        _showImageGenerationModal(title: newTitle, progressMessage: msg);
-      } else {
-        setState(() {
-          _generationProgressMessage = msg;
-          if (isImageMsg) _generationTitle = newTitle;
-        });
-      }
-    });
-    
-    // Game started - navigate to game screen
-    widget.wsService.gameStarted.listen((message) {
-      debugPrint('🎮 LOBBY: Game started! Navigating to game screen');
-      
-      // Close loading modal if open
-      if (_isGeneratingImages) {
-        Navigator.of(context).pop(); // Close modal
-        setState(() {
-          _isGeneratingImages = false;
-          _generationProgressMessage = '';
-        });
-      }
-      
-      final scenario = message['scenario'];
-      final objective = message['objective'];
-      final yourTasks = message['your_tasks'] ?? [];
-      final locations = List<Map<String, dynamic>>.from(message['locations'] ?? []);
-      final npcs = List<Map<String, dynamic>>.from(message['npcs'] ?? []);
-      final startingLocation = message['starting_location'] as String?;
-      
-      debugPrint('🎮 LOBBY: Scenario: $scenario, ${locations.length} locations, ${npcs.length} NPCs');
-      debugPrint('🎮 LOBBY: Objective: $objective');
-      debugPrint('🎮 LOBBY: Tasks count: ${yourTasks.length}');
-      debugPrint('🎮 LOBBY: Starting location: $startingLocation');
-      
-      // Navigate to game screen
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => GameScreen(
-            wsService: widget.wsService,
-            scenario: scenario,
-            objective: objective,
-            yourTasks: yourTasks,
-            playerRole: _myRole,
-            allPlayers: _players,
-            myPlayerId: _myPlayerId,
-            roomCode: widget.roomCode,
-            locations: locations,
-            npcs: npcs,
-            startingLocation: startingLocation,
-          ),
-        ),
-      );
-    });
-    
-    // Errors
-    widget.wsService.errors.listen((message) {
-      _showSnackBar(message['message'] ?? 'An error occurred', isError: true);
-    });
+    }));
+
+    _subs.add(widget.wsService.lobbyAdvanced.listen((msg) {
+      _navigateToScenarioDetails();
+    }));
+
+    _subs.add(widget.wsService.errors.listen((msg) {
+      _showToast(msg['message'] ?? 'An error occurred', isError: true);
+    }));
   }
-  
+
   void _processRoomState(Map<String, dynamic> message) {
     setState(() {
       _players = List<Map<String, dynamic>>.from(message['players'] ?? []);
       _myPlayerId = message['your_player_id'];
-      
-      // CRITICAL: Properly handle host status
       final isHostValue = message['is_host'];
       _isHost = isHostValue == true || isHostValue == 'true' || isHostValue == 1;
-      
-      debugPrint('🏠 LOBBY: Parsed players: $_players');
-      debugPrint('🏠 LOBBY: My player ID: $_myPlayerId');
-      debugPrint('🏠 LOBBY: Is host raw value: $isHostValue (type: ${isHostValue.runtimeType})');
-      debugPrint('🏠 LOBBY: Am I host? $_isHost');
-      
-      // Find my role
-      final myPlayer = _players.firstWhere(
-        (p) => p['id'] == _myPlayerId,
-        orElse: () => {},
-      );
-      _myRole = myPlayer['role'];
-      debugPrint('🏠 LOBBY: My initial role: $_myRole');
 
-      // Debug auto-assign: host → Mastermind (easy), joiner → Safe Cracker (easy)
-      if (AppConfig.debugMode && (_myRole == null || _myRole == '')) {
-        if (_isHost && _players.length == 1) {
-          debugPrint('🎯 DEBUG: Auto-selecting Mastermind (easy) for host');
-          Future.delayed(Duration(milliseconds: 500), () {
-            if (mounted) {
-              _myDifficulty = 'easy';
-              _selectRole('mastermind');
-            }
-          });
-        } else if (!_isHost && _players.length == 2) {
-          final hostHasRole = _players.any((p) => p['role'] == 'mastermind');
-          if (hostHasRole) {
-            debugPrint('🎯 DEBUG: Auto-selecting Safe Cracker (easy) for joiner');
-            Future.delayed(Duration(milliseconds: 500), () {
-              if (mounted) {
-                _myDifficulty = 'easy';
-                _selectRole('safe_cracker');
-              }
-            });
-          }
-        }
+      if (message['scenario'] != null) {
+        _selectedScenarioId = message['scenario'] as String;
       }
     });
-  }
-  
-  void _showSnackBar(String message, {bool isError = false}) {
-    showTopToast(context, message, color: isError ? AppColors.danger : AppColors.success);
-  }
-  
-  void _selectRole(String roleId) {
-    debugPrint('🎭 LOBBY: Attempting to select role: $roleId');
-    debugPrint('🎭 LOBBY: My current role: $_myRole');
-    debugPrint('🎭 LOBBY: Current players: $_players');
-    
-    // Allow switching roles directly - no need to deselect first
-    
-    // Check if role is already taken by someone else
-    final isTaken = _players.any((p) => p['role'] == roleId && p['id'] != _myPlayerId);
-    debugPrint('🎭 LOBBY: Is role $roleId taken by someone else? $isTaken');
-    if (isTaken) {
-      final takenBy = _players.firstWhere((p) => p['role'] == roleId);
-      debugPrint('🎭 LOBBY: Role taken by: ${takenBy['name']} (${takenBy['id']})');
-      _showSnackBar('Role already taken by ${takenBy['name']}', isError: true);
-      return;
-    }
-    
-    debugPrint('🎭 LOBBY: Sending selectRole to server...');
-    widget.wsService.selectRole(roleId, difficulty: _myDifficulty);
-    setState(() {
-      _myRole = roleId;
-      debugPrint('🎭 LOBBY: Optimistically set my role to: $roleId');
-    });
-  }
-  
-  void _deselectRole() {
-    if (_myRole != null) {
-      widget.wsService.selectRole('');  // Empty string to deselect
-      setState(() {
-        _myRole = null;
+
+    // If the room is already in SETUP, jump straight to scenario details
+    if (message['status'] == 'setup') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToScenarioDetails();
       });
     }
   }
-  
-  void _showImageGenerationModal({String? title, String? progressMessage}) {
-    final heistMessages = [
-      '🚗 Prepping the getaway car...',
-      '🔍 Investigating the premises...',
-      '🤝 Reaching out to seedy contacts...',
-      '📋 Reviewing the blueprints...',
-      '🎭 Preparing disguises...',
-      '💰 Scoping the vault...',
-      '📡 Testing communication devices...',
-      '🗺️ Mapping escape routes...',
-      '⏰ Synchronizing watches...',
-      '🎨 Setting the scene...',
-    ];
 
-    if (title != null) _generationTitle = title;
-    if (progressMessage != null) _generationProgressMessage = progressMessage;
+  void _showToast(String message, {bool isError = false}) {
+    showTopToast(context, message, color: isError ? AppColors.danger : AppColors.success);
+  }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => PopScope(
-        canPop: false,
-        child: StatefulBuilder(
-          builder: (context, setModalState) {
-            // Keep modal title and progress in sync as messages arrive
-            widget.wsService.scenarioGenerating.listen((msg) {
-              final newMsg = msg['message'] as String? ?? _generationProgressMessage;
-              final isImageMsg = newMsg.startsWith('🎨 Generating images');
-              setModalState(() {
-                _generationProgressMessage = newMsg;
-                if (isImageMsg) _generationTitle = '🎨 Creating Images';
-              });
-            });
-            return Dialog(
-              backgroundColor: AppColors.bgPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
-                side: BorderSide(color: AppColors.accentPrimary, width: 2),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(AppDimensions.spaceXL),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _generationTitle,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.accentPrimary,
-                      ),
-                    ),
-                    SizedBox(height: AppDimensions.spaceLG),
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentPrimary),
-                    ),
-                    SizedBox(height: AppDimensions.spaceLG),
-                    _generationProgressMessage.isNotEmpty
-                        ? Text(
-                            _generationProgressMessage,
-                            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                            textAlign: TextAlign.center,
-                          )
-                        : StreamBuilder<int>(
-                            stream: Stream.periodic(Duration(seconds: 2), (i) => i % heistMessages.length),
-                            builder: (context, snapshot) {
-                              final index = snapshot.data ?? 0;
-                              return AnimatedSwitcher(
-                                duration: Duration(milliseconds: 300),
-                                child: Text(
-                                  heistMessages[index],
-                                  key: ValueKey(index),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              );
-                            },
-                          ),
-                  ],
-                ),
-              ),
-            );
-          },
+  void _copyRoomCode() {
+    Clipboard.setData(ClipboardData(text: widget.roomCode));
+    _showToast('Room code copied');
+  }
+
+  void _onSelectScenario(String scenarioId) {
+    widget.wsService.selectScenario(scenarioId);
+    setState(() => _selectedScenarioId = scenarioId);
+  }
+
+  void _onContinue() {
+    if (!_isHost) return;
+    if (_players.length < 2) {
+      _showToast('Need at least 2 players', isError: true);
+      return;
+    }
+    widget.wsService.lobbyAdvance();
+  }
+
+  void _navigateToScenarioDetails() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ScenarioDetailsScreen(
+          roomCode: widget.roomCode,
+          playerName: widget.playerName,
+          wsService: widget.wsService,
+          scenarioId: _selectedScenarioId,
+          players: _players,
+          myPlayerId: _myPlayerId,
+          isHost: _isHost,
+          availableRoles: _availableRoles,
+          availableScenarios: _availableScenarios,
         ),
       ),
     );
   }
-  
-  void _startGame() {
-    if (!_isHost) {
-      _showSnackBar('Only the host can start the game', isError: true);
-      return;
-    }
-    
-    // Get selected scenario's minimum players
-    final selectedScenario = _availableScenarios.isNotEmpty
-        ? _availableScenarios.firstWhere(
-            (s) => s.scenarioId == _selectedScenarioId,
-            orElse: () => _availableScenarios.first,
-          )
-        : null;
-    final minPlayers = 2; // Any 2+ players can attempt any scenario
-    
-    // Check minimum players
-    if (_players.length < minPlayers) {
-      _showSnackBar('Need at least $minPlayers players for this scenario', isError: true);
-      return;
-    }
-    
-    // Check if all players have roles
-    final allHaveRoles = _players.every((p) => p['role'] != null && p['role'] != '');
-    if (!allHaveRoles) {
-      _showSnackBar('All players must select roles first', isError: true);
-      return;
-    }
-    
-    debugPrint('🎮 START: Starting game with scenario: $_selectedScenarioId');
-    widget.wsService.startGame(_selectedScenarioId);
-  }
-  
-  void _copyRoomCode() {
-    Clipboard.setData(ClipboardData(text: widget.roomCode));
-    _showSnackBar('Room code copied to clipboard');
-  }
-  
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -455,45 +190,16 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Room code card
                 _buildRoomCodeCard(),
-                
                 SizedBox(height: AppDimensions.space2XL),
-                
-                // Scenario section
                 _buildScenarioSection(),
-                
                 SizedBox(height: AppDimensions.space2XL),
-                
-                // Your role selector button
-                _buildRoleSelectorButton(),
-                
-                // Difficulty selector (shows after role selected)
-                if (_myRole != null) ...[
-                  SizedBox(height: AppDimensions.spaceMD),
-                  _buildDifficultySelector(),
-                ],
-                
-                SizedBox(height: AppDimensions.space2XL),
-                
-                // Players list
                 const SectionHeader(text: 'Players'),
                 SizedBox(height: AppDimensions.spaceMD),
                 _buildPlayersList(),
-                
                 SizedBox(height: AppDimensions.space2XL),
-                
-                // Ready state indicator
-                _buildReadyStateIndicator(),
-                
+                _buildContinueSection(),
                 SizedBox(height: AppDimensions.spaceLG),
-                
-                // Start button (host only)
-                if (_isHost) _buildStartButton(),
-                
-                SizedBox(height: AppDimensions.spaceLG),
-                
-                // Leave room link
                 _buildLeaveRoomButton(),
               ],
             ),
@@ -502,9 +208,8 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       ),
     );
   }
-  
+
   Widget _buildRoomCodeCard() {
-    final playerCount = _players.length;
     return Container(
       padding: EdgeInsets.all(AppDimensions.containerPadding),
       decoration: BoxDecoration(
@@ -527,13 +232,10 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                     letterSpacing: 4,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  '($playerCount of 12 players)',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
+                  '(${_players.length} of 12 players)',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                 ),
               ],
             ),
@@ -547,53 +249,27 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       ),
     );
   }
-  
-  void _openScenarioSelectionModal() {
-    debugPrint('🎭 SCENARIO: Opening modal with ${_availableScenarios.length} scenarios');
-    debugPrint('🎭 SCENARIO: Current scenario: $_selectedScenarioId');
-    
-    showDialog(
-      context: context,
-      builder: (context) => ScenarioSelectionModal(
-        availableScenarios: _availableScenarios,
-        currentScenarioId: _selectedScenarioId,
-        availableRoles: _availableRoles,
-        onSelectScenario: (scenarioId) {
-          debugPrint('🎭 SCENARIO: Selected scenario: $scenarioId');
-          setState(() => _selectedScenarioId = scenarioId);
-        },
-      ),
-    );
-  }
-  
+
   Widget _buildScenarioSection() {
     if (_scenariosLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: AppColors.accentPrimary),
-      );
+      return Center(child: CircularProgressIndicator(color: AppColors.accentPrimary));
     }
-    
     if (_availableScenarios.isEmpty) {
-      return Center(
-        child: Text(
-          'No scenarios available',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-      );
+      return Center(child: Text('No scenarios available', style: TextStyle(color: AppColors.textSecondary)));
     }
-    
+
     final selectedScenario = _availableScenarios.firstWhere(
       (s) => s.scenarioId == _selectedScenarioId,
       orElse: () => _availableScenarios.first,
     );
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text('🎭', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
+            const Text('🎬', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
             Text(
               'SCENARIO',
               style: TextStyle(
@@ -606,14 +282,20 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
           ],
         ),
         SizedBox(height: AppDimensions.spaceMD),
-        
-        // Tappable scenario selector button (opens modal for host)
         InkWell(
-          onTap: _isHost ? () {
-            debugPrint('🎭 SCENARIO: Tapping scenario button (host: $_isHost)');
-            debugPrint('🎭 SCENARIO: Available scenarios: ${_availableScenarios.length}');
-            _openScenarioSelectionModal();
-          } : null,
+          onTap: _isHost
+              ? () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => ScenarioSelectionModal(
+                      availableScenarios: _availableScenarios,
+                      currentScenarioId: _selectedScenarioId,
+                      availableRoles: _availableRoles,
+                      onSelectScenario: _onSelectScenario,
+                    ),
+                  );
+                }
+              : null,
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
           child: Container(
             padding: EdgeInsets.all(AppDimensions.spaceLG),
@@ -627,488 +309,57 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             ),
             child: Row(
               children: [
-                // Scenario image - 80px
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
                   child: Image.asset(
-                    'assets/scenarios/${selectedScenario.scenarioId}.png',
+                    'assets/static/${selectedScenario.scenarioId}.png',
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      // Fallback to emoji if image not found
-                      return Container(
-                        width: 80,
-                        height: 80,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.bgTertiary,
-                          borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
-                        ),
-                        child: Text(
-                          selectedScenario.themeIcon,
-                          style: TextStyle(fontSize: 40),
-                        ),
-                      );
-                    },
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 80,
+                      height: 80,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.bgTertiary,
+                        borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+                      ),
+                      child: Text(selectedScenario.themeIcon, style: const TextStyle(fontSize: 40)),
+                    ),
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         selectedScenario.name,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         selectedScenario.objective,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                if (_isHost)
-                  Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textSecondary,
-                  ),
+                if (_isHost) Icon(Icons.chevron_right, color: AppColors.textSecondary),
               ],
             ),
           ),
         ),
         if (_isHost) ...[
-          SizedBox(height: 4),
-          Text(
-            'Tap to browse all scenarios',
-            style: TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 12,
-            ),
-          ),
+          const SizedBox(height: 4),
+          Text('Tap to browse all scenarios', style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
         ],
       ],
     );
   }
-  
-  Widget _buildOldScenarioListForReference() {
-    final selectedScenario = _availableScenarios.firstWhere(
-      (s) => s.scenarioId == _selectedScenarioId,
-      orElse: () => _availableScenarios.first,
-    );
-    
-    return Column(
-      children: [
-        // If host, show all scenarios to choose from
-        if (_isHost) ..._availableScenarios.map((scenario) {
-          final isSelected = scenario.scenarioId == _selectedScenarioId;
-          return Container(
-            margin: EdgeInsets.only(bottom: AppDimensions.spaceSM),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => setState(() => _selectedScenarioId = scenario.scenarioId),
-                borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-                child: Container(
-                  padding: EdgeInsets.all(AppDimensions.spaceLG),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.accentPrimary.withAlpha(51)
-                        : AppColors.bgSecondary,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.accentPrimary
-                          : AppColors.borderSubtle,
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            scenario.themeIcon,
-                            style: TextStyle(fontSize: 24),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              scenario.name,
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 16,
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                          if (isSelected)
-                            Icon(
-                              Icons.check_circle,
-                              color: AppColors.success,
-                              size: 20,
-                            ),
-                        ],
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        scenario.summary,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: scenario.rolesSuggested.map((roleId) {
-                          final role = _availableRoles.firstWhere(
-                            (r) => r.roleId == roleId,
-                            orElse: () => Role(
-                              roleId: roleId,
-                              name: roleId,
-                              description: '',
-                              minigames: [],
-                              icon: '❓',
-                            ),
-                          );
-                          return Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.bgTertiary,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: AppColors.borderSubtle,
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              role.name,
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-        
-        // If not host, just show selected scenario
-        if (!_isHost)
-          Container(
-            padding: EdgeInsets.all(AppDimensions.spaceLG),
-            decoration: BoxDecoration(
-              color: AppColors.bgSecondary,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-              border: Border.all(color: AppColors.accentPrimary.withAlpha(128)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      selectedScenario.themeIcon,
-                      style: TextStyle(fontSize: 24),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        selectedScenario.name,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Text(
-                  selectedScenario.summary,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Required roles:',
-                  style: TextStyle(
-                    color: AppColors.textTertiary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: selectedScenario.rolesSuggested.map((roleId) {
-                    final role = _availableRoles.firstWhere(
-                      (r) => r.roleId == roleId,
-                      orElse: () => Role(
-                        roleId: roleId,
-                        name: roleId,
-                        description: '',
-                        minigames: [],
-                        icon: '❓',
-                      ),
-                    );
-                    return Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.bgTertiary,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: AppColors.borderSubtle,
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        role.name,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-  
-  Widget _buildRoleSelectorButton() {
-    final role = _myRole != null
-        ? _availableRoles.firstWhere(
-            (r) => r.roleId == _myRole,
-            orElse: () => Role(
-              roleId: 'unknown',
-              name: 'Unknown',
-              description: '',
-              minigames: [],
-              icon: '❓',
-            ),
-          )
-        : null;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text('🎭', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
-            Text(
-              'YOUR ROLE',
-              style: TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: AppDimensions.spaceMD),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: _openRoleSelectionModal,
-            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-            child: Container(
-              padding: EdgeInsets.all(AppDimensions.spaceLG),
-              decoration: BoxDecoration(
-                color: _myRole == null 
-                    ? AppColors.bgSecondary 
-                    : AppColors.bgSecondary,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-                border: Border.all(
-                  color: _myRole == null 
-                      ? AppColors.borderSubtle 
-                      : AppColors.accentPrimary,
-                  width: _myRole == null ? 1 : 2,
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (_myRole != null) ...[
-                    // Show character portrait for selected role (default female)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
-                      child: Image.asset(
-                        'assets/static/${_myRole}_female.png',
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          // Fallback to emoji if image not found
-                          return Container(
-                            width: 80,
-                            height: 80,
-                            alignment: Alignment.center,
-                            child: Text(
-                              role!.icon,
-                              style: TextStyle(fontSize: 40),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                  ],
-                  Expanded(
-                    child: Text(
-                      _myRole == null ? 'Select Your Role' : role!.name,
-                      style: TextStyle(
-                        color: _myRole == null 
-                            ? AppColors.textTertiary 
-                            : AppColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: _myRole == null ? FontWeight.normal : FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          _myRole == null ? 'Tap to browse all roles' : 'Tap to change role',
-          style: TextStyle(
-            color: AppColors.textTertiary,
-            fontSize: 12,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildDifficultySelector() {
-    final options = [
-      {'id': 'easy', 'label': 'Easy', 'desc': 'Relaxed conversations'},
-      {'id': 'medium', 'label': 'Medium', 'desc': 'Balanced challenge'},
-      {'id': 'hard', 'label': 'Hard', 'desc': 'NPCs are skeptical'},
-    ];
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.speed, size: 18, color: AppColors.textTertiary),
-            SizedBox(width: 8),
-            Text(
-              'DIFFICULTY',
-              style: TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 8),
-        Row(
-          children: [
-            for (int i = 0; i < options.length; i++) ...[
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() => _myDifficulty = options[i]['id']!);
-                    // Re-send role with updated difficulty
-                    if (_myRole != null) {
-                      widget.wsService.selectRole(_myRole!, difficulty: _myDifficulty);
-                    }
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: _myDifficulty == options[i]['id']
-                          ? AppColors.accentPrimary.withValues(alpha: 0.2)
-                          : AppColors.bgSecondary,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
-                      border: Border.all(
-                        color: _myDifficulty == options[i]['id']
-                            ? AppColors.accentPrimary
-                            : AppColors.borderSubtle,
-                        width: _myDifficulty == options[i]['id'] ? 2 : 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          options[i]['label']!,
-                          style: TextStyle(
-                            color: _myDifficulty == options[i]['id']
-                                ? AppColors.accentPrimary
-                                : AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              if (i < options.length - 1) SizedBox(width: 8),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
 
-  void _openRoleSelectionModal() {
-    showDialog(
-      context: context,
-      builder: (context) => RoleSelectionModal(
-        availableRoles: _availableRoles,
-        currentRole: _myRole,
-        players: _players,
-        onSelectRole: _selectRole,
-        initialGender: 'female', // Default to female
-      ),
-    );
-  }
-  
   Widget _buildPlayersList() {
     if (_players.isEmpty) {
       return Container(
@@ -1119,92 +370,42 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         ),
         child: Text(
           'Waiting for players...',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-            fontStyle: FontStyle.italic,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontStyle: FontStyle.italic),
         ),
       );
     }
-    
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
         borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
       ),
       child: Column(
-        children: _players.map((player) {
+        children: _players.asMap().entries.map((entry) {
+          final player = entry.value;
           final isMe = player['id'] == _myPlayerId;
-          final isHost = player['id'] == _players.first['id']; // First player is host
-          final hasRole = player['role'] != null && player['role'] != '';
-          final role = hasRole
-              ? _availableRoles.firstWhere(
-                  (r) => r.roleId == player['role'],
-                  orElse: () => Role(
-                    roleId: 'unknown',
-                    name: 'No Role',
-                    description: '',
-                    minigames: [],
-                    icon: '❓',
-                  ),
-                )
-              : null;
-          
+          final isPlayerHost = entry.key == 0;
+
           return Container(
             padding: EdgeInsets.all(AppDimensions.spaceLG),
             decoration: BoxDecoration(
               border: Border(
-                bottom: player != _players.last
+                bottom: entry.key < _players.length - 1
                     ? BorderSide(color: AppColors.borderSubtle, width: 1)
                     : BorderSide.none,
               ),
             ),
             child: Row(
               children: [
-                // Icon: Crown for host, person for others
-                Text(
-                  isHost ? '👑' : '👤',
-                  style: TextStyle(fontSize: 20),
-                ),
+                Text(isPlayerHost ? '👑' : '👤', style: const TextStyle(fontSize: 20)),
                 SizedBox(width: AppDimensions.spaceSM),
                 Expanded(
-                  child: Row(
-                    children: [
-                      Text(
-                        isMe ? 'You' : player['name'] ?? 'Unknown',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (hasRole) ...[
-                        Text(
-                          ' - ',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          role!.name,
-                          style: TextStyle(
-                            color: AppColors.accentPrimary,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ],
+                  child: Text(
+                    isMe ? 'You' : player['name'] ?? 'Unknown',
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
                   ),
                 ),
-                // Checkmark if role selected
-                if (hasRole)
-                  Icon(
-                    Icons.check_circle,
-                    color: AppColors.success,
-                    size: 20,
-                  ),
+                Icon(Icons.circle, color: AppColors.success, size: 10),
               ],
             ),
           );
@@ -1212,75 +413,9 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       ),
     );
   }
-  
-  Widget _buildReadyStateIndicator() {
-    // Get selected scenario's required roles count
-    final selectedScenario = _availableScenarios.isNotEmpty
-        ? _availableScenarios.firstWhere(
-            (s) => s.scenarioId == _selectedScenarioId,
-            orElse: () => _availableScenarios.first,
-          )
-        : null;
-    final minPlayers = 2;
-    
-    final allHaveRoles = _players.isNotEmpty && 
-        _players.every((p) => p['role'] != null && p['role'] != '');
-    final enoughPlayers = _players.length >= minPlayers;
-    
-    if (_isHost) {
-      if (!enoughPlayers) {
-        return Container(
-          padding: EdgeInsets.all(AppDimensions.spaceMD),
-          decoration: BoxDecoration(
-            color: AppColors.danger.withAlpha(26),
-            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-            border: Border.all(color: AppColors.danger.withAlpha(128)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.warning, color: AppColors.danger, size: 20),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Need at least ${minPlayers - _players.length} more player${_players.length == minPlayers - 1 ? '' : 's'} to start',
-                  style: TextStyle(
-                    color: AppColors.danger,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      } else if (!allHaveRoles) {
-        return Container(
-          padding: EdgeInsets.all(AppDimensions.spaceMD),
-          decoration: BoxDecoration(
-            color: AppColors.warning.withAlpha(26),
-            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-            border: Border.all(color: AppColors.warning.withAlpha(128)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info, color: AppColors.warning, size: 20),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'All players must select roles before starting',
-                  style: TextStyle(
-                    color: AppColors.warning,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      // Non-host view
+
+  Widget _buildContinueSection() {
+    if (!_isHost) {
       return Container(
         padding: EdgeInsets.all(AppDimensions.spaceMD),
         decoration: BoxDecoration(
@@ -1292,71 +427,74 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.accentPrimary,
-              ),
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentPrimary),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Text(
-              'Waiting for host to start...',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-                fontStyle: FontStyle.italic,
-              ),
+              'Waiting for host to continue...',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontStyle: FontStyle.italic),
             ),
           ],
         ),
       );
     }
-    
-    return SizedBox.shrink();
+
+    final canContinue = _players.length >= 2;
+
+    return Column(
+      children: [
+        if (!canContinue)
+          Container(
+            padding: EdgeInsets.all(AppDimensions.spaceMD),
+            margin: EdgeInsets.only(bottom: AppDimensions.spaceMD),
+            decoration: BoxDecoration(
+              color: AppColors.danger.withAlpha(26),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+              border: Border.all(color: AppColors.danger.withAlpha(128)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning, color: AppColors.danger, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Need at least ${2 - _players.length} more player to continue',
+                    style: TextStyle(color: AppColors.danger, fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (canContinue)
+          Padding(
+            padding: EdgeInsets.only(bottom: AppDimensions.spaceSM),
+            child: Text(
+              'When your crew is here, hit Continue',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        HeistPrimaryButton(
+          text: 'Continue',
+          onPressed: canContinue ? _onContinue : null,
+          icon: Icons.arrow_forward,
+        ),
+      ],
+    );
   }
-  
+
   Widget _buildLeaveRoomButton() {
     return Center(
       child: TextButton(
         onPressed: () {
+          widget.wsService.disconnect();
           Navigator.of(context).pop();
         },
         child: Text(
           'Leave Room',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-            decoration: TextDecoration.underline,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14, decoration: TextDecoration.underline),
         ),
       ),
-    );
-  }
-  
-  // Old inline role selection removed - now using modal
-  
-  Widget _buildStartButton() {
-    final allReady = _players.isNotEmpty && _players.every((p) => p['role'] != null && p['role'] != '');
-    
-    return Column(
-      children: [
-        HeistPrimaryButton(
-          text: 'Start Game',
-          onPressed: allReady ? _startGame : null,
-          icon: Icons.play_arrow,
-        ),
-        if (!allReady)
-          Padding(
-            padding: EdgeInsets.only(top: AppDimensions.spaceSM),
-            child: Text(
-              'All players must select roles',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-      ],
     );
   }
 }

@@ -116,6 +116,15 @@ class StorageService:
 
         return None
 
+    def delete_local(self, key: str) -> bool:
+        """Delete a file from local disk only. Returns True if deleted."""
+        local = self._local_root / key
+        if local.exists():
+            local.unlink()
+            logger.debug(f"Storage: deleted local {key}")
+            return True
+        return False
+
     def list_files(self, prefix: str, suffix: str = "") -> list[str]:
         """List file keys under a prefix. Checks local first, then GCS."""
         keys = set()

@@ -128,6 +128,11 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
                 await websocket.send_json(room_state_dict)
                 logger.info(f"✅ room_state sent to player {player_id}")
                 
+                # If room is in SETUP, tell the reconnecting client to show scenario details
+                if room.status == RoomStatus.SETUP:
+                    logger.info(f"🔧 Room {room_code} in SETUP — sending lobby_advanced to reconnecting player {player_id}")
+                    await websocket.send_json({"type": "lobby_advanced", "scenario": room.scenario})
+
                 # If game already in progress, send game_started message to late joiner
                 if room.status == RoomStatus.IN_PROGRESS and room.game_state:
                     logger.info(f"🎮 Game already in progress, sending game_started to late joiner {player_id}")
@@ -176,7 +181,16 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
             logger.info(f"📨 Received {message_type} from player {player_id} in room {room_code}")
             
             # Route message to appropriate handler
-            if message_type == "select_role":
+            if message_type == "select_scenario":
+                await handle_select_scenario(room_code, player_id, data)
+
+            elif message_type == "lobby_advance":
+                await handle_lobby_advance(room_code, player_id)
+
+            elif message_type == "lobby_retreat":
+                await handle_lobby_retreat(room_code, player_id)
+
+            elif message_type == "select_role":
                 await handle_select_role(room_code, player_id, data)
             
             elif message_type == "start_game":
@@ -231,6 +245,71 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str):
             room = room_manager.get_room(room_code)
             if room and player_id in room.players:
                 room.players[player_id].connected = False
+
+
+async def handle_select_scenario(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
+    """Handle scenario selection (host only, lobby phase)"""
+    room_manager = get_room_manager()
+    ws_manager = get_ws_manager()
+
+    scenario_id = data.get("scenario_id")
+    if not scenario_id:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error", "message": "No scenario_id provided"
+        })
+        return
+
+    success = room_manager.set_scenario(room_code, player_id, scenario_id)
+    if not success:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error", "message": "Could not set scenario (not host or room not in lobby)"
+        })
+        return
+
+    await ws_manager.broadcast_to_room(room_code, {
+        "type": "scenario_selected",
+        "scenario_id": scenario_id,
+        "by_player_id": player_id,
+    })
+    logger.info(f"🎬 Scenario {scenario_id} selected by {player_id} in room {room_code}")
+
+
+async def handle_lobby_advance(room_code: str, player_id: str) -> None:
+    """Host advances from lobby to setup (locks room)"""
+    room_manager = get_room_manager()
+    ws_manager = get_ws_manager()
+
+    success = room_manager.advance_lobby(room_code, player_id)
+    if not success:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Cannot advance (not host, not enough players, or no scenario selected)"
+        })
+        return
+
+    room = room_manager.get_room(room_code)
+    await ws_manager.broadcast_to_room(room_code, {
+        "type": "lobby_advanced",
+        "scenario": room.scenario,
+    })
+    logger.info(f"➡️ Room {room_code} advanced to SETUP by {player_id}")
+
+
+async def handle_lobby_retreat(room_code: str, player_id: str) -> None:
+    """Host retreats from setup back to lobby (re-opens room, clears roles)"""
+    room_manager = get_room_manager()
+    ws_manager = get_ws_manager()
+
+    success = room_manager.retreat_lobby(room_code, player_id)
+    if not success:
+        await ws_manager.send_to_player(room_code, player_id, {
+            "type": "error",
+            "message": "Cannot go back (not host or not in setup phase)"
+        })
+        return
+
+    await ws_manager.broadcast_to_room(room_code, {"type": "lobby_retreated"})
+    logger.info(f"⬅️ Room {room_code} retreated to LOBBY by {player_id}")
 
 
 async def handle_select_role(room_code: str, player_id: str, data: Dict[str, Any]) -> None:
@@ -354,7 +433,9 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
 
             logger.info(f"🎨 Starting image generation for {scenario}...")
             success = await generate_all_images_for_experience(
-                scenario, experience_dict, broadcast=_img_broadcast
+                scenario, experience_dict,
+                cache_name=cache_base,
+                broadcast=_img_broadcast,
             )
             
             if success:

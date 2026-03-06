@@ -32,6 +32,9 @@ class WebSocketService {
   final _infoController = StreamController<Map<String, dynamic>>.broadcast();
   final _errorController = StreamController<Map<String, dynamic>>.broadcast();
   final _scenarioGeneratingController = StreamController<Map<String, dynamic>>.broadcast();
+  final _scenarioSelectedController = StreamController<Map<String, dynamic>>.broadcast();
+  final _lobbyAdvancedController = StreamController<Map<String, dynamic>>.broadcast();
+  final _lobbyRetreatedController = StreamController<Map<String, dynamic>>.broadcast();
   
   // Store the latest room state for late subscribers
   Map<String, dynamic>? _latestRoomState;
@@ -48,6 +51,9 @@ class WebSocketService {
   Stream<Map<String, dynamic>> get info => _infoController.stream;
   Stream<Map<String, dynamic>> get errors => _errorController.stream;
   Stream<Map<String, dynamic>> get scenarioGenerating => _scenarioGeneratingController.stream;
+  Stream<Map<String, dynamic>> get scenarioSelected => _scenarioSelectedController.stream;
+  Stream<Map<String, dynamic>> get lobbyAdvanced => _lobbyAdvancedController.stream;
+  Stream<Map<String, dynamic>> get lobbyRetreated => _lobbyRetreatedController.stream;
   
   // Get the latest room state (useful for late subscribers)
   Map<String, dynamic>? get latestRoomState => _latestRoomState;
@@ -127,6 +133,24 @@ class WebSocketService {
     }
   }
   
+  /// Select a scenario (host only, lobby phase)
+  void selectScenario(String scenarioId) {
+    send({
+      'type': 'select_scenario',
+      'scenario_id': scenarioId,
+    });
+  }
+
+  /// Advance from lobby to setup (host only)
+  void lobbyAdvance() {
+    send({'type': 'lobby_advance'});
+  }
+
+  /// Retreat from setup back to lobby (host only)
+  void lobbyRetreat() {
+    send({'type': 'lobby_retreat'});
+  }
+
   /// Select a role in lobby
   void selectRole(String role, {String difficulty = 'easy'}) {
     debugPrint('🎭 WS: Sending select_role with role: $role, difficulty: $difficulty');
@@ -265,6 +289,18 @@ class WebSocketService {
           // Item was dropped - currently just logged
           debugPrint('📦 Item dropped: ${message['item_name']} in ${message['location']}');
           break;
+        case 'scenario_selected':
+          _scenarioSelectedController.add(message);
+          debugPrint('🎬 Scenario selected: ${message['scenario_id']}');
+          break;
+        case 'lobby_advanced':
+          _lobbyAdvancedController.add(message);
+          debugPrint('➡️ Lobby advanced to setup');
+          break;
+        case 'lobby_retreated':
+          _lobbyRetreatedController.add(message);
+          debugPrint('⬅️ Lobby retreated to lobby');
+          break;
         case 'scenario_generating':
           _scenarioGeneratingController.add(message);
           debugPrint('🎲 Scenario generating: ${message['message']}');
@@ -307,5 +343,8 @@ class WebSocketService {
     _infoController.close();
     _errorController.close();
     _scenarioGeneratingController.close();
+    _scenarioSelectedController.close();
+    _lobbyAdvancedController.close();
+    _lobbyRetreatedController.close();
   }
 }

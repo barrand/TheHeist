@@ -179,10 +179,11 @@ class _DialSafeMinigameState extends State<DialSafeMinigame> {
                   child: ElevatedButton(
                     onPressed: _submitNumber,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.bgSecondary,
+                      backgroundColor: AppColors.accentPrimary,
+                      foregroundColor: AppColors.textPrimary,
                       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
                     ),
-                    child: const Text('Submit', style: TextStyle(fontSize: 16)),
+                    child: const Text('Submit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],

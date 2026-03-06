@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "description": "Pre-generated quick-start scenarios for instant play. Each entry defines a scenario + role combo that has been fully generated (graph, images, etc).",
+  "scenarios": [
+    {
+      "id": "museum_gala_vault__cat_burglar_safe_cracker",
+      "scenario_id": "museum_gala_vault",
+      "player_count": 2,
+      "roles": ["safe_cracker", "cat_burglar"]
+    }
+  ]
+}
