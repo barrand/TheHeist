@@ -186,6 +186,9 @@ async def generate_all_images_for_experience(
         logger.info(f"🎨 Step 3/3: Generating NPC images...")
         await generate_all_npc_images(experience_id, npcs, on_progress=_on_image_done)
         
+        from app.services.storage_service import storage
+        storage.sync_local_to_gcs(f"generated_images/{experience_id}")
+
         logger.info(f"✅ All images generated for {experience_id}")
         return True
         

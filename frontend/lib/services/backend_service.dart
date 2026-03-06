@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/npc.dart';
+import '../core/app_config.dart';
 
 /// Service for communicating with The Heist Python backend
 /// 
@@ -12,7 +13,7 @@ class BackendService {
   
   BackendService._internal();
   
-  String _baseUrl = 'http://localhost:8000';
+  String _baseUrl = AppConfig.backendUrl;
   
   void setBaseUrl(String url) {
     _baseUrl = url;
@@ -53,14 +54,10 @@ class BackendService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return StartConversationResult.fromJson(data);
-      } else if (response.statusCode == 429) {
-        // Cooldown
-        throw CooldownException(response.body);
       } else {
         throw Exception('Backend returned ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      if (e is CooldownException) rethrow;
       print('❌ BackendService: Start conversation error: $e');
       rethrow;
     }
@@ -103,31 +100,6 @@ class BackendService {
     }
   }
 
-  /// Check cooldown status for a player-NPC pair
-  Future<CooldownStatus> checkCooldown({
-    required String npcId,
-    required String roomCode,
-    required String playerId,
-  }) async {
-    try {
-      final url = Uri.parse(
-        '$_baseUrl/api/npc/cooldown-status/$npcId?room_code=$roomCode&player_id=$playerId'
-      );
-      
-      final response = await http.get(url);
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return CooldownStatus(
-          inCooldown: data['in_cooldown'] ?? false,
-          remainingSeconds: data['cooldown_remaining_seconds'],
-        );
-      }
-      return CooldownStatus(inCooldown: false);
-    } catch (e) {
-      return CooldownStatus(inCooldown: false);
-    }
-  }
 
   // ============================================================
   // Legacy endpoints (kept for backward compatibility)
@@ -311,7 +283,6 @@ class ConversationTurnResult {
   final int suspicionDelta;
   final List<QuickResponseOption> quickResponses;
   final bool conversationFailed;
-  final double? cooldownUntil;
   final List<String> completedTasks;
   final bool openingGiven;
 
@@ -322,7 +293,6 @@ class ConversationTurnResult {
     required this.suspicionDelta,
     required this.quickResponses,
     required this.conversationFailed,
-    this.cooldownUntil,
     this.completedTasks = const [],
     this.openingGiven = false,
   });
@@ -337,25 +307,10 @@ class ConversationTurnResult {
           .map((e) => QuickResponseOption.fromJson(e as Map<String, dynamic>))
           .toList(),
       conversationFailed: json['conversation_failed'] ?? false,
-      cooldownUntil: json['cooldown_until']?.toDouble(),
       completedTasks: List<String>.from(json['completed_tasks'] ?? []),
       openingGiven: json['opening_given'] ?? false,
     );
   }
-}
-
-class CooldownStatus {
-  final bool inCooldown;
-  final int? remainingSeconds;
-
-  CooldownStatus({required this.inCooldown, this.remainingSeconds});
-}
-
-class CooldownException implements Exception {
-  final String message;
-  CooldownException(this.message);
-  @override
-  String toString() => message;
 }
 
 /// Response from NPC (legacy)

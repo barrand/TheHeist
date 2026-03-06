@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:the_heist/core/app_config.dart';
 import 'package:the_heist/core/theme/app_colors.dart';
 import 'package:the_heist/core/theme/app_dimensions.dart';
 import 'package:the_heist/services/websocket_service.dart';
 import 'package:the_heist/widgets/common/heist_primary_button.dart';
 import 'package:the_heist/widgets/common/top_toast.dart';
 import 'package:the_heist/models/item.dart';
+import 'package:the_heist/models/minigame.dart';
 import 'package:the_heist/models/npc.dart';
 import 'package:the_heist/screens/npc_conversation_screen.dart';
 import 'package:the_heist/screens/game_end_screen.dart';
+import 'package:the_heist/screens/minigames/minigame_screen.dart';
+import 'package:the_heist/widgets/minigames/minigame_registry.dart';
 
 /// Game screen where players complete their tasks
 class GameScreen extends StatefulWidget {
@@ -304,7 +308,7 @@ class _GameScreenState extends State<GameScreen> {
       (p) => p['id'] == _myPlayerId,
       orElse: () => {},
     );
-    final difficulty = (myPlayer['difficulty'] as String?) ?? 'easy';
+    final difficulty = (myPlayer['difficulty'] as String?) ?? 'medium';
     
     Navigator.push(
       context,
@@ -549,7 +553,7 @@ class _GameScreenState extends State<GameScreen> {
             height: 150,
             color: AppColors.bgPrimary,
             child: Image.network(
-              'http://localhost:8000/api/images/${widget.scenario}/location/$_currentLocationId',
+              '${AppConfig.backendUrl}/api/images/${widget.scenario}/location/$_currentLocationId',
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 // Fallback to gradient if image not available
@@ -1290,22 +1294,36 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
   
-  /// MINIGAME task: start button (placeholder)
+  /// MINIGAME task: launches the real minigame widget.
   Widget _buildMinigameTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    if (!canAct) return SizedBox.shrink();
-    
+    if (!canAct) return const SizedBox.shrink();
+
     final taskId = task['id'] ?? '';
-    
+    final minigameId = task['minigame_id'] as String? ?? '';
+
+    // Resolve player difficulty for this game session
+    final myPlayer = _allPlayers.firstWhere(
+      (p) => p['id'] == _myPlayerId,
+      orElse: () => {},
+    );
+    final difficultyStr = (myPlayer['difficulty'] as String?) ?? 'medium';
+    final difficulty = MinigameDifficulty.values.firstWhere(
+      (d) => d.name == difficultyStr,
+      orElse: () => MinigameDifficulty.medium,
+    );
+
     return Padding(
       padding: EdgeInsets.only(top: AppDimensions.spaceSM),
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          onPressed: () => _manualCompleteTask(taskId),
-          icon: Icon(Icons.gamepad, size: 16),
+          onPressed: () => _launchMinigame(minigameId, taskId, difficulty),
+          icon: const Icon(Icons.gamepad, size: 16),
           label: Text(
-            'Start Minigame',
-            style: TextStyle(
+            MinigameRegistry.isImplemented(minigameId)
+                ? 'Start Minigame'
+                : 'Complete Task',
+            style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -1313,7 +1331,33 @@ class _GameScreenState extends State<GameScreen> {
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.accentPrimary,
-            padding: EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _launchMinigame(String minigameId, String taskId, MinigameDifficulty difficulty) {
+    if (!MinigameRegistry.isImplemented(minigameId)) {
+      // Fallback for unimplemented minigames: complete directly
+      _manualCompleteTask(taskId);
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MinigameScreen(
+          title: 'Minigame',
+          child: MinigameRegistry.build(
+            minigameId,
+            difficulty,
+            onSuccess: () {
+              // Complete the task, then pop back to game screen
+              _manualCompleteTask(taskId);
+              Navigator.pop(context);
+            },
           ),
         ),
       ),
@@ -1491,7 +1535,7 @@ class _GameScreenState extends State<GameScreen> {
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(7),
                                       child: Image.network(
-                                        'http://localhost:8000/api/images/${widget.scenario}/item/${item.id}',
+                                        '${AppConfig.backendUrl}/api/images/${widget.scenario}/item/${item.id}',
                                         fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) {
                                           // Fallback icon if image not available
@@ -1656,7 +1700,7 @@ class _GameScreenState extends State<GameScreen> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(7),
                                 child: Image.network(
-                                  'http://localhost:8000/api/images/${widget.scenario}/item/${item.id}',
+                                  '${AppConfig.backendUrl}/api/images/${widget.scenario}/item/${item.id}',
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     // Fallback icon if image not available

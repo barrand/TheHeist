@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/foundation.dart';
+import '../core/app_config.dart';
 
 /// WebSocket service for real-time multiplayer communication
 class WebSocketService {
@@ -51,7 +52,7 @@ class WebSocketService {
   // Get the latest room state (useful for late subscribers)
   Map<String, dynamic>? get latestRoomState => _latestRoomState;
   
-  WebSocketService({this.baseUrl = 'ws://localhost:8000'});
+  WebSocketService({String? baseUrl}) : baseUrl = baseUrl ?? AppConfig.wsUrl;
   
   /// Connect to a room's WebSocket
   Future<void> connect(String roomCode, String playerName) async {

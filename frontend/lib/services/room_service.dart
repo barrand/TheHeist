@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import '../core/app_config.dart';
 
 /// Service for room-related REST API calls
 class RoomService {
   final String baseUrl;
   
-  RoomService({this.baseUrl = 'http://localhost:8000'});
+  RoomService({String? baseUrl}) : baseUrl = baseUrl ?? AppConfig.backendUrl;
   
   /// Create a new room
   Future<Map<String, dynamic>> createRoom(String hostName) async {

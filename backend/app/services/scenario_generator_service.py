@@ -57,6 +57,9 @@ async def generate_scenario(
         return False
 
     if result.success:
+        from app.services.storage_service import storage
+        storage.sync_local_to_gcs("experiences")
+
         await broadcast(
             f"✅ Scenario ready — "
             f"{result.tasks} tasks, {result.locations} locations, {result.items} items"

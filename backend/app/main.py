@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.api import npc, websocket, rooms, images
+from app.services.storage_service import storage
 
 # Configure logging
 logging.basicConfig(
@@ -60,6 +61,7 @@ app.include_router(images.router)
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
+    storage.configure()
     logger.info(f"🚀 Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"📡 Server running on {settings.host}:{settings.port}")
     logger.info(f"🤖 Using Gemini NPC model: {settings.gemini_npc_model}")

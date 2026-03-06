@@ -107,27 +107,27 @@ class ExperienceLoader:
         # combinations always get their own generated file.
         filename = scenario_cache_filename(scenario, selected_roles)
 
-        # Try role-specific JSON first, then markdown
-        json_path = self.experiences_dir / (filename + ".json")
-        md_path = self.experiences_dir / (filename + ".md")
+        from app.services.storage_service import storage
 
-        if json_path.exists():
-            logger.info(f"Loading experience from JSON: {json_path}")
-            return self._load_from_json(json_path, scenario, selected_roles)
+        json_key = f"experiences/{filename}.json"
+        md_key = f"experiences/{filename}.md"
 
-        filepath = md_path
-        
-        if not filepath.exists():
-            logger.error(f"Experience file not found: {filepath}")
-            raise FileNotFoundError(f"Experience file not found: {filename}.md")
-        
-        logger.info(f"Loading experience from markdown: {filepath}")
-        
-        # Parse the markdown
-        with open(filepath, 'r') as f:
-            content = f.read()
-        
-        return self._parse_markdown(content, scenario, selected_roles)
+        # Try JSON first via storage service (local cache + GCS)
+        json_local = storage.local_path(json_key)
+        if json_local is not None:
+            logger.info(f"Loading experience from JSON: {json_local}")
+            return self._load_from_json(json_local, scenario, selected_roles)
+
+        # Try markdown via storage service
+        md_local = storage.local_path(md_key)
+        if md_local is not None:
+            logger.info(f"Loading experience from markdown: {md_local}")
+            with open(md_local, 'r') as f:
+                content = f.read()
+            return self._parse_markdown(content, scenario, selected_roles)
+
+        logger.error(f"Experience file not found: {filename}")
+        raise FileNotFoundError(f"Experience file not found: {filename}.md")
     
     def _load_from_json(self, json_path: Path, scenario: str, selected_roles: List[str]) -> GameState:
         """

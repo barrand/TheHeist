@@ -1,0 +1,26 @@
+.git
+.env
+*.md
+.cursor/
+.vscode/
+.idea/
+
+# Python artifacts
+__pycache__/
+*.pyc
+backend/venv/
+backend/generated_images/
+backend/generated_images_comparison/
+backend/experiences/generated_*
+backend/scripts/output/
+backend/build_info.json
+
+# Frontend build artifacts
+frontend/.dart_tool/
+frontend/build/
+frontend/.packages
+
+# Dev tools
+image_playground/
+prototype/
+docs/

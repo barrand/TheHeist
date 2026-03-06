@@ -55,15 +55,15 @@ echo -e "     Logs: tail -f /tmp/heist_logs/backend.log"
 sleep 3
 echo ""
 
-# Start E2E portal
-echo -e "${YELLOW}3. Starting E2E portal...${NC}"
-cd "$SCRIPT_DIR/backend"
-E2E_PORT=5555 $PYTHON scripts/e2e_testing/ui_server.py > /tmp/heist_logs/e2e_portal.log 2>&1 &
-E2E_PID=$!
-echo -e "${GREEN}   ✓ E2E portal starting (PID: $E2E_PID)${NC}"
-echo -e "     URL:  http://localhost:5555"
-echo -e "     Logs: tail -f /tmp/heist_logs/e2e_portal.log"
-echo ""
+# Start E2E portal (commented out — uncomment to re-enable)
+# echo -e "${YELLOW}3. Starting E2E portal...${NC}"
+# cd "$SCRIPT_DIR/backend"
+# E2E_PORT=5555 $PYTHON scripts/e2e_testing/ui_server.py > /tmp/heist_logs/e2e_portal.log 2>&1 &
+# E2E_PID=$!
+# echo -e "${GREEN}   ✓ E2E portal starting (PID: $E2E_PID)${NC}"
+# echo -e "     URL:  http://localhost:5555"
+# echo -e "     Logs: tail -f /tmp/heist_logs/e2e_portal.log"
+# echo ""
 
 # Check if backend is healthy
 echo -e "${YELLOW}3. Checking backend health...${NC}"
@@ -122,7 +122,6 @@ echo -e "${BLUE}======================================${NC}"
 echo ""
 echo -e "  📱 Frontend:  ${GREEN}http://localhost:8087${NC}"
 echo -e "  🔧 Backend:   ${GREEN}http://localhost:8000${NC}"
-echo -e "  🧪 E2E Portal:${GREEN}http://localhost:5555${NC}"
 echo ""
 echo -e "  🏗️  Build:     ${YELLOW}${BUILD_TIME} (${GIT_HASH})${NC}"
 echo ""

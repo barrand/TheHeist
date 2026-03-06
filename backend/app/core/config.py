@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Quick Response Suggestions: Player chat helpers
     gemini_quick_response_model: str = "gemini-2.0-flash-lite"
     
+    # Cloud Storage (optional — local-only when unset)
+    gcs_bucket: Optional[str] = None
+
     # Logging
     log_level: str = "INFO"
     
