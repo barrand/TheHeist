@@ -8,8 +8,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Hold button to fill tank. Release when full—overflow = fail.
 class FuelPumpMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const FuelPumpMinigame({super.key, required this.difficulty});
+  const FuelPumpMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<FuelPumpMinigame> createState() => _FuelPumpMinigameState();
@@ -139,7 +140,10 @@ class _FuelPumpMinigameState extends State<FuelPumpMinigame>
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('FILLED!', Icons.local_gas_station, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('FILLED!', Icons.local_gas_station, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return buildFailScreen(_resetGame);

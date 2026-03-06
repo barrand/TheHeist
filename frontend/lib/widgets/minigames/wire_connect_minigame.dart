@@ -6,8 +6,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class WireConnectMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const WireConnectMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const WireConnectMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<WireConnectMinigame> createState() => _WireConnectMinigameState();
@@ -136,7 +137,10 @@ class _WireConnectMinigameState extends State<WireConnectMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('CONNECTED!', Icons.check_circle, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('CONNECTED!', Icons.check_circle, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     return Column(

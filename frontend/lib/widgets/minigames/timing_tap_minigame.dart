@@ -5,8 +5,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class TimingTapMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const TimingTapMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const TimingTapMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<TimingTapMinigame> createState() => _TimingTapMinigameState();
@@ -97,7 +98,10 @@ class _TimingTapMinigameState extends State<TimingTapMinigame> with SingleTicker
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('PERFECT STEAL!', Icons.check_circle, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('PERFECT STEAL!', Icons.check_circle, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     return Column(

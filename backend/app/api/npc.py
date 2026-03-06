@@ -4,7 +4,6 @@ Handle NPC conversations with cover fit score system
 """
 
 import logging
-import time
 from fastapi import APIRouter, HTTPException
 
 from app.models.npc import (
@@ -12,7 +11,6 @@ from app.models.npc import (
     StartConversationResponse,
     ConversationChatRequest,
     ConversationChatResponse,
-    CooldownStatusResponse,
     QuickResponseOption,
     # Legacy
     ChatRequest,
@@ -52,22 +50,12 @@ async def start_conversation(request: StartConversationRequest) -> StartConversa
         
         # Get player difficulty
         player = room.players.get(request.player_id)
-        difficulty = getattr(player, 'difficulty', 'easy') if player else 'easy'
+        difficulty = getattr(player, 'difficulty', 'medium') if player else 'medium'
         
         # Find NPC
         npc = game_state.get_npc_by_id(request.npc_id)
         if not npc:
             raise HTTPException(status_code=404, detail=f"NPC {request.npc_id} not found")
-        
-        # Check cooldown
-        in_cooldown, remaining = npc_service.check_cooldown(
-            request.player_id, request.npc_id, game_state
-        )
-        if in_cooldown:
-            raise HTTPException(
-                status_code=429,
-                detail=f"NPC is cooling down. Try again in {remaining} seconds."
-            )
         
         # Start conversation
         greeting, quick_responses, suspicion = npc_service.start_conversation(
@@ -231,30 +219,6 @@ async def conversation_chat(request: ConversationChatRequest) -> ConversationCha
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/cooldown-status/{npc_id}", response_model=CooldownStatusResponse)
-async def get_cooldown_status(
-    npc_id: str,
-    room_code: str,
-    player_id: str,
-) -> CooldownStatusResponse:
-    """Check if a player is in cooldown for a specific NPC"""
-    try:
-        npc_service = get_npc_conversation_service()
-        game_state_mgr = get_game_state_manager()
-        
-        game_state = game_state_mgr.get_game_state(room_code)
-        if not game_state:
-            return CooldownStatusResponse(in_cooldown=False)
-        
-        in_cooldown, remaining = npc_service.check_cooldown(player_id, npc_id, game_state)
-        
-        return CooldownStatusResponse(
-            in_cooldown=in_cooldown,
-            cooldown_remaining_seconds=remaining if in_cooldown else None,
-        )
-    except Exception as e:
-        logger.error(f"Error checking cooldown: {e}")
-        return CooldownStatusResponse(in_cooldown=False)
 
 
 # ============================================================

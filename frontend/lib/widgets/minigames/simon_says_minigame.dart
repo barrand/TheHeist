@@ -6,8 +6,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class SimonSaysMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const SimonSaysMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const SimonSaysMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<SimonSaysMinigame> createState() => _SimonSaysMinigameState();
@@ -160,7 +161,10 @@ class _SimonSaysMinigameState extends State<SimonSaysMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('HACKED!', Icons.check_circle, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('HACKED!', Icons.check_circle, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     if (_gameFailed) {

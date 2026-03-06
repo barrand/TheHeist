@@ -9,8 +9,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Tap threats on camera feeds. Avoid decoys (civilians). Missed threats or wrong taps = fail.
 class WhackAThreatMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const WhackAThreatMinigame({super.key, required this.difficulty});
+  const WhackAThreatMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<WhackAThreatMinigame> createState() => _WhackAThreatMinigameState();
@@ -210,7 +211,10 @@ class _WhackAThreatMinigameState extends State<WhackAThreatMinigame>
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('CLEAR!', Icons.visibility, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('CLEAR!', Icons.visibility, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return Center(

@@ -7,8 +7,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Tap the facial expression that matches the situation. Read the room!
 class EmotionMatchingMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const EmotionMatchingMinigame({super.key, required this.difficulty});
+  const EmotionMatchingMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<EmotionMatchingMinigame> createState() => _EmotionMatchingMinigameState();
@@ -127,7 +128,10 @@ class _EmotionMatchingMinigameState extends State<EmotionMatchingMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('CONVINCED!', Icons.face, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('CONVINCED!', Icons.face, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return buildFailScreen(_resetGame);

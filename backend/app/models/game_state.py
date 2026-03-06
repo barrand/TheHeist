@@ -190,7 +190,6 @@ class GameState(BaseModel):
     # NPC conversation tracking
     achieved_outcomes: Dict[str, List[str]] = Field(default_factory=dict, description="player_id -> [outcome_ids] (persists across cooldowns)")
     npc_suspicion: Dict[str, Dict[str, int]] = Field(default_factory=dict, description="player_id -> {npc_id -> suspicion_level 0-5}")
-    npc_cooldowns: Dict[str, Dict[str, float]] = Field(default_factory=dict, description="player_id -> {npc_id -> cooldown_expiry_timestamp}")
     chosen_covers: Dict[str, Dict[str, str]] = Field(default_factory=dict, description="player_id -> {npc_id -> cover_id}")
     
     def get_tasks_for_role(self, role: str) -> List[Task]:

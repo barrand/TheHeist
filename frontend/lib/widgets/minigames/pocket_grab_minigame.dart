@@ -8,8 +8,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Hand moves fast at top; tap when it aligns with the object in the pocket to grab.
 class PocketGrabMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const PocketGrabMinigame({super.key, required this.difficulty});
+  const PocketGrabMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<PocketGrabMinigame> createState() => _PocketGrabMinigameState();
@@ -163,7 +164,10 @@ class _PocketGrabMinigameState extends State<PocketGrabMinigame>
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('GOT IT!', Icons.back_hand, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('GOT IT!', Icons.back_hand, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return Center(

@@ -6,8 +6,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class DialSafeMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const DialSafeMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const DialSafeMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<DialSafeMinigame> createState() => _DialSafeMinigameState();
@@ -83,7 +84,10 @@ class _DialSafeMinigameState extends State<DialSafeMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('CRACKED!', Icons.lock_open, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('CRACKED!', Icons.lock_open, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     return Column(

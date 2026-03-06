@@ -9,8 +9,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Watch out for decoys - wrong taps cost time!
 class TagEvidenceMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const TagEvidenceMinigame({super.key, required this.difficulty});
+  const TagEvidenceMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<TagEvidenceMinigame> createState() => _TagEvidenceMinigameState();
@@ -194,7 +195,10 @@ class _TagEvidenceMinigameState extends State<TagEvidenceMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('SCENE CLEAN!', Icons.verified_user, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('SCENE CLEAN!', Icons.verified_user, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return Center(

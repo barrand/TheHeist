@@ -11,7 +11,6 @@ import logging
 import random
 import json
 import re
-import time
 from typing import Optional, List, Dict, Tuple
 import requests
 
@@ -33,8 +32,6 @@ SUSPICION_TABLE = {
     2: {"easy": 1, "medium": 2, "hard": 2},
     1: {"easy": 2, "medium": 3, "hard": 3},
 }
-
-COOLDOWN_DURATION_SECONDS = 60  # Same for all difficulties
 
 # Max turns before the NPC ends the conversation (tighter = more tension)
 MAX_TURNS = {"easy": 8, "medium": 10, "hard": 10}
@@ -125,16 +122,6 @@ class NPCConversationService:
         
         Returns: (greeting, quick_responses, suspicion)
         """
-        # Check cooldown
-        cooldowns = game_state.npc_cooldowns.get(player_id, {})
-        if npc.id in cooldowns and time.time() < cooldowns[npc.id]:
-            remaining = int(cooldowns[npc.id] - time.time())
-            return (
-                f"I'm busy right now. Give me some space. (Cooldown: {remaining}s remaining)",
-                [],
-                0,
-            )
-        
         # Find the chosen cover
         cover = next((c for c in npc.cover_options if c.cover_id == cover_id), None)
         if not cover:
@@ -223,18 +210,12 @@ class NPCConversationService:
             dismissal = self._generate_failure_dismissal(npc, session, player_text, difficulty)
             session.add_message(dismissal, is_player=False)
             
-            # Set cooldown
-            cooldown_until = time.time() + COOLDOWN_DURATION_SECONDS
-            if player_id not in game_state.npc_cooldowns:
-                game_state.npc_cooldowns[player_id] = {}
-            game_state.npc_cooldowns[player_id][npc.id] = cooldown_until
-            
             # Clean up session
             del self.sessions[(player_id, npc.id)]
             
             logger.info(f"Conversation FAILED: {player_id} -> {npc.id} (suspicion reached 5)")
             
-            return (dismissal, [], 5, delta, [], True, cooldown_until, [], False)
+            return (dismissal, [], 5, delta, [], True, None, [], False)
         
         # 2) Turn limit reached -- NPC ends the conversation naturally
         turn_count = len([m for m in session.conversation_history if m['role'] == 'player'])
@@ -243,15 +224,10 @@ class NPCConversationService:
             dismissal = "It's been lovely chatting, but I really must get back to my duties. Perhaps we can talk another time."
             session.add_message(dismissal, is_player=False)
             
-            cooldown_until = time.time() + COOLDOWN_DURATION_SECONDS
-            if player_id not in game_state.npc_cooldowns:
-                game_state.npc_cooldowns[player_id] = {}
-            game_state.npc_cooldowns[player_id][npc.id] = cooldown_until
-            
             del self.sessions[(player_id, npc.id)]
             
             logger.info(f"Conversation timed out after {turn_count} turns (max {max_turns} for {difficulty})")
-            return (dismissal, [], new_suspicion, delta, [], True, cooldown_until, [], False)
+            return (dismissal, [], new_suspicion, delta, [], True, None, [], False)
         
         # Get NPC response with outcome detection + opening flag
         cover = next((c for c in npc.cover_options if c.cover_id == session.cover_id), None)
@@ -729,26 +705,6 @@ Set "opening" to false."""
         data = response.json()
         return data["candidates"][0]["content"]["parts"][0]["text"].strip()
     
-    def check_cooldown(self, player_id: str, npc_id: str, game_state: GameState) -> Tuple[bool, int]:
-        """Check if player is in cooldown for an NPC. Returns (in_cooldown, seconds_remaining)"""
-        cooldowns = game_state.npc_cooldowns.get(player_id, {})
-        if npc_id in cooldowns:
-            remaining = cooldowns[npc_id] - time.time()
-            if remaining > 0:
-                return True, int(remaining)
-            else:
-                # Cooldown expired - clean up
-                del cooldowns[npc_id]
-                # Also clean up suspicion and cover for fresh start
-                if player_id in game_state.npc_suspicion and npc_id in game_state.npc_suspicion[player_id]:
-                    del game_state.npc_suspicion[player_id][npc_id]
-                if player_id in game_state.chosen_covers and npc_id in game_state.chosen_covers[player_id]:
-                    del game_state.chosen_covers[player_id][npc_id]
-                # Clean up session
-                if (player_id, npc_id) in self.sessions:
-                    del self.sessions[(player_id, npc_id)]
-        
-        return False, 0
 
 
 # Global service instance

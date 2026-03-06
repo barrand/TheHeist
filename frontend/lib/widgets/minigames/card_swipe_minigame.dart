@@ -5,8 +5,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class CardSwipeMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const CardSwipeMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const CardSwipeMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<CardSwipeMinigame> createState() => _CardSwipeMinigameState();
@@ -153,7 +154,10 @@ class _CardSwipeMinigameState extends State<CardSwipeMinigame> with TickerProvid
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('ACCESS GRANTED!', Icons.check_circle, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('ACCESS GRANTED!', Icons.check_circle, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     return Column(

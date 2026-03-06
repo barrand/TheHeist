@@ -7,8 +7,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Match stolen items to the correct buyers. One wrong match = fail.
 class ItemMatchingMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const ItemMatchingMinigame({super.key, required this.difficulty});
+  const ItemMatchingMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<ItemMatchingMinigame> createState() => _ItemMatchingMinigameState();
@@ -161,7 +162,10 @@ class _ItemMatchingMinigameState extends State<ItemMatchingMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('DEALS DONE!', Icons.handshake, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('DEALS DONE!', Icons.handshake, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return buildFailScreen(_resetGame);

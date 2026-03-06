@@ -9,8 +9,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Crossy Road–style driving: dodge obstacles by switching lanes.
 class SteeringObstacleMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const SteeringObstacleMinigame({super.key, required this.difficulty});
+  const SteeringObstacleMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<SteeringObstacleMinigame> createState() => _SteeringObstacleMinigameState();
@@ -193,7 +194,10 @@ class _SteeringObstacleMinigameState extends State<SteeringObstacleMinigame>
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('CLEAR!', Icons.directions_car, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('CLEAR!', Icons.directions_car, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return Center(

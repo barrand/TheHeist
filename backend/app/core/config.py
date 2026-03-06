@@ -57,11 +57,12 @@ def get_settings() -> Settings:
     Get cached application settings
     Use @lru_cache to load settings once and reuse across requests
     """
-    # Force load from .env file, ignoring environment variables
     import os
+    from pathlib import Path
     from dotenv import load_dotenv
-    
-    # Load .env and override any existing environment variables
-    load_dotenv("../.env", override=True)
-    
+
+    env_path = Path("../.env")
+    if env_path.exists():
+        load_dotenv(str(env_path), override=True)
+
     return Settings()

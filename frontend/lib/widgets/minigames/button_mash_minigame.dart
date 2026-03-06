@@ -6,8 +6,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class ButtonMashMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const ButtonMashMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const ButtonMashMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<ButtonMashMinigame> createState() => _ButtonMashMinigameState();
@@ -87,7 +88,10 @@ class _ButtonMashMinigameState extends State<ButtonMashMinigame> {
     final progress = _taps / _targetTaps;
     
     if (_gameWon) {
-      return buildWinScreen('SMASHED!', Icons.fitness_center, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('SMASHED!', Icons.fitness_center, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     if (_timeLeft <= 0 && !_gameWon) {

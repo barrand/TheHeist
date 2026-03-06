@@ -16,24 +16,22 @@ enum MinigameDifficulty {
   }
 }
 
-/// Minigame metadata
+/// Minigame metadata (display only — use MinigameRegistry.isImplemented to check playability)
 class MinigameInfo {
   final String id;
   final String name;
   final String description;
   final String roleId;
-  final bool isImplemented;
 
   const MinigameInfo({
     required this.id,
     required this.name,
     required this.description,
     required this.roleId,
-    this.isImplemented = false,
   });
 }
 
-/// Role with minigames
+/// Role with associated minigames
 class RoleMinigames {
   final String roleId;
   final String name;

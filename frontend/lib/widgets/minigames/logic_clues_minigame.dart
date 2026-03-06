@@ -5,8 +5,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class LogicCluesMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const LogicCluesMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const LogicCluesMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<LogicCluesMinigame> createState() => _LogicCluesMinigameState();
@@ -116,7 +117,10 @@ class _LogicCluesMinigameState extends State<LogicCluesMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('SOLVED!', Icons.psychology, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('SOLVED!', Icons.psychology, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     return Column(

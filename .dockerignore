@@ -1,9 +1,9 @@
 .git
 .env
-*.md
 .cursor/
 .vscode/
 .idea/
+README.md
 
 # Python artifacts
 __pycache__/

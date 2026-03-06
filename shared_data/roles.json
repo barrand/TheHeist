@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-26",
-  "description": "12 heist roles for The Heist game",
+  "last_updated": "2026-03-06",
+  "description": "12 heist roles for The Heist game — only implemented minigames listed",
   "roles": [
     {
       "role_id": "mastermind",
@@ -21,14 +21,6 @@
         {
           "id": "simon_says_sequence",
           "description": "Memorize and tap button pattern in correct order"
-        },
-        {
-          "id": "cipher_wheel_alignment",
-          "description": "Tap when spinning cipher symbols align correctly"
-        },
-        {
-          "id": "card_swipe",
-          "description": "Swipe keycard at correct speed (not too fast or slow)"
         }
       ]
     },
@@ -43,11 +35,7 @@
         },
         {
           "id": "lockpick_timing",
-          "description": "Tap pins when moving indicator hits green zone"
-        },
-        {
-          "id": "listen_for_clicks",
-          "description": "Tap when audio cue plays to find combination"
+          "description": "Drag pins to correct positions to unlock"
         }
       ]
     },
@@ -58,15 +46,11 @@
       "minigames": [
         {
           "id": "steering_obstacle_course",
-          "description": "Tilt phone or swipe to avoid obstacles while driving"
+          "description": "Dodge obstacles while driving to the target distance"
         },
         {
           "id": "fuel_pump",
           "description": "Hold button until tank is full, don't overflow"
-        },
-        {
-          "id": "parking_precision",
-          "description": "Tap brake when meter hits green zone to park perfectly"
         }
       ]
     },
@@ -78,14 +62,6 @@
         {
           "id": "badge_swipe",
           "description": "Swipe badge at correct speed to unlock door"
-        },
-        {
-          "id": "memory_matching",
-          "description": "Remember access codes shown briefly and enter them"
-        },
-        {
-          "id": "inventory_check",
-          "description": "Tap correct items in bag before time runs out"
         }
       ]
     },
@@ -95,16 +71,8 @@
       "description": "Social engineering expert who talks their way past security",
       "minigames": [
         {
-          "id": "timed_dialogue_choices",
-          "description": "Pick dialogue response before timer runs out"
-        },
-        {
           "id": "emotion_matching",
           "description": "Tap facial expression that matches the situation"
-        },
-        {
-          "id": "convincing_sequence",
-          "description": "Tap buttons in rhythm to be convincing"
         }
       ]
     },
@@ -114,16 +82,8 @@
       "description": "Physical security and intimidation specialist",
       "minigames": [
         {
-          "id": "takedown_timing",
-          "description": "Tap when moving indicator hits green zone for stealth takedown"
-        },
-        {
           "id": "button_mash_barrier",
           "description": "Rapidly tap button to break through barrier"
-        },
-        {
-          "id": "reaction_time",
-          "description": "Tap immediately when prompt appears"
         }
       ]
     },
@@ -133,16 +93,8 @@
       "description": "Surveillance and intelligence provider",
       "minigames": [
         {
-          "id": "spot_the_difference",
-          "description": "Find anomalies between two security camera feeds"
-        },
-        {
           "id": "whack_a_mole_threats",
           "description": "Tap threats as they appear on multiple camera feeds"
-        },
-        {
-          "id": "pattern_memorization",
-          "description": "Watch guard patrol pattern and repeat the sequence"
         }
       ]
     },
@@ -153,15 +105,7 @@
       "minigames": [
         {
           "id": "item_matching",
-          "description": "Drag and match items to correct buyers"
-        },
-        {
-          "id": "haggling_slider",
-          "description": "Stop slider at best price point during negotiation"
-        },
-        {
-          "id": "quality_inspection",
-          "description": "Tap all defects in forgery before time runs out"
+          "description": "Drag and match stolen items to correct buyers"
         }
       ]
     },
@@ -173,14 +117,6 @@
         {
           "id": "climbing_rhythm",
           "description": "Tap in rhythm with beat to climb silently"
-        },
-        {
-          "id": "laser_maze_timing",
-          "description": "Tap to advance when lasers clear your path"
-        },
-        {
-          "id": "balance_meter",
-          "description": "Tilt phone to keep balance meter centered"
         },
         {
           "id": "doodle_climb",
@@ -200,10 +136,6 @@
         {
           "id": "tap_evidence_markers",
           "description": "Tap all evidence markers in scene before time runs out"
-        },
-        {
-          "id": "trash_disposal",
-          "description": "Drag items to trash bin quickly"
         }
       ]
     },
@@ -217,12 +149,8 @@
           "description": "Tap when shrinking circle reaches center for perfect steal"
         },
         {
-          "id": "quick_pocket_search",
-          "description": "Drag items from pocket rapidly without detection"
-        },
-        {
-          "id": "distraction_meter",
-          "description": "Swipe to steal when target looks away"
+          "id": "pocket_grab",
+          "description": "Tap when hand aligns with the object in the pocket"
         }
       ]
     }

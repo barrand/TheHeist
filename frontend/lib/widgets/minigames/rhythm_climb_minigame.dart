@@ -6,8 +6,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class RhythmClimbMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const RhythmClimbMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const RhythmClimbMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<RhythmClimbMinigame> createState() => _RhythmClimbMinigameState();
@@ -114,7 +115,10 @@ class _RhythmClimbMinigameState extends State<RhythmClimbMinigame> with SingleTi
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('REACHED THE TOP!', Icons.check_circle, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('REACHED THE TOP!', Icons.check_circle, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     return Column(

@@ -9,6 +9,7 @@ import '../services/room_service.dart';
 import '../services/websocket_service.dart';
 import '../widgets/common/top_toast.dart';
 import 'room_lobby_screen.dart';
+import 'minigames/minigame_hub_screen.dart';
 
 /// Landing Page - First screen of the app
 /// Users can create a new room or join an existing one
@@ -362,6 +363,19 @@ class _LandingPageState extends State<LandingPage> {
               ),
               
               SizedBox(height: AppDimensions.spaceLG),
+              
+              if (AppConfig.debugMode)
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MinigameHubScreen()),
+                  ),
+                  icon: const Icon(Icons.gamepad, size: 14),
+                  label: const Text('Minigame Hub', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textTertiary,
+                  ),
+                ),
             ],
           ),
         ),

@@ -8,8 +8,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Swipe over fingerprints to wipe them clean.
 class WipePrintsMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const WipePrintsMinigame({super.key, required this.difficulty});
+  const WipePrintsMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<WipePrintsMinigame> createState() => _WipePrintsMinigameState();
@@ -218,7 +219,10 @@ class _WipePrintsMinigameState extends State<WipePrintsMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('CLEAN!', Icons.cleaning_services, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('CLEAN!', Icons.cleaning_services, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return buildFailScreen(_resetGame);

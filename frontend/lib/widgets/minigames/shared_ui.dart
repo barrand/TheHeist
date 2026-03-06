@@ -15,7 +15,16 @@ Widget buildStatsBar(String left, String right) {
   );
 }
 
-Widget buildWinScreen(String message, IconData icon, VoidCallback onReset) {
+/// Win screen shown when a minigame is completed.
+///
+/// - In prototype/hub (onSuccess == null): shows "Play Again" → calls [onReset].
+/// - In-game (onSuccess != null): shows "Complete Task" → calls [onSuccess].
+Widget buildWinScreen(
+  String message,
+  IconData icon,
+  VoidCallback onReset, {
+  VoidCallback? onSuccess,
+}) {
   return Center(
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -31,17 +40,30 @@ Widget buildWinScreen(String message, IconData icon, VoidCallback onReset) {
           ),
         ),
         const SizedBox(height: 40),
-        ElevatedButton.icon(
-          onPressed: onReset,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Play Again'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.bgSecondary,
-            foregroundColor: AppColors.textPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            textStyle: const TextStyle(fontSize: 18),
+        if (onSuccess != null)
+          ElevatedButton.icon(
+            onPressed: onSuccess,
+            icon: const Icon(Icons.check_circle),
+            label: const Text('Complete Task'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          )
+        else
+          ElevatedButton.icon(
+            onPressed: onReset,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Play Again'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.bgSecondary,
+              foregroundColor: AppColors.textPrimary,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              textStyle: const TextStyle(fontSize: 18),
+            ),
           ),
-        ),
       ],
     ),
   );

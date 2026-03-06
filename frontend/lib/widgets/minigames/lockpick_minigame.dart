@@ -6,8 +6,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 
 class LockpickMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
-  
-  const LockpickMinigame({super.key, required this.difficulty});
+  final VoidCallback? onSuccess;
+
+  const LockpickMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<LockpickMinigame> createState() => _LockpickMinigameState();
@@ -86,7 +87,10 @@ class _LockpickMinigameState extends State<LockpickMinigame> {
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('UNLOCKED!', Icons.lock_open, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('UNLOCKED!', Icons.lock_open, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     
     return Column(

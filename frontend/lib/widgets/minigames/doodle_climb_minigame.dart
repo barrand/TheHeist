@@ -9,8 +9,9 @@ import 'package:the_heist/widgets/minigames/shared_ui.dart';
 /// Doodle Jump-style climbing minigame. Bounce off ledges to scale the building.
 class DoodleClimbMinigame extends StatefulWidget {
   final MinigameDifficulty difficulty;
+  final VoidCallback? onSuccess;
 
-  const DoodleClimbMinigame({super.key, required this.difficulty});
+  const DoodleClimbMinigame({super.key, required this.difficulty, this.onSuccess});
 
   @override
   State<DoodleClimbMinigame> createState() => _DoodleClimbMinigameState();
@@ -253,7 +254,10 @@ class _DoodleClimbMinigameState extends State<DoodleClimbMinigame>
   @override
   Widget build(BuildContext context) {
     if (_gameWon) {
-      return buildWinScreen('ROOFTOP!', Icons.roofing, _resetGame);
+      return PopScope(
+        canPop: widget.onSuccess == null,
+        child: buildWinScreen('ROOFTOP!', Icons.roofing, _resetGame, onSuccess: widget.onSuccess),
+      );
     }
     if (_gameOver) {
       return Center(
