@@ -114,6 +114,7 @@ class ParsedTask:
     npc_id: Optional[str] = None
     target_outcomes: List[str] = field(default_factory=list)
     handoff_item: Optional[str] = None
+    search_items: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -483,6 +484,13 @@ class ScenarioValidator:
                     if handoff_item_match:
                         handoff_item = handoff_item_match.group(1)
 
+                # Extract search items for search tasks
+                search_items = []
+                if task_type == 'search':
+                    search_items_match = re.search(r'^\s*-\s+\*Search Items:\*\s+(.+?)$', task_text, re.MULTILINE)
+                    if search_items_match:
+                        search_items = re.findall(r'`([^`]+)`', search_items_match.group(1))
+
                 self.tasks[task_id] = ParsedTask(
                     id=task_id,
                     role=role_name,
@@ -493,7 +501,8 @@ class ScenarioValidator:
                     minigame_id=minigame_id,
                     npc_id=npc_id,
                     target_outcomes=target_outcomes,
-                    handoff_item=handoff_item
+                    handoff_item=handoff_item,
+                    search_items=search_items
                 )
     
     def validate_all(self) -> ValidationReport:
@@ -878,9 +887,11 @@ class ScenarioValidator:
             issues.append(f"Only {info_count} info share task(s) (minimum 2 recommended)")
         
         if issues:
+            # Near-miss (2 handoffs) is advisory; 0-1 handoffs is more concerning
+            level = ValidationLevel.ADVISORY if handoff_count >= 2 else ValidationLevel.IMPORTANT
             self.report.add_issue(ValidationIssue(
                 rule_number=17,
-                level=ValidationLevel.IMPORTANT,
+                level=level,
                 title="Insufficient Cross-Role Interaction",
                 message="Not enough collaborative tasks between roles",
                 details=issues,
@@ -1051,6 +1062,7 @@ class ScenarioValidator:
                 type=task.type,
                 target_outcomes=getattr(task, 'target_outcomes', []),
                 search_items=getattr(task, 'search_items', []),
+                handoff_item=getattr(task, 'handoff_item', None),
             )
         
         # Run simulation

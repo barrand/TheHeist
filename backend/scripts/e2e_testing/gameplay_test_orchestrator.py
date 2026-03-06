@@ -135,6 +135,16 @@ class GameplayTestOrchestrator:
         validator = ScenarioValidator(scenario_file)
         validator.parse_file()
         
+        # Initialize result early so it can be returned on validation failure
+        result = GameplayTestResult(
+            scenario_file=str(scenario_file),
+            scenario_name=scenario_file.stem,
+            player_count=len(validator.roles) if validator.roles else 0,
+            difficulty=difficulty,
+            status="UNKNOWN",
+            turns_taken=0
+        )
+        
         # Validate scenario BEFORE testing - abort if critical issues found
         logger.info("Validating scenario before E2E test...")
         validation_report = validator.validate_all()
@@ -148,7 +158,7 @@ class GameplayTestOrchestrator:
             for issue in critical_issues:
                 logger.error(f"   • [Rule {issue.rule_number}] {issue.title}")
                 if issue.details:
-                    for detail in issue.details[:3]:  # Show first 3 details
+                    for detail in issue.details[:3]:
                         logger.error(f"     - {detail}")
             logger.error(f"")
             logger.error(f"Fix the scenario generator to produce valid scenarios before E2E testing.")
@@ -163,6 +173,8 @@ class GameplayTestOrchestrator:
         # Extract roles from parsed data
         roles = validator.roles if validator.roles else []
         scenario_name = scenario_file.stem
+        result.scenario_name = scenario_name
+        result.player_count = len(roles)
         
         # Extract actual scenario ID from file content (e.g., museum_gala_vault)
         import re
@@ -174,16 +186,6 @@ class GameplayTestOrchestrator:
         logger.info(f"Scenario: {scenario_name}")
         logger.info(f"Roles: {roles}")
         logger.info(f"Difficulty: {difficulty}")
-        
-        # Initialize result
-        result = GameplayTestResult(
-            scenario_file=str(scenario_file),
-            scenario_name=scenario_name,
-            player_count=len(roles),
-            difficulty=difficulty,
-            status="UNKNOWN",
-            turns_taken=0
-        )
         
         try:
             # Create room
@@ -733,6 +735,14 @@ class GameplayTestOrchestrator:
         
         elif decision.action == "complete_task":
             if decision.target_task:
+                task_def = bot.state.available_tasks.get(decision.target_task, {})
+                task_loc = task_def.get("location")
+                if task_loc and bot.state.current_location != task_loc:
+                    logger.info(
+                        f"   -> {bot.player_name} moving to {task_loc} "
+                        f"for task {decision.target_task}"
+                    )
+                    await bot.move_to_location(task_loc)
                 success = await bot.complete_task(decision.target_task)
                 if success:
                     if bot.role not in result.tasks_completed_per_role:
@@ -747,6 +757,14 @@ class GameplayTestOrchestrator:
                 if not task:
                     logger.error(f"Task {decision.target_task} not found in available tasks")
                     return ActionOutcome.SYSTEM_FAILURE
+                
+                task_loc = task.get("location")
+                if task_loc and bot.state.current_location != task_loc:
+                    logger.info(
+                        f"   -> {bot.player_name} moving to {task_loc} "
+                        f"for NPC task {decision.target_task}"
+                    )
+                    await bot.move_to_location(task_loc)
                 
                 npc_id = task.get("npc_id")
                 if not npc_id:

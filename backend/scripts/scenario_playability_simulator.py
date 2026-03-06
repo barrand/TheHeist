@@ -14,7 +14,7 @@ Usage:
     sim.print_report(result)
 """
 
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from collections import defaultdict
 import random
@@ -29,6 +29,7 @@ class Task:
     type: str
     target_outcomes: List[str] = field(default_factory=list)
     search_items: List[str] = field(default_factory=list)
+    handoff_item: Optional[str] = None
 
 
 @dataclass
@@ -108,8 +109,13 @@ class PlayabilitySimulator:
     def _check_prerequisites(self, task: Task, player_state: PlayerState, 
                             global_completed: Set[str], 
                             global_outcomes: Set[str],
-                            global_items: Set[str]) -> bool:
-        """Check if all prerequisites for a task are met"""
+                            role_inventory: Dict[str, Set[str]]) -> bool:
+        """Check if all prerequisites for a task are met.
+        
+        Item prerequisites are checked against the role's own inventory first,
+        then against all inventories (another role may have handed it off).
+        """
+        all_items = set().union(*role_inventory.values()) if role_inventory else set()
         for prereq in task.prerequisites:
             if prereq['type'] == 'task':
                 if prereq['id'] not in global_completed:
@@ -118,24 +124,25 @@ class PlayabilitySimulator:
                 if prereq['id'] not in global_outcomes:
                     return False
             elif prereq['type'] == 'item':
-                if prereq['id'] not in global_items:
+                own = role_inventory.get(player_state.role, set())
+                if prereq['id'] not in own and prereq['id'] not in all_items:
                     return False
         return True
     
     def _update_available_tasks(self, players: Dict[str, PlayerState], 
                                 global_completed: Set[str],
                                 global_outcomes: Set[str],
-                                global_items: Set[str]):
+                                role_inventory: Dict[str, Set[str]]):
         """Update available tasks for all players based on current state"""
         for role, player in players.items():
             player.available_tasks = []
             
             for task_id in self.tasks_by_role[role]:
                 if task_id in global_completed:
-                    continue  # Already completed
+                    continue
                 
                 task = self.tasks[task_id]
-                if self._check_prerequisites(task, player, global_completed, global_outcomes, global_items):
+                if self._check_prerequisites(task, player, global_completed, global_outcomes, role_inventory):
                     player.available_tasks.append(task_id)
     
     def simulate(self, strategy: str = "round_robin", max_turns: int = 1000) -> PlayabilityResult:
@@ -159,8 +166,8 @@ class PlayabilitySimulator:
         
         # Global game state
         global_completed: Set[str] = set()
-        global_outcomes: Set[str] = set()  # Outcomes achieved from NPCs
-        global_items: Set[str] = set()  # Items collected
+        global_outcomes: Set[str] = set()
+        role_inventory: Dict[str, Set[str]] = {role: set() for role in self.roles}
         
         # Simulation loop
         turn = 0
@@ -170,7 +177,7 @@ class PlayabilitySimulator:
             turn += 1
             
             # Update available tasks for all players
-            self._update_available_tasks(players, global_completed, global_outcomes, global_items)
+            self._update_available_tasks(players, global_completed, global_outcomes, role_inventory)
             
             # Check if anyone has work
             active_players = [role for role, p in players.items() if p.has_work()]
@@ -179,7 +186,16 @@ class PlayabilitySimulator:
             if not active_players:
                 consecutive_idle_all += 1
                 if consecutive_idle_all > 3:
-                    result.add_issue(f"Deadlock at turn {turn}: No players have available tasks but {len(self.tasks) - len(global_completed)} tasks remain")
+                    remaining = len(self.tasks) - len(global_completed)
+                    remaining_by_role = {}
+                    for tid, t in self.tasks.items():
+                        if tid not in global_completed:
+                            remaining_by_role.setdefault(t.role, []).append(tid)
+                    detail = ", ".join(f"{r}: {tids}" for r, tids in remaining_by_role.items())
+                    result.add_issue(
+                        f"Deadlock at turn {turn}: No players have available tasks "
+                        f"but {remaining} tasks remain ({detail})"
+                    )
                     break
                 continue
             else:
@@ -187,12 +203,10 @@ class PlayabilitySimulator:
             
             # Select a player to complete a task
             if strategy == "round_robin":
-                # Pick player with work in round-robin order
                 current_player_role = active_players[turn % len(active_players)]
             elif strategy == "random":
                 current_player_role = random.choice(active_players)
             elif strategy == "greedy":
-                # Pick player with most tasks available
                 current_player_role = max(active_players, key=lambda r: len(players[r].available_tasks))
             else:
                 current_player_role = active_players[0]
@@ -200,7 +214,7 @@ class PlayabilitySimulator:
             current_player = players[current_player_role]
             
             # Pick a task for this player to complete
-            task_id = current_player.available_tasks[0]  # Could be randomized
+            task_id = current_player.available_tasks[0]
             task = self.tasks[task_id]
             
             # Complete the task
@@ -211,13 +225,15 @@ class PlayabilitySimulator:
             
             # Simulate outcomes/items from task completion
             if task.type == 'npc_llm':
-                # Add the real outcome IDs this task unlocks
                 for outcome_id in getattr(task, 'target_outcomes', []):
                     global_outcomes.add(outcome_id)
             if task.type == 'search':
-                # Add items discovered by this search task
                 for item_id in getattr(task, 'search_items', []):
-                    global_items.add(item_id)
+                    role_inventory[current_player_role].add(item_id)
+            if task.type == 'handoff' and task.handoff_item:
+                # Remove item from source role's inventory; it's now "transferred"
+                # and available globally for prerequisite checks
+                role_inventory[current_player_role].discard(task.handoff_item)
             
             # Track idle turns for other players
             for role, player in players.items():
