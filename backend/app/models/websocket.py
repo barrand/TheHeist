@@ -109,6 +109,7 @@ class GameStartedMessage(BaseModel):
     """Broadcast when host starts game"""
     type: Literal["game_started"] = "game_started"
     scenario: str = Field(..., description="Scenario being played")
+    experience_id: str = Field(..., description="Unique key for this scenario+roles combo, used for image paths")
     objective: str = Field(..., description="Main objective")
     your_tasks: List[Dict] = Field(..., description="Tasks assigned to this player")
     npcs: List[Dict] = Field(default_factory=list, description="All NPCs in the scenario")

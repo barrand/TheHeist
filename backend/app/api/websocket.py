@@ -431,17 +431,17 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
                     "message": msg,
                 })
 
-            logger.info(f"🎨 Starting image generation for {scenario}...")
+            logger.info(f"🎨 Starting image generation for {cache_base}...")
             success = await generate_all_images_for_experience(
-                scenario, experience_dict,
+                cache_base, experience_dict,
                 cache_name=cache_base,
                 broadcast=_img_broadcast,
             )
             
             if success:
-                logger.info(f"✅ Image generation complete for {scenario}")
+                logger.info(f"✅ Image generation complete for {cache_base}")
             else:
-                logger.warning(f"⚠️ Image generation had errors for {scenario}, continuing anyway")
+                logger.warning(f"⚠️ Image generation had errors for {cache_base}, continuing anyway")
         else:
             logger.info(f"⏭️  Skipping image generation (E2E testing mode)")
         
@@ -454,6 +454,7 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
             game_started = GameStartedMessage(
                 type="game_started",
                 scenario=scenario,
+                experience_id=cache_base,
                 objective=game_state.objective,
                 your_tasks=[task.model_dump(mode='json') for task in player_tasks],
                 npcs=[npc.model_dump(mode='json') for npc in game_state.npcs],

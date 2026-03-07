@@ -205,6 +205,7 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
         builder: (_) => GameScreen(
           wsService: widget.wsService,
           scenario: msg['scenario'],
+          experienceId: msg['experience_id'] ?? msg['scenario'],
           objective: msg['objective'],
           yourTasks: msg['your_tasks'] ?? [],
           playerRole: _myRole,

@@ -78,9 +78,9 @@ async def _generate_images(entry: dict) -> bool:
         "npcs": [npc.model_dump() for npc in game_state.npcs],
     }
 
-    logger.info(f"  Generating images for {scenario_id}...")
+    logger.info(f"  Generating images for {cache_base}...")
     ok = await generate_all_images_for_experience(
-        scenario_id,
+        cache_base,
         experience_dict,
         cache_name=cache_base,
         broadcast=lambda msg: logger.info(f"    {msg}"),

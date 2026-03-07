@@ -196,20 +196,31 @@ class ProceduralGraphGenerator:
         if self.config.seed is not None:
             random.seed(self.config.seed)
         self._role_minigames: Dict[str, List[str]] = _load_role_minigames()
+        self._role_mg_index: Dict[str, int] = {}
 
     def _pick_minigame(self, role: str) -> str:
-        """Return a valid minigame ID for the given role.
+        """Return a valid minigame ID for the given role, cycling through
+        available minigames round-robin to avoid repetition.
 
         Uses the role-specific list from roles.json. Falls back to the union
         of all valid minigame IDs (_all) if the role has no specific list.
         Never uses hardcoded IDs that aren't in roles.json.
         """
         role_mgs = self._role_minigames.get(role, [])
-        if role_mgs:
-            return random.choice(role_mgs)
-        # Role not found or no minigames — use union of all valid IDs
-        all_mgs = self._role_minigames.get("_all", ["wire_connecting"])
-        return random.choice(all_mgs)
+        if not role_mgs:
+            role_mgs = self._role_minigames.get("_all", ["wire_connecting"])
+
+        # Shuffle on first access so the starting point varies per generation
+        if role not in self._role_mg_index:
+            role_mgs_copy = list(role_mgs)
+            random.shuffle(role_mgs_copy)
+            self._role_minigames[role] = role_mgs_copy
+            self._role_mg_index[role] = 0
+
+        idx = self._role_mg_index[role]
+        pick = self._role_minigames[role][idx % len(self._role_minigames[role])]
+        self._role_mg_index[role] = idx + 1
+        return pick
 
     def _role_can_do_minigame(self, role: str) -> bool:
         """Return False for roles (like Mastermind) that have no minigames in roles.json."""

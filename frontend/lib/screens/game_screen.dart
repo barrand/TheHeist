@@ -17,6 +17,7 @@ import 'package:the_heist/widgets/minigames/minigame_registry.dart';
 class GameScreen extends StatefulWidget {
   final WebSocketService wsService;
   final String scenario;
+  final String experienceId;
   final String objective;
   final List<dynamic> yourTasks;
   final String? playerRole;
@@ -31,6 +32,7 @@ class GameScreen extends StatefulWidget {
     super.key,
     required this.wsService,
     required this.scenario,
+    required this.experienceId,
     required this.objective,
     required this.yourTasks,
     this.playerRole,
@@ -318,7 +320,7 @@ class _GameScreenState extends State<GameScreen> {
           objectives: npcObjectives,
           apiKey: '',
           difficulty: difficulty,
-          scenarioId: widget.scenario,
+          scenarioId: widget.experienceId,
           roomCode: widget.roomCode,
           playerId: _myPlayerId,
           targetOutcomes: targetOutcomes,
@@ -547,13 +549,14 @@ class _GameScreenState extends State<GameScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Location image (16:9 aspect ratio)
-          Container(
+          // Location image (16:9 aspect ratio, responsive height)
+          AspectRatio(
+            aspectRatio: 16 / 7,
+            child: Container(
             width: double.infinity,
-            height: 150,
             color: AppColors.bgPrimary,
             child: Image.network(
-              '${AppConfig.backendUrl}/api/images/${widget.scenario}/location/$_currentLocationId',
+              '${AppConfig.backendUrl}/api/images/${widget.experienceId}/location/$_currentLocationId',
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 // Fallback to gradient if image not available
@@ -578,6 +581,7 @@ class _GameScreenState extends State<GameScreen> {
                 );
               },
             ),
+          ),
           ),
           
           // Location name and controls row
@@ -1089,6 +1093,7 @@ class _GameScreenState extends State<GameScreen> {
     final String description = task['description'] ?? 'Unknown task';
     final String status = task['status'] ?? 'locked';
     final String type = task['type'] ?? 'minigame';
+    final String? taskLocation = task['location'] as String?;
     
     final bool isAvailable = status == 'available';
     final bool isCompleted = status == 'completed';
@@ -1119,7 +1124,6 @@ class _GameScreenState extends State<GameScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Task description -- this is the only text the player needs
             Row(
               children: [
                 if (isCompleted)
@@ -1144,8 +1148,25 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ],
             ),
+
+            if (taskLocation != null && taskLocation.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.location_on, color: isGrayedOut ? AppColors.textSecondary.withAlpha(128) : AppColors.accentPrimary, size: 13),
+                    SizedBox(width: 4),
+                    Text(
+                      taskLocation,
+                      style: TextStyle(
+                        color: isGrayedOut ? AppColors.textSecondary.withAlpha(128) : AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             
-            // Prerequisites (shown for locked tasks)
             if (!isAvailable && !isCompleted)
               _buildPrerequisites(task),
             
@@ -1264,42 +1285,77 @@ class _GameScreenState extends State<GameScreen> {
     return SizedBox.shrink();
   }
   
-  /// NPC_LLM task: talk button only
+  /// NPC_LLM task: talk button or travel hint
   Widget _buildNpcTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    if (!canAct) return SizedBox.shrink();
-    
+    final String status = task['status'] ?? 'locked';
+    final bool isCompleted = status == 'completed';
+    if (isCompleted) return SizedBox.shrink();
+
     final npcName = task['npc_name'] as String? ?? 'NPC';
+    final taskLocation = task['location'] as String?;
+    final bool isAvailable = status == 'available';
+    final bool needsTravel = isAvailable && !canAct && taskLocation != null;
+
+    if (!canAct && !needsTravel) return SizedBox.shrink();
     
     return Padding(
       padding: EdgeInsets.only(top: AppDimensions.spaceSM),
       child: SizedBox(
         width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () => _openNpcConversationForTask(task),
-          icon: Icon(Icons.chat_bubble_outline, size: 16),
-          label: Text(
-            'Talk to $npcName',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.accentPrimary,
-            padding: EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
+        child: needsTravel
+            ? OutlinedButton.icon(
+                onPressed: () {
+                  _currentLocation = taskLocation;
+                  widget.wsService.moveLocation(taskLocation);
+                  _showSnackBar('Traveled to $taskLocation', color: AppColors.success);
+                },
+                icon: Icon(Icons.directions_walk, size: 16, color: AppColors.accentPrimary),
+                label: Text(
+                  'Travel to $taskLocation',
+                  style: TextStyle(
+                    color: AppColors.accentPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.accentPrimary),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              )
+            : ElevatedButton.icon(
+                onPressed: () => _openNpcConversationForTask(task),
+                icon: Icon(Icons.chat_bubble_outline, size: 16),
+                label: Text(
+                  'Talk to $npcName',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentPrimary,
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
       ),
     );
   }
   
   /// MINIGAME task: launches the real minigame widget.
   Widget _buildMinigameTaskContent(Map<String, dynamic> task, {required bool canAct}) {
-    if (!canAct) return const SizedBox.shrink();
+    final String status = task['status'] ?? 'locked';
+    final bool isCompleted = status == 'completed';
+    if (isCompleted) return const SizedBox.shrink();
 
     final taskId = task['id'] ?? '';
     final minigameId = task['minigame_id'] as String? ?? '';
+    final taskLocation = task['location'] as String?;
+    final bool isAvailable = status == 'available';
+    final bool needsTravel = isAvailable && !canAct && taskLocation != null;
+
+    if (!canAct && !needsTravel) return const SizedBox.shrink();
 
     // Resolve player difficulty for this game session
     final myPlayer = _allPlayers.firstWhere(
@@ -1316,24 +1372,45 @@ class _GameScreenState extends State<GameScreen> {
       padding: EdgeInsets.only(top: AppDimensions.spaceSM),
       child: SizedBox(
         width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () => _launchMinigame(minigameId, taskId, difficulty),
-          icon: const Icon(Icons.gamepad, size: 16),
-          label: Text(
-            MinigameRegistry.isImplemented(minigameId)
-                ? 'Start Minigame'
-                : 'Complete Task',
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.accentPrimary,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
+        child: needsTravel
+            ? OutlinedButton.icon(
+                onPressed: () {
+                  _currentLocation = taskLocation;
+                  widget.wsService.moveLocation(taskLocation);
+                  _showSnackBar('Traveled to $taskLocation', color: AppColors.success);
+                },
+                icon: Icon(Icons.directions_walk, size: 16, color: AppColors.accentPrimary),
+                label: Text(
+                  'Travel to $taskLocation',
+                  style: TextStyle(
+                    color: AppColors.accentPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.accentPrimary),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              )
+            : ElevatedButton.icon(
+                onPressed: () => _launchMinigame(minigameId, taskId, difficulty),
+                icon: const Icon(Icons.gamepad, size: 16),
+                label: Text(
+                  MinigameRegistry.isImplemented(minigameId)
+                      ? 'Start Minigame'
+                      : 'Complete Task',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
       ),
     );
   }
@@ -1535,7 +1612,7 @@ class _GameScreenState extends State<GameScreen> {
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(7),
                                       child: Image.network(
-                                        '${AppConfig.backendUrl}/api/images/${widget.scenario}/item/${item.id}',
+                                        '${AppConfig.backendUrl}/api/images/${widget.experienceId}/item/${item.id}',
                                         fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) {
                                           // Fallback icon if image not available
@@ -1700,7 +1777,7 @@ class _GameScreenState extends State<GameScreen> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(7),
                                 child: Image.network(
-                                  '${AppConfig.backendUrl}/api/images/${widget.scenario}/item/${item.id}',
+                                  '${AppConfig.backendUrl}/api/images/${widget.experienceId}/item/${item.id}',
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     // Fallback icon if image not available
