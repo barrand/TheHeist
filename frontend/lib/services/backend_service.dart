@@ -263,6 +263,7 @@ class StartConversationResult {
   final String greeting;
   final List<QuickResponseOption> quickResponses;
   final int suspicion;
+  final int rapport;
   final String npcName;
   final String npcRole;
   final String coverLabel;
@@ -273,6 +274,7 @@ class StartConversationResult {
     required this.greeting,
     required this.quickResponses,
     required this.suspicion,
+    required this.rapport,
     required this.npcName,
     required this.npcRole,
     required this.coverLabel,
@@ -287,6 +289,7 @@ class StartConversationResult {
           .map((e) => QuickResponseOption.fromJson(e as Map<String, dynamic>))
           .toList(),
       suspicion: json['suspicion'] ?? 0,
+      rapport: json['rapport'] ?? json['suspicion'] ?? 3,
       npcName: json['npc_name'] ?? '',
       npcRole: json['npc_role'] ?? '',
       coverLabel: json['cover_label'] ?? '',
@@ -301,6 +304,8 @@ class ConversationTurnResult {
   final List<String> outcomes;
   final int suspicion;
   final int suspicionDelta;
+  final int rapport;
+  final int rapportDelta;
   final List<QuickResponseOption> quickResponses;
   final bool conversationFailed;
   final List<String> completedTasks;
@@ -311,6 +316,8 @@ class ConversationTurnResult {
     required this.outcomes,
     required this.suspicion,
     required this.suspicionDelta,
+    required this.rapport,
+    required this.rapportDelta,
     required this.quickResponses,
     required this.conversationFailed,
     this.completedTasks = const [],
@@ -323,6 +330,8 @@ class ConversationTurnResult {
       outcomes: List<String>.from(json['outcomes'] ?? []),
       suspicion: json['suspicion'] ?? 0,
       suspicionDelta: json['suspicion_delta'] ?? 0,
+      rapport: json['rapport'] ?? json['suspicion'] ?? 3,
+      rapportDelta: json['rapport_delta'] ?? json['suspicion_delta'] ?? 0,
       quickResponses: (json['quick_responses'] as List<dynamic>? ?? [])
           .map((e) => QuickResponseOption.fromJson(e as Map<String, dynamic>))
           .toList(),

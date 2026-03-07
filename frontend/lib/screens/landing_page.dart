@@ -10,6 +10,7 @@ import '../services/websocket_service.dart';
 import '../widgets/common/top_toast.dart';
 import 'room_lobby_screen.dart';
 import 'minigames/minigame_hub_screen.dart';
+import 'npc_test_screen.dart';
 
 /// Landing Page - First screen of the app
 /// Users can create a new room or join an existing one
@@ -364,7 +365,7 @@ class _LandingPageState extends State<LandingPage> {
               
               SizedBox(height: AppDimensions.spaceLG),
               
-              if (AppConfig.debugMode)
+              if (AppConfig.debugMode) ...[
                 TextButton.icon(
                   onPressed: () => Navigator.push(
                     context,
@@ -376,6 +377,18 @@ class _LandingPageState extends State<LandingPage> {
                     foregroundColor: AppColors.textTertiary,
                   ),
                 ),
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NpcTestScreen()),
+                  ),
+                  icon: const Icon(Icons.chat, size: 14),
+                  label: const Text('NPC Tester', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textTertiary,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

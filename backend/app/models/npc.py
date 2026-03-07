@@ -62,7 +62,8 @@ class StartConversationResponse(BaseModel):
     """Response when starting a conversation"""
     greeting: str = Field(..., description="NPC's opening line based on cover story")
     quick_responses: List[QuickResponseOption] = Field(..., description="First set of quick response options")
-    suspicion: int = Field(default=0, description="Starting suspicion level (always 0)")
+    suspicion: int = Field(default=0, description="DEPRECATED: kept for compat. Now represents rapport (0-5).")
+    rapport: int = Field(default=3, description="Starting rapport level (0-5)")
     npc_name: str = Field(..., description="NPC display name")
     npc_role: str = Field(..., description="NPC role")
     cover_label: str = Field(..., description="Chosen cover story description")
@@ -82,13 +83,15 @@ class ConversationChatResponse(BaseModel):
     """Response from a conversation turn"""
     npc_response: str = Field(..., description="NPC's dialogue")
     outcomes: List[str] = Field(default_factory=list, description="Outcome IDs achieved this turn")
-    suspicion: int = Field(..., description="Current suspicion level 0-5")
-    suspicion_delta: int = Field(default=0, description="How much suspicion changed this turn")
+    suspicion: int = Field(default=0, description="DEPRECATED: kept for compat. Now mirrors rapport.")
+    suspicion_delta: int = Field(default=0, description="DEPRECATED: kept for compat. Now mirrors rapport_delta*10.")
+    rapport: int = Field(default=3, description="Current rapport level 0-5")
+    rapport_delta: int = Field(default=0, description="Rapport change this turn (x10 for precision)")
     quick_responses: List[QuickResponseOption] = Field(default_factory=list, description="Next set of quick responses (empty if conversation ended)")
-    conversation_failed: bool = Field(default=False, description="True if suspicion hit 5")
+    conversation_failed: bool = Field(default=False, description="True if rapport dropped too low")
     cooldown_until: Optional[float] = Field(None, description="Epoch timestamp when cooldown expires (if failed)")
     completed_tasks: List[str] = Field(default_factory=list, description="Task IDs that auto-completed from outcomes")
-    opening_given: bool = Field(default=False, description="True if the NPC just gave an opening hint (debug info)")
+    opening_given: bool = Field(default=False, description="DEPRECATED: always False in rapport system")
 
 
 class CooldownStatusResponse(BaseModel):

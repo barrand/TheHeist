@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     # Experience Generation: Long-form heist creation (handled by scripts)
     gemini_experience_model: str = "gemini-2.5-flash"
     # NPC Interactions: Real-time dialogue during gameplay
-    gemini_npc_model: str = "gemini-2.0-flash-lite"
+    gemini_npc_model: str = "gemini-2.0-flash"
     # Quick Response Suggestions: Player chat helpers
-    gemini_quick_response_model: str = "gemini-2.0-flash-lite"
+    gemini_quick_response_model: str = "gemini-2.0-flash"
     
     # Cloud Storage (optional — local-only when unset)
     gcs_bucket: Optional[str] = None

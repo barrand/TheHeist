@@ -53,7 +53,8 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   List<Map<String, dynamic>> _infoObjectives = [];
   List<Map<String, dynamic>> _actionObjectives = [];
   Set<String> _achievedOutcomes = {};
-  int _suspicion = 0;
+  int _suspicion = 0;  // legacy compat
+  int _rapport = 3;
   bool _isLoading = false;
   bool _conversationFailed = false;
   bool _allOutcomesAchieved = false;
@@ -107,6 +108,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         _selectedCoverId = cover.coverId;
         _coverLabel = result.coverLabel;
         _suspicion = result.suspicion;
+        _rapport = result.rapport;
         _quickResponses = result.quickResponses;
         _infoObjectives = result.infoObjectives;
         _actionObjectives = result.actionObjectives;
@@ -165,6 +167,7 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
           isOpening: result.openingGiven,
         ));
         _suspicion = result.suspicion;
+        _rapport = result.rapport;
         _quickResponses = result.quickResponses;
         _conversationFailed = result.conversationFailed;
         _isLoading = false;
@@ -543,15 +546,26 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   }
 
   Widget _buildSuspicionMeter() {
-    // Suspicion 0-5 maps to 0.0-1.0 position on the bar
-    final position = (_suspicion / 5.0).clamp(0.0, 1.0);
-    // Color interpolates from green -> yellow -> red
-    final color = _suspicion <= 1
-        ? AppColors.success
-        : _suspicion <= 3
-            ? AppColors.warning
+    // Rapport 0-5 maps to 0.0-1.0 fill (high = good)
+    final fill = (_rapport / 5.0).clamp(0.0, 1.0);
+    final color = _rapport >= 4
+        ? AppColors.accentPrimary
+        : _rapport >= 2
+            ? Color(0xFFFFB800)
             : AppColors.danger;
-    
+
+    final moodLabel = _rapport >= 5
+        ? 'Trusting'
+        : _rapport >= 4
+            ? 'Comfortable'
+            : _rapport >= 3
+                ? 'Warming Up'
+                : _rapport >= 2
+                    ? 'Guarded'
+                    : _rapport >= 1
+                        ? 'Tense'
+                        : 'Done';
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: AppDimensions.containerPadding, vertical: 10),
       decoration: BoxDecoration(
@@ -560,15 +574,12 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
       ),
       child: Column(
         children: [
-          // Labels row: Relaxed ... Cautious ... Suspicious  +  difficulty badge
           Row(
             children: [
-              Text('Relaxed', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.success)),
-              Spacer(),
-              Text('Cautious', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.warning)),
-              Spacer(),
-              Text('Suspicious', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.danger)),
+              Text('RAPPORT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 1)),
               SizedBox(width: 8),
+              Text(moodLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+              Spacer(),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
@@ -583,62 +594,34 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
             ],
           ),
           SizedBox(height: 6),
-          // Gradient bar with indicator
           LayoutBuilder(
             builder: (context, constraints) {
               final barWidth = constraints.maxWidth;
-              final indicatorOffset = position * (barWidth - 12); // 12 = indicator width
-              
+              final fillWidth = fill * barWidth;
+
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Track background with gradient
+                  // Background track
                   Container(
                     height: 6,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3),
+                      color: AppColors.bgPrimary,
+                    ),
+                  ),
+                  // Filled portion
+                  AnimatedContainer(
+                    duration: Duration(milliseconds: 400),
+                    curve: Curves.easeOut,
+                    height: 6,
+                    width: fillWidth,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(3),
                       gradient: LinearGradient(
-                        colors: [AppColors.success, Color(0xFFFFB800), AppColors.danger],
-                        stops: [0.0, 0.5, 1.0],
+                        colors: [color.withAlpha(180), color],
                       ),
-                    ),
-                  ),
-                  // Dark overlay for unfilled portion
-                  Positioned(
-                    left: position * barWidth,
-                    right: 0,
-                    child: Container(
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: AppColors.bgPrimary.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.horizontal(
-                          left: position > 0 ? Radius.zero : Radius.circular(3),
-                          right: Radius.circular(3),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Triangle indicator
-                  Positioned(
-                    left: indicatorOffset,
-                    top: -6,
-                    child: CustomPaint(
-                      size: Size(12, 6),
-                      painter: _TrianglePainter(color: color),
-                    ),
-                  ),
-                  // Dot indicator on the bar
-                  Positioned(
-                    left: indicatorOffset + 3,
-                    top: 0,
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: color,
-                        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4)],
-                      ),
+                      boxShadow: [BoxShadow(color: color.withAlpha(60), blurRadius: 6)],
                     ),
                   ),
                 ],
