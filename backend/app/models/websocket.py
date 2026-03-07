@@ -115,6 +115,7 @@ class GameStartedMessage(BaseModel):
     npcs: List[Dict] = Field(default_factory=list, description="All NPCs in the scenario")
     locations: List[Dict] = Field(default_factory=list, description="All locations in the scenario")
     starting_location: str = Field(..., description="Player's starting location")
+    briefing: Dict = Field(default_factory=dict, description="Team briefing with overview and role_briefings")
 
 
 class TaskUnlockedMessage(BaseModel):
@@ -131,6 +132,7 @@ class TaskCompletedMessage(BaseModel):
     by_player_name: str = Field(..., description="Player's name")
     newly_available: List[str] = Field(default_factory=list, description="Newly unlocked task IDs")
     achieved_outcomes: List[str] = Field(default_factory=list, description="Outcome IDs achieved by this task")
+    completion_flavor: str = Field(default="", description="Earpiece-style text for other players")
 
 
 class NPCResponseMessage(BaseModel):
@@ -153,6 +155,13 @@ class PlayerMovedMessage(BaseModel):
 class AllTasksCompleteMessage(BaseModel):
     """Broadcast when all players have completed all tasks — unlocks the Escape Now button"""
     type: Literal["all_tasks_complete"] = "all_tasks_complete"
+
+
+class NarrativeBeatMessage(BaseModel):
+    """A narrative story beat broadcast to players at key moments"""
+    type: Literal["narrative_beat"] = "narrative_beat"
+    text: str = Field(..., description="The narrative text to display")
+    trigger: str = Field(..., description="What triggered this beat")
 
 
 class GameEndedMessage(BaseModel):

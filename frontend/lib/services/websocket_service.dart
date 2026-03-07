@@ -35,6 +35,7 @@ class WebSocketService {
   final _scenarioSelectedController = StreamController<Map<String, dynamic>>.broadcast();
   final _lobbyAdvancedController = StreamController<Map<String, dynamic>>.broadcast();
   final _lobbyRetreatedController = StreamController<Map<String, dynamic>>.broadcast();
+  final _narrativeBeatController = StreamController<Map<String, dynamic>>.broadcast();
   
   // Store the latest room state for late subscribers
   Map<String, dynamic>? _latestRoomState;
@@ -54,6 +55,7 @@ class WebSocketService {
   Stream<Map<String, dynamic>> get scenarioSelected => _scenarioSelectedController.stream;
   Stream<Map<String, dynamic>> get lobbyAdvanced => _lobbyAdvancedController.stream;
   Stream<Map<String, dynamic>> get lobbyRetreated => _lobbyRetreatedController.stream;
+  Stream<Map<String, dynamic>> get narrativeBeat => _narrativeBeatController.stream;
   
   // Get the latest room state (useful for late subscribers)
   Map<String, dynamic>? get latestRoomState => _latestRoomState;
@@ -301,6 +303,10 @@ class WebSocketService {
           _lobbyRetreatedController.add(message);
           debugPrint('⬅️ Lobby retreated to lobby');
           break;
+        case 'narrative_beat':
+          _narrativeBeatController.add(message);
+          debugPrint('📖 Narrative beat: ${message['text']}');
+          break;
         case 'scenario_generating':
           _scenarioGeneratingController.add(message);
           debugPrint('🎲 Scenario generating: ${message['message']}');
@@ -346,5 +352,6 @@ class WebSocketService {
     _scenarioSelectedController.close();
     _lobbyAdvancedController.close();
     _lobbyRetreatedController.close();
+    _narrativeBeatController.close();
   }
 }

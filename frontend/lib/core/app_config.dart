@@ -5,7 +5,7 @@
 /// - Debug logging
 class AppConfig {
   /// Enable debug features (prepopulated names, fit scores, etc.)
-  static const bool debugMode = true;
+  static const bool debugMode = false;
 
   /// Default player names in debug mode
   static const String debugMastermindName = 'Mike MM';

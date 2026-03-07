@@ -46,7 +46,8 @@ class ChatMessage(BaseModel):
 class QuickResponseOption(BaseModel):
     """A quick response option with hidden fit score"""
     text: str = Field(..., description="Response text shown to player")
-    fit_score: int = Field(..., description="Cover fit score 1-5 (shown in debug mode)")
+    fit_score: int = Field(..., description="Rapport delta * 10 (shown in debug mode)")
+    is_wildcard: bool = Field(False, description="Whether this is a funny/risky wildcard option")
 
 
 class StartConversationRequest(BaseModel):

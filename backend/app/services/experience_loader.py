@@ -166,7 +166,8 @@ class ExperienceLoader:
                 information_known.append(NPCInfoItem(
                     info_id=info.get('info_id'),
                     confidence=info['confidence'],
-                    description=info['description']
+                    description=info['description'],
+                    secret_value=info.get('secret_value'),
                 ))
             
             # Parse actions available
@@ -175,7 +176,8 @@ class ExperienceLoader:
                 actions_available.append(NPCAction(
                     action_id=action['action_id'],
                     confidence=action['confidence'],
-                    description=action['description']
+                    description=action['description'],
+                    secret_value=action.get('secret_value'),
                 ))
             
             # Parse cover options
@@ -251,6 +253,8 @@ class ExperienceLoader:
                 type=TaskType(task_data['type']),
                 description=task_data['description'],
                 detail_description=task_data.get('detail_description', ''),
+                act=task_data.get('act', 1),
+                completion_flavor=task_data.get('completion_flavor', ''),
                 assigned_role=task_data['assigned_role'],
                 assigned_player_id=task_data.get('assigned_player_id'),
                 location=task_data['location'],
@@ -282,10 +286,12 @@ class ExperienceLoader:
             npcs=npcs,
             items_by_location=dict(items_by_location),
             timeline_minutes=data.get('timeline_minutes', 120),
-            elapsed_minutes=0
+            elapsed_minutes=0,
+            briefing=data.get('briefing', {}),
+            narrative_beats=data.get('narrative_beats', [])
         )
         
-        logger.info(f"✅ Loaded scenario from JSON: {len(tasks)} tasks, {len(npcs)} NPCs, {len(locations)} locations")
+        logger.info(f"✅ Loaded scenario from JSON: {len(tasks)} tasks, {len(npcs)} NPCs, {len(locations)} locations, {len(game_state.narrative_beats)} narrative beats")
         
         return game_state
     
@@ -518,13 +524,20 @@ class ExperienceLoader:
                 continue
             line = line.lstrip('- ').strip()
             
-            # Try format with ID: `info_id` CONFIDENCE: description
+            # Try format with ID: `info_id` CONFIDENCE: description | SECRET: "value"
             id_match = re.match(r'`(\w+)`\s+(HIGH|MEDIUM|LOW|VERY HIGH):\s*(.+)', line)
             if id_match:
+                desc_part = id_match.group(3).strip()
+                secret_val = None
+                secret_match = re.search(r'\|\s*SECRET:\s*"([^"]*)"', desc_part)
+                if secret_match:
+                    secret_val = secret_match.group(1)
+                    desc_part = desc_part[:secret_match.start()].strip()
                 items.append(NPCInfoItem(
                     info_id=id_match.group(1),
                     confidence=id_match.group(2),
-                    description=id_match.group(3).strip()
+                    description=desc_part,
+                    secret_value=secret_val,
                 ))
             else:
                 # Format without ID: CONFIDENCE: description (flavor only)
@@ -559,13 +572,20 @@ class ExperienceLoader:
                 continue
             line = line.lstrip('- ').strip()
             
-            # Format: `action_id` CONFIDENCE: description
+            # Format: `action_id` CONFIDENCE: description | SECRET: "value"
             action_match = re.match(r'`(\w+)`\s+(HIGH|MEDIUM|LOW|VERY HIGH):\s*(.+)', line)
             if action_match:
+                desc_part = action_match.group(3).strip()
+                secret_val = None
+                secret_match = re.search(r'\|\s*SECRET:\s*"([^"]*)"', desc_part)
+                if secret_match:
+                    secret_val = secret_match.group(1)
+                    desc_part = desc_part[:secret_match.start()].strip()
                 actions.append(NPCAction(
                     action_id=action_match.group(1),
                     confidence=action_match.group(2),
-                    description=action_match.group(3).strip()
+                    description=desc_part,
+                    secret_value=secret_val,
                 ))
         
         return actions

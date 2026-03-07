@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:the_heist/core/app_config.dart';
 import 'package:the_heist/core/theme/app_colors.dart';
@@ -65,6 +66,15 @@ class _GameScreenState extends State<GameScreen> {
   List<Map<String, dynamic>> _allLocations = [];
   String? _myPlayerId;
 
+  // Narrative overlay state
+  String? _narrativeBeatText;
+  bool _narrativeBeatVisible = false;
+  Timer? _narrativeBeatTimer;
+
+  // Earpiece messages (completion flavor from other players)
+  final List<String> _earpieceMessages = [];
+  Timer? _earpieceFadeTimer;
+
   /// Returns the ID of the current location, falling back to a slugified name.
   String get _currentLocationId {
     final loc = _allLocations.firstWhere(
@@ -108,6 +118,8 @@ class _GameScreenState extends State<GameScreen> {
     widget.wsService.taskCompleted.listen((message) {
       final taskId = message['task_id'];
       final playerName = message['by_player_name'];
+      final playerId = message['by_player_id'];
+      final completionFlavor = message['completion_flavor'] as String? ?? '';
       
       setState(() {
         _completedTaskIds.add(taskId);
@@ -123,7 +135,20 @@ class _GameScreenState extends State<GameScreen> {
         }
       });
       
-      _showSnackBar('$playerName completed a task!');
+      // Show earpiece flavor text for OTHER players' completions
+      if (completionFlavor.isNotEmpty && playerId != _myPlayerId) {
+        _showEarpieceMessage(completionFlavor);
+      } else {
+        _showSnackBar('$playerName completed a task!');
+      }
+    });
+
+    // Narrative beats
+    widget.wsService.narrativeBeat.listen((message) {
+      final text = message['text'] as String? ?? '';
+      if (text.isNotEmpty) {
+        _showNarrativeBeat(text);
+      }
     });
     
     // Task unlocked (new task available for me)
@@ -360,6 +385,53 @@ class _GameScreenState extends State<GameScreen> {
   }
   
   
+  static const _actNames = {1: 'INFILTRATION', 2: 'EXECUTION', 3: 'EXTRACTION'};
+
+  /// Build act header widget only when transitioning to a new act
+  Widget _buildActHeader(int act) {
+    return Padding(
+      padding: EdgeInsets.only(top: AppDimensions.spaceSM, bottom: AppDimensions.spaceXS),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.accentPrimary.withAlpha(30),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: AppColors.accentPrimary.withAlpha(60)),
+            ),
+            child: Text(
+              'ACT ${act} — ${_actNames[act] ?? ''}',
+              style: TextStyle(
+                color: AppColors.accentPrimary,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+          SizedBox(width: 8),
+          Expanded(child: Divider(color: AppColors.accentPrimary.withAlpha(40))),
+        ],
+      ),
+    );
+  }
+
+  /// Interleave act headers into a task list
+  List<Widget> _buildTasksWithActHeaders(List<Map<String, dynamic>> tasks, {required bool isAtCurrentLocation}) {
+    final widgets = <Widget>[];
+    int? lastAct;
+    for (final task in tasks) {
+      final act = task['act'] as int? ?? 1;
+      if (act != lastAct) {
+        widgets.add(_buildActHeader(act));
+        lastAct = act;
+      }
+      widgets.add(_buildTaskCard(task, isAtCurrentLocation: isAtCurrentLocation));
+    }
+    return widgets;
+  }
+
   String _formatRoleName(String role) {
     // Convert snake_case to Title Case
     return role.split('_').map((word) {
@@ -367,6 +439,42 @@ class _GameScreenState extends State<GameScreen> {
     }).join(' ');
   }
   
+  void _showNarrativeBeat(String text) {
+    _narrativeBeatTimer?.cancel();
+    setState(() {
+      _narrativeBeatText = text;
+      _narrativeBeatVisible = true;
+    });
+    _narrativeBeatTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _narrativeBeatVisible = false;
+        });
+      }
+    });
+  }
+
+  void _showEarpieceMessage(String text) {
+    setState(() {
+      _earpieceMessages.add(text);
+    });
+    _earpieceFadeTimer?.cancel();
+    _earpieceFadeTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted && _earpieceMessages.isNotEmpty) {
+        setState(() {
+          _earpieceMessages.removeAt(0);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _narrativeBeatTimer?.cancel();
+    _earpieceFadeTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_gameEnded) {
@@ -419,43 +527,45 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Top bar - Location & Progress
-            _buildTopBar(completedCount, totalTasks),
-            
-            // Scrollable content
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(AppDimensions.containerPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Team Objective
-                      _buildTeamObjective(),
-                      
-                      SizedBox(height: AppDimensions.spaceLG),
-                      
-                      // Who's here section
-                      _buildWhosHere(),
-                      
-                      SizedBox(height: AppDimensions.spaceLG),
-                      
-                      // Your Tasks header
-                      if (widget.playerRole != null) ...[
-                        Text(
-                          'YOUR TASKS (${_formatRoleName(widget.playerRole!)})',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        SizedBox(height: AppDimensions.spaceSM),
-                      ],
-                      
+            Column(
+              children: [
+                // Top bar - Location & Progress
+                _buildTopBar(completedCount, totalTasks),
+                
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.all(AppDimensions.containerPadding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Team Objective
+                          _buildTeamObjective(),
+                          
+                          SizedBox(height: AppDimensions.spaceLG),
+                          
+                          // Who's here section
+                          _buildWhosHere(),
+                          
+                          SizedBox(height: AppDimensions.spaceLG),
+                          
+                          // Your Tasks header
+                          if (widget.playerRole != null) ...[
+                            Text(
+                              'YOUR TASKS (${_formatRoleName(widget.playerRole!)})',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            SizedBox(height: AppDimensions.spaceSM),
+                          ],
+                          
                       // Ready to do here
                       if (tasksHere.isNotEmpty) ...[
                         Text(
@@ -468,7 +578,10 @@ class _GameScreenState extends State<GameScreen> {
                           ),
                         ),
                         SizedBox(height: AppDimensions.spaceSM),
-                        ...tasksHere.map((task) => _buildTaskCard(task, isAtCurrentLocation: true)),
+                        ..._buildTasksWithActHeaders(
+                          tasksHere..sort((a, b) => ((a['act'] as int?) ?? 1).compareTo((b['act'] as int?) ?? 1)),
+                          isAtCurrentLocation: true,
+                        ),
                       ],
                       
                       // Requires travel
@@ -484,54 +597,72 @@ class _GameScreenState extends State<GameScreen> {
                           ),
                         ),
                         SizedBox(height: AppDimensions.spaceSM),
-                        ...tasksElsewhere.map((task) => _buildTaskCard(task, isAtCurrentLocation: false)),
-                      ],
-                      
-                      // Completed section
-                      if (completedTasks.isNotEmpty) ...[
-                        SizedBox(height: AppDimensions.spaceMD),
-                        Divider(color: AppColors.borderSubtle),
-                        SizedBox(height: AppDimensions.spaceMD),
-                        InkWell(
-                          onTap: () {
-                            setState(() {
-                              _showCompletedTasks = !_showCompletedTasks;
-                            });
-                          },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '✅ COMPLETED (${completedTasks.length})',
-                                style: TextStyle(
-                                  color: AppColors.success,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              Icon(
-                                _showCompletedTasks ? Icons.expand_less : Icons.expand_more,
-                                color: AppColors.textSecondary,
-                              ),
-                            ],
-                          ),
+                        ..._buildTasksWithActHeaders(
+                          tasksElsewhere..sort((a, b) => ((a['act'] as int?) ?? 1).compareTo((b['act'] as int?) ?? 1)),
+                          isAtCurrentLocation: false,
                         ),
-                        if (_showCompletedTasks) ...[
-                          SizedBox(height: AppDimensions.spaceSM),
-                          ...completedTasks.map((task) => _buildTaskCard(task, isAtCurrentLocation: false)),
-                        ],
                       ],
-                      
-                      SizedBox(height: 80), // Space for bottom nav
-                    ],
+                          
+                          // Completed section
+                          if (completedTasks.isNotEmpty) ...[
+                            SizedBox(height: AppDimensions.spaceMD),
+                            Divider(color: AppColors.borderSubtle),
+                            SizedBox(height: AppDimensions.spaceMD),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _showCompletedTasks = !_showCompletedTasks;
+                                });
+                              },
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '✅ COMPLETED (${completedTasks.length})',
+                                    style: TextStyle(
+                                      color: AppColors.success,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                  Icon(
+                                    _showCompletedTasks ? Icons.expand_less : Icons.expand_more,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_showCompletedTasks) ...[
+                              SizedBox(height: AppDimensions.spaceSM),
+                              ...completedTasks.map((task) => _buildTaskCard(task, isAtCurrentLocation: false)),
+                            ],
+                          ],
+                          
+                          SizedBox(height: 80), // Space for bottom nav
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                
+                // Bottom navigation
+                _buildBottomNav(),
+              ],
             ),
-            
-            // Bottom navigation
-            _buildBottomNav(),
+
+            // Earpiece messages (bottom-left, above bottom nav)
+            if (_earpieceMessages.isNotEmpty)
+              Positioned(
+                left: AppDimensions.containerPadding,
+                right: AppDimensions.containerPadding,
+                bottom: 70,
+                child: _buildEarpieceOverlay(),
+              ),
+
+            // Narrative beat overlay (dramatic full-screen)
+            if (_narrativeBeatVisible && _narrativeBeatText != null)
+              _buildNarrativeBeatOverlay(),
           ],
         ),
       ),
@@ -938,6 +1069,73 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  Widget _buildNarrativeBeatOverlay() {
+    return AnimatedOpacity(
+      opacity: _narrativeBeatVisible ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 600),
+      child: GestureDetector(
+        onTap: () {
+          _narrativeBeatTimer?.cancel();
+          setState(() => _narrativeBeatVisible = false);
+        },
+        child: Container(
+          color: Colors.black.withOpacity(0.85),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                _narrativeBeatText ?? '',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.accentPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500,
+                  fontStyle: FontStyle.italic,
+                  height: 1.6,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEarpieceOverlay() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _earpieceMessages.map((msg) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusSM),
+            border: Border.all(color: AppColors.accentPrimary.withOpacity(0.4)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.headphones, color: AppColors.accentPrimary, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  msg,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   void _showMapDialog() {
     // Get location names from backend (populated on game start)
     final locationNames = _allLocations
@@ -1094,6 +1292,7 @@ class _GameScreenState extends State<GameScreen> {
     final String status = task['status'] ?? 'locked';
     final String type = task['type'] ?? 'minigame';
     final String? taskLocation = task['location'] as String?;
+    final String detailDescription = task['detail_description'] as String? ?? '';
     
     final bool isAvailable = status == 'available';
     final bool isCompleted = status == 'completed';
@@ -1148,6 +1347,21 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ],
             ),
+
+            // Scene-setting detail description (when available and task is active)
+            if (detailDescription.isNotEmpty && isAvailable && !isCompleted && type != 'info_share')
+              Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  detailDescription,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    height: 1.4,
+                  ),
+                ),
+              ),
 
             if (taskLocation != null && taskLocation.isNotEmpty)
               Padding(

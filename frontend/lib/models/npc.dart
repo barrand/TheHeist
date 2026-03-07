@@ -37,20 +37,23 @@ class CoverOption {
   }
 }
 
-/// Quick response option with debug fit score
+/// Quick response option with rapport delta
 class QuickResponseOption {
   final String text;
   final int fitScore;
+  final bool isWildcard;
 
   const QuickResponseOption({
     required this.text,
     required this.fitScore,
+    this.isWildcard = false,
   });
 
   factory QuickResponseOption.fromJson(Map<String, dynamic> json) {
     return QuickResponseOption(
       text: json['text'] ?? '',
-      fitScore: json['fit_score'] ?? 3,
+      fitScore: json['fit_score'] ?? 0,
+      isWildcard: json['is_wildcard'] ?? false,
     );
   }
 }

@@ -113,6 +113,12 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         _infoObjectives = result.infoObjectives;
         _actionObjectives = result.actionObjectives;
         _messages.add(ChatMessage(
+          id: '${DateTime.now().millisecondsSinceEpoch}_cover',
+          text: cover.description,
+          isPlayer: true,
+          timestamp: DateTime.now(),
+        ));
+        _messages.add(ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           text: result.greeting,
           isPlayer: false,
@@ -546,8 +552,6 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
   }
 
   Widget _buildSuspicionMeter() {
-    // Rapport 0-5 maps to 0.0-1.0 fill (high = good)
-    final fill = (_rapport / 5.0).clamp(0.0, 1.0);
     final color = _rapport >= 4
         ? AppColors.accentPrimary
         : _rapport >= 2
@@ -572,61 +576,35 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         color: AppColors.bgSecondary,
         border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Text('RAPPORT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 1)),
-              SizedBox(width: 8),
-              Text(moodLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-              Spacer(),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.bgTertiary,
-                  borderRadius: BorderRadius.circular(4),
+          // Rapport dots (5 circles)
+          for (int i = 1; i <= 5; i++) ...[
+            AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: i <= _rapport ? color : AppColors.bgPrimary,
+                border: Border.all(
+                  color: i <= _rapport ? color.withAlpha(200) : AppColors.borderSubtle,
+                  width: 1.5,
                 ),
-                child: Text(
-                  widget.difficulty.toUpperCase(),
-                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5),
-                ),
+                boxShadow: i <= _rapport
+                    ? [BoxShadow(color: color.withAlpha(80), blurRadius: 4)]
+                    : [],
               ),
-            ],
-          ),
-          SizedBox(height: 6),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final barWidth = constraints.maxWidth;
-              final fillWidth = fill * barWidth;
-
-              return Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Background track
-                  Container(
-                    height: 6,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(3),
-                      color: AppColors.bgPrimary,
-                    ),
-                  ),
-                  // Filled portion
-                  AnimatedContainer(
-                    duration: Duration(milliseconds: 400),
-                    curve: Curves.easeOut,
-                    height: 6,
-                    width: fillWidth,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(3),
-                      gradient: LinearGradient(
-                        colors: [color.withAlpha(180), color],
-                      ),
-                      boxShadow: [BoxShadow(color: color.withAlpha(60), blurRadius: 6)],
-                    ),
-                  ),
-                ],
-              );
-            },
+            ),
+            if (i < 5) SizedBox(width: 4),
+          ],
+          SizedBox(width: 10),
+          // Mood label
+          Expanded(
+            child: Text(
+              moodLabel,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
+            ),
           ),
         ],
       ),
@@ -672,20 +650,19 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
         ),
         child: Row(
           children: [
-            // Debug fit score (only visible in debug mode)
             if (AppConfig.debugMode)
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 margin: EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(
-                  color: _fitScoreColor(option.fitScore).withValues(alpha: 0.2),
+                  color: _rapportDeltaColor(option.fitScore).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  'fit:${option.fitScore}',
+                  '${_rapportDeltaLabel(option.fitScore)}${option.isWildcard ? " 🃏" : ""}',
                   style: TextStyle(
                     fontSize: 10, fontWeight: FontWeight.w700,
-                    color: _fitScoreColor(option.fitScore),
+                    color: _rapportDeltaColor(option.fitScore),
                   ),
                 ),
               ),
@@ -701,9 +678,14 @@ class _NPCConversationScreenState extends State<NPCConversationScreen> {
     );
   }
 
-  Color _fitScoreColor(int fit) {
-    if (fit >= 4) return AppColors.success;
-    if (fit == 3) return AppColors.warning;
+  String _rapportDeltaLabel(int fitScore) {
+    final delta = fitScore / 10.0;
+    return delta >= 0 ? '+${delta.toStringAsFixed(1)}' : delta.toStringAsFixed(1);
+  }
+
+  Color _rapportDeltaColor(int fitScore) {
+    if (fitScore > 0) return AppColors.success;
+    if (fitScore == 0) return AppColors.warning;
     return AppColors.danger;
   }
 

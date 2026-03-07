@@ -35,6 +35,7 @@ from app.models.websocket import (
     RoomStateMessage,
     AllTasksCompleteMessage,
     GameEndedMessage,
+    NarrativeBeatMessage,
 )
 
 logger = logging.getLogger(__name__)
@@ -459,10 +460,14 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
                 your_tasks=[task.model_dump(mode='json') for task in player_tasks],
                 npcs=[npc.model_dump(mode='json') for npc in game_state.npcs],
                 locations=[loc.model_dump(mode='json') for loc in game_state.locations],
-                starting_location=player.location
+                starting_location=player.location,
+                briefing=game_state.briefing,
             )
             logger.info(f"📍 Sending {len(game_state.locations)} locations to player {pid} (starting at {player.location})")
             await ws_manager.send_to_player(room_code, pid, game_started.model_dump(mode='json'))
+        
+        # Send game_start narrative beats after all players have received game_started
+        await _broadcast_narrative_beats(room_code, "game_start")
         
         logger.info(f"🎮 Game started in room {room_code} - scenario: {scenario}")
     
@@ -531,6 +536,13 @@ async def _broadcast_task_completed(
     room_manager = get_room_manager()
     game_state_manager = get_game_state_manager()
     
+    game_state = game_state_manager.get_game_state(room_code)
+    completion_flavor = ""
+    if game_state:
+        task_obj = game_state.tasks.get(task_id)
+        if task_obj:
+            completion_flavor = task_obj.completion_flavor or ""
+    
     task_completed = TaskCompletedMessage(
         type="task_completed",
         task_id=task_id,
@@ -538,6 +550,7 @@ async def _broadcast_task_completed(
         by_player_name=player_name,
         newly_available=newly_available,
         achieved_outcomes=achieved_outcomes or [],
+        completion_flavor=completion_flavor,
     )
     await ws_manager.broadcast_to_room(room_code, task_completed.model_dump(mode='json'))
     
@@ -561,10 +574,56 @@ async def _broadcast_task_completed(
     
     logger.info(f"✅ Task {task_id} completed by {player_name}, unlocked {len(newly_available)} tasks")
 
+    # Broadcast any narrative beats triggered by this task completion
+    await _broadcast_narrative_beats(room_code, f"task_completed:{task_id}")
+
+    # Detect act transitions: if this is the first task completed in a new act, broadcast
+    if game_state:
+        completed_task = game_state.tasks.get(task_id)
+        if completed_task:
+            current_act = completed_task.act
+            other_completed_in_act = any(
+                t.status.value == "completed" and t.id != task_id and t.act == current_act
+                for t in game_state.tasks.values()
+            )
+            if not other_completed_in_act and current_act > 1:
+                await _broadcast_narrative_beats(room_code, f"act_transition:{current_act}")
+
     # Check if every task is now done — if so, unlock the Escape Now button for all players
     if game_state_manager.check_all_tasks_complete(room_code):
         logger.info(f"🏁 All tasks complete in room {room_code} — broadcasting all_tasks_complete")
+        await _broadcast_narrative_beats(room_code, "all_tasks_complete")
         await ws_manager.broadcast_to_room(room_code, AllTasksCompleteMessage().model_dump(mode='json'))
+
+
+async def _broadcast_narrative_beats(room_code: str, trigger: str) -> None:
+    """Find and broadcast any narrative beats matching the given trigger."""
+    ws_manager = get_ws_manager()
+    game_state_manager = get_game_state_manager()
+
+    game_state = game_state_manager.get_game_state(room_code)
+    if not game_state or not game_state.narrative_beats:
+        return
+
+    for beat in game_state.narrative_beats:
+        if beat.get("trigger") != trigger:
+            continue
+        beat_msg = NarrativeBeatMessage(
+            text=beat["text"],
+            trigger=trigger,
+        )
+        audience = beat.get("audience", "all")
+        if audience == "all":
+            await ws_manager.broadcast_to_room(room_code, beat_msg.model_dump(mode='json'))
+        elif audience.startswith("role:"):
+            target_role = audience.split(":", 1)[1]
+            room_manager = get_room_manager()
+            room = room_manager.get_room(room_code)
+            if room:
+                for pid, p in room.players.items():
+                    if p.role == target_role:
+                        await ws_manager.send_to_player(room_code, pid, beat_msg.model_dump(mode='json'))
+        logger.info(f"📖 Narrative beat [{trigger}] → {audience}: {beat['text'][:60]}...")
 
 
 async def handle_escape(room_code: str, player_id: str) -> None:

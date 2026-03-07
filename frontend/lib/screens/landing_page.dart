@@ -365,6 +365,17 @@ class _LandingPageState extends State<LandingPage> {
               
               SizedBox(height: AppDimensions.spaceLG),
               
+              TextButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NpcTestScreen()),
+                ),
+                icon: const Icon(Icons.chat, size: 14),
+                label: const Text('NPC Tester', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textTertiary,
+                ),
+              ),
               if (AppConfig.debugMode) ...[
                 TextButton.icon(
                   onPressed: () => Navigator.push(
@@ -373,17 +384,6 @@ class _LandingPageState extends State<LandingPage> {
                   ),
                   icon: const Icon(Icons.gamepad, size: 14),
                   label: const Text('Minigame Hub', style: TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.textTertiary,
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const NpcTestScreen()),
-                  ),
-                  icon: const Icon(Icons.chat, size: 14),
-                  label: const Text('NPC Tester', style: TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.textTertiary,
                   ),

@@ -65,6 +65,7 @@ class NPCInfoItem:
     info_id: Optional[str]
     confidence: str  # "HIGH", "MEDIUM", "LOW"
     description: str
+    secret_value: Optional[str] = None
 
 
 @dataclass
@@ -72,6 +73,7 @@ class NPCAction:
     action_id: str
     confidence: str  # "HIGH", "MEDIUM", "LOW", "VERY HIGH"
     description: str
+    secret_value: Optional[str] = None
 
 
 @dataclass
@@ -112,6 +114,8 @@ class Task:
     prerequisites: List[Prerequisite] = field(default_factory=list)
     status: str = "locked"
     detail_description: str = ""
+    act: int = 1
+    completion_flavor: str = ""
     
     # Type-specific fields
     minigame_id: Optional[str] = None
@@ -134,6 +138,8 @@ class ScenarioGraph:
     npcs: List[NPC]
     tasks: List[Task]
     timeline_minutes: int = 120
+    briefing: Dict = field(default_factory=dict)
+    narrative_beats: List[Dict] = field(default_factory=list)
 
 
 @dataclass
@@ -303,6 +309,9 @@ class ProceduralGraphGenerator:
                 raise ValueError(f"Raw graph has unresolvable cycles: {remaining}")
             _p(f"  Cycles resolved via auto-fix")
 
+        # 6b. Assign acts based on task depth in prerequisite chains
+        _assign_acts(graph.tasks)
+
         # 7. Enrich item/NPC/task names and full NPC profiles via LLM.
         #    This rewrites NPC info IDs (placeholder → real LLM names) and updates
         #    task target_outcomes to match.
@@ -329,6 +338,9 @@ class ProceduralGraphGenerator:
                 _p(f"  Could not break {len(remaining)} cycle(s) — aborting")
                 raise ValueError(f"Post-enrichment cycles: {remaining}")
             _p(f"  Post-enrichment cycles resolved via auto-fix")
+
+        # 9. Narrative enrichment — briefing, beats, per-task flavor text
+        _enrich_narrative_with_llm(graph, role_ids, progress_fn=progress_fn)
 
         return graph
     
@@ -1426,6 +1438,49 @@ def _clean_llm_json(text: str) -> str:
     return text.strip()
 
 
+def _assign_acts(tasks: List["Task"]) -> None:
+    """Assign act numbers (1-3) to tasks based on prerequisite depth.
+
+    Act 1 (Infiltration): tasks at depth 0-1
+    Act 2 (Execution): tasks in the middle of chains
+    Act 3 (Extraction): tasks at the deepest level / escape tasks
+    """
+    depth: Dict[str, int] = {}
+    for t in tasks:
+        depth[t.id] = 0
+
+    changed = True
+    while changed:
+        changed = False
+        for t in tasks:
+            for prereq in t.prerequisites:
+                if prereq.type == "task" and prereq.id in depth:
+                    new_depth = depth[prereq.id] + 1
+                    if new_depth > depth[t.id]:
+                        depth[t.id] = new_depth
+                        changed = True
+
+    if not depth:
+        return
+
+    max_depth = max(depth.values()) if depth else 0
+    for t in tasks:
+        is_escape = getattr(t, "__dict__", {}).get("_is_escape", False)
+        d = depth.get(t.id, 0)
+        if is_escape or (max_depth > 2 and d >= max_depth):
+            t.act = 3
+        elif max_depth <= 2:
+            t.act = 2 if d > 0 else 1
+        else:
+            third = max_depth / 3.0
+            if d < third:
+                t.act = 1
+            elif d < 2 * third:
+                t.act = 2
+            else:
+                t.act = 3
+
+
 def _detect_cycles_raw(tasks: List["Task"]) -> List[str]:
     """Return a list of cycle descriptions found in the raw task prerequisite graph.
 
@@ -1584,8 +1639,14 @@ RULES:
 - `information_known`: Real, specific facts this NPC knows about the heist target. Each must have a
   named snake_case `id` that tasks can reference as a target outcome or prerequisite.
   Include 1-3 HIGH/MEDIUM/LOW items. Make the descriptions concrete (names, locations, times, codes).
+  CRITICAL: Each item MUST include a `secret_value` — the EXACT concrete data the NPC would reveal
+  (e.g., specific codes like "7-4-9-2", frequencies like "2.5 kHz, 7.8 kHz, 11.2 kHz",
+  names like "Marco Bianchi", times like "10:45 PM", locations like "behind the third painting").
+  The `description` says WHAT the NPC knows; the `secret_value` is the ACTUAL answer.
 - `actions_available`: What can players convince this NPC to DO? Each has a named snake_case `id`
   players unlock by talking to them. 0-2 items. If none, return empty array.
+  Each action MUST include a `secret_value` describing the specific commitment
+  (e.g., "Will disable east wing cameras at 10:45 PM for exactly 3 minutes").
 - `cover_options`: Exactly 3 player cover identities. Each has a `cover_id`, a one-sentence cover
   identity the player uses, and an `npc_reaction` note on how the NPC behaves differently.
 
@@ -1609,10 +1670,10 @@ Return ONLY this JSON (no markdown):
       "relationships": "...",
       "story_context": "...",
       "information_known": [
-        {{"id": "snake_case_outcome_id", "confidence": "HIGH", "description": "Specific fact..."}}
+        {{"id": "snake_case_outcome_id", "confidence": "HIGH", "description": "What the NPC knows about...", "secret_value": "The exact code/frequency/name/time"}}
       ],
       "actions_available": [
-        {{"id": "snake_case_action_id", "confidence": "HIGH", "description": "What they do when convinced..."}}
+        {{"id": "snake_case_action_id", "confidence": "HIGH", "description": "What they do when convinced...", "secret_value": "Specific commitment details"}}
       ],
       "cover_options": [
         {{"cover_id": "label", "description": "Player's cover identity sentence", "npc_reaction": "How NPC responds"}}
@@ -1673,6 +1734,7 @@ Return ONLY this JSON (no markdown):
                     info_id=info.get("id"),
                     confidence=info.get("confidence", "MEDIUM"),
                     description=info.get("description", ""),
+                    secret_value=info.get("secret_value"),
                 )
                 for info in enriched.get("information_known", [])
             ]
@@ -1681,6 +1743,7 @@ Return ONLY this JSON (no markdown):
                     action_id=action.get("id", "action"),
                     confidence=action.get("confidence", "MEDIUM"),
                     description=action.get("description", ""),
+                    secret_value=action.get("secret_value"),
                 )
                 for action in enriched.get("actions_available", [])
             ]
@@ -1693,18 +1756,17 @@ Return ONLY this JSON (no markdown):
                 for i, cover in enumerate(enriched.get("cover_options", []))
             ]
 
-            # Re-wire all npc_llm tasks that target this NPC to use the enriched real
-            # outcome IDs. The tasks were created with placeholder IDs like
-            # `security_guard_info_1`; enrichment replaces those with LLM-generated
-            # names like `vault_location`. Always overwrite so the two stay in sync.
+            # Re-wire npc_llm tasks to use enriched outcome IDs.
+            # Each task gets exactly ONE outcome so conversations are focused.
             if npc.information_known:
                 real_ids = [i.info_id for i in npc.information_known if i.info_id]
                 real_ids += [a.action_id for a in npc.actions_available if a.action_id]
                 if real_ids:
-                    for task in graph.tasks:
-                        if task.type == "npc_llm" and task.npc_id == npc.id:
-                            # Keep up to 2 outcomes; prefer info IDs over action IDs
-                            task.target_outcomes = real_ids[:min(2, len(real_ids))]
+                    npc_tasks = [t for t in graph.tasks if t.type == "npc_llm" and t.npc_id == npc.id]
+                    for i, task in enumerate(npc_tasks):
+                        # Round-robin: each task gets one unique outcome
+                        outcome_idx = i % len(real_ids)
+                        task.target_outcomes = [real_ids[outcome_idx]]
 
         logger.info(f"[enrichment] Enriched {len(npc_map)} NPCs with full profiles")
         enriched_names = [npc.name for npc in graph.npcs if npc.name != npc.id]
@@ -1712,6 +1774,124 @@ Return ONLY this JSON (no markdown):
     except Exception as e:
         logger.warning(f"[enrichment] NPC profile application failed: {e}")
         _p(f"Warning: NPC profile application failed ({e})")
+
+
+def _enrich_narrative_with_llm(graph: "ScenarioGraph", role_ids: List[str], progress_fn=None) -> None:
+    """3rd LLM enrichment call: narrative layer.
+
+    Produces briefing, narrative_beats, and per-task detail_description
+    and completion_flavor. Mutates the graph in-place.
+    """
+    try:
+        from config import GEMINI_API_KEY, GEMINI_EXPERIENCE_MODEL
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel(
+            model_name=GEMINI_EXPERIENCE_MODEL,
+            generation_config={"temperature": 0.9, "response_mime_type": "application/json"}
+        )
+    except Exception as e:
+        logger.warning(f"[narrative] LLM unavailable, skipping narrative enrichment: {e}")
+        return
+
+    _p = progress_fn or (lambda msg: None)
+
+    ACT_NAMES = {1: "Infiltration", 2: "Execution", 3: "Extraction"}
+    scenario_name = graph.scenario_id.replace("_", " ")
+    location_names = {loc.id: loc.name for loc in graph.locations}
+    roles_str = ", ".join(role_ids)
+    npc_names = {npc.id: npc.name for npc in graph.npcs}
+
+    tasks_ctx = [
+        {
+            "id": t.id,
+            "act": t.act,
+            "act_name": ACT_NAMES.get(t.act, "?"),
+            "type": t.type,
+            "role": t.assigned_role,
+            "description": t.description,
+            "location": location_names.get(t.location, t.location),
+            "npc_name": npc_names.get(t.npc_id, "") if t.npc_id else "",
+            "prereqs": [p.id for p in t.prerequisites if p.type == "task"],
+        }
+        for t in graph.tasks
+    ]
+
+    prompt = f"""You are a heist game narrative writer. Write the story layer for this heist scenario.
+
+SCENARIO: {scenario_name}
+OBJECTIVE: {graph.objective}
+ROLES: {roles_str}
+LOCATIONS: {", ".join(location_names.values())}
+
+TASK GRAPH (in execution order):
+{json.dumps(tasks_ctx, indent=2)}
+
+Write the following. Use second person ("you", "your earpiece crackles"). Reference teammates
+by role name (e.g. "the Hacker"), never by player name. NEVER reveal puzzle solutions, codes,
+or task mechanics. Escalate tension across acts.
+
+1. BRIEFING: A team briefing delivered before the heist starts.
+   - "overview": 2-3 dramatic sentences setting the scene for all players.
+   - "role_briefings": A dict mapping each role_id to 2-3 sentences explaining
+     that role's part of the plan and how they depend on teammates.
+
+2. NARRATIVE BEATS: 6-10 story moments broadcast to all players at key moments.
+   Each beat has:
+   - "trigger": one of "game_start", "task_completed:<task_id>", "all_tasks_complete"
+   - "text": 1-2 atmospheric sentences. Earpiece chatter, environmental cues, tension escalation.
+   Include at least: 1 game_start beat, 2-3 mid-heist beats tied to important tasks, 1 all_tasks_complete beat.
+
+3. PER-TASK NARRATIVE: For EACH task, provide:
+   - "detail_description": 2-3 sentences setting the scene at the location.
+     Add stakes and tension. Do NOT repeat the task instruction.
+   - "completion_flavor": 1-2 sentences broadcast to OTHER players when this task
+     completes, framed as earpiece radio chatter. E.g. "Earpiece: 'Hacker's in the
+     system. Safe Cracker, you're up.'"
+
+Return ONLY this JSON (no markdown):
+{{
+  "briefing": {{
+    "overview": "...",
+    "role_briefings": {{{", ".join(f'"{r}": "..."' for r in role_ids)}}}
+  }},
+  "narrative_beats": [
+    {{"trigger": "game_start", "text": "..."}},
+    {{"trigger": "task_completed:XX1", "text": "..."}},
+    {{"trigger": "all_tasks_complete", "text": "..."}}
+  ],
+  "tasks": [
+    {{"id": "XX1", "detail_description": "...", "completion_flavor": "..."}}
+  ]
+}}"""
+
+    _p(f"Writing narrative layer via LLM (briefing, beats, task flavor)...")
+
+    try:
+        response = model.generate_content(prompt)
+        data = json.loads(_clean_llm_json(response.text))
+
+        if "briefing" in data:
+            graph.briefing = data["briefing"]
+            logger.info(f"[narrative] Briefing generated with {len(data['briefing'].get('role_briefings', {}))} role briefs")
+
+        if "narrative_beats" in data:
+            graph.narrative_beats = data["narrative_beats"]
+            logger.info(f"[narrative] {len(graph.narrative_beats)} narrative beats generated")
+
+        task_map = {t["id"]: t for t in data.get("tasks", [])}
+        enriched_count = 0
+        for task in graph.tasks:
+            if task.id in task_map:
+                t_data = task_map[task.id]
+                task.detail_description = t_data.get("detail_description", task.detail_description)
+                task.completion_flavor = t_data.get("completion_flavor", task.completion_flavor)
+                enriched_count += 1
+
+        _p(f"Narrative layer complete: briefing, {len(graph.narrative_beats)} beats, {enriched_count} task flavors")
+    except Exception as e:
+        logger.warning(f"[narrative] Narrative LLM call failed: {e}")
+        _p(f"Warning: narrative enrichment failed ({e}), skipping")
 
 
 def generate_scenario_graph(

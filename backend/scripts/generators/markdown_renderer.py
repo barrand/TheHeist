@@ -139,14 +139,16 @@ def _render_npcs(graph) -> str:
         if npc.information_known:
             for info in npc.information_known:
                 info_id_str = f"`{info.info_id}`" if info.info_id else "(flavor)"
-                output += f"  - {info_id_str} {info.confidence}: {info.description}\n"
+                secret = f" | SECRET: \"{info.secret_value}\"" if getattr(info, 'secret_value', None) else ""
+                output += f"  - {info_id_str} {info.confidence}: {info.description}{secret}\n"
         else:
             output += f"  - (none)\n"
         
         output += f"- **Actions Available**:\n"
         if npc.actions_available:
             for action in npc.actions_available:
-                output += f"  - `{action.action_id}` {action.confidence}: {action.description}\n"
+                secret = f" | SECRET: \"{action.secret_value}\"" if getattr(action, 'secret_value', None) else ""
+                output += f"  - `{action.action_id}` {action.confidence}: {action.description}{secret}\n"
         else:
             output += f"  - (none)\n"
         

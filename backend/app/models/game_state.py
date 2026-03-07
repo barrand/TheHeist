@@ -53,6 +53,8 @@ class Task(BaseModel):
     type: TaskType = Field(..., description="Type of task")
     description: str = Field(..., description="What player needs to do")
     detail_description: str = Field(default="", description="Longer description with specifics (e.g. intel details)")
+    act: int = Field(default=1, description="Act number (1=Infiltration, 2=Execution, 3=Extraction)")
+    completion_flavor: str = Field(default="", description="Earpiece-style text broadcast to other players on completion")
     assigned_role: str = Field(..., description="Role this task belongs to")
     assigned_player_id: Optional[str] = Field(None, description="Specific player assigned")
     location: str = Field(..., description="Where task takes place")
@@ -117,6 +119,7 @@ class NPCInfoItem(BaseModel):
     info_id: Optional[str] = Field(None, description="Trackable ID (None = flavor only)")
     confidence: str = Field(..., description="How freely NPC shares: HIGH, MEDIUM, LOW")
     description: str = Field(..., description="What the NPC knows")
+    secret_value: Optional[str] = Field(None, description="The actual concrete secret (codes, frequencies, etc.)")
 
 
 class NPCAction(BaseModel):
@@ -124,6 +127,7 @@ class NPCAction(BaseModel):
     action_id: str = Field(..., description="Trackable action ID")
     confidence: str = Field(..., description="How hard to convince: HIGH, MEDIUM, LOW, VERY HIGH")
     description: str = Field(..., description="What the NPC can be convinced to do")
+    secret_value: Optional[str] = Field(None, description="The specific commitment when action is agreed to")
 
 
 class NPCCoverOption(BaseModel):
@@ -186,6 +190,8 @@ class GameState(BaseModel):
     items_by_location: Dict[str, List[Item]] = Field(default_factory=dict, description="location_name -> available items")
     timeline_minutes: int = Field(default=120, description="Total time available")
     elapsed_minutes: int = Field(default=0, description="Time elapsed")
+    briefing: Dict = Field(default_factory=dict, description="Team briefing with overview and role_briefings")
+    narrative_beats: List[Dict] = Field(default_factory=list, description="Story beats triggered by task milestones")
     
     # NPC conversation tracking
     achieved_outcomes: Dict[str, List[str]] = Field(default_factory=dict, description="player_id -> [outcome_ids] (persists across cooldowns)")

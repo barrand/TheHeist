@@ -200,6 +200,18 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
   }
 
   void _navigateToGame(Map<String, dynamic> msg) {
+    final briefing = msg['briefing'] as Map<String, dynamic>?;
+    final hasBriefing = briefing != null &&
+        (briefing['overview'] as String? ?? '').isNotEmpty;
+
+    if (hasBriefing) {
+      _showBriefingModal(briefing!, msg);
+    } else {
+      _pushGameScreen(msg);
+    }
+  }
+
+  void _pushGameScreen(Map<String, dynamic> msg) {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => GameScreen(
@@ -215,6 +227,104 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
           locations: List<Map<String, dynamic>>.from(msg['locations'] ?? []),
           npcs: List<Map<String, dynamic>>.from(msg['npcs'] ?? []),
           startingLocation: msg['starting_location'] as String?,
+        ),
+      ),
+    );
+  }
+
+  void _showBriefingModal(Map<String, dynamic> briefing, Map<String, dynamic> gameMsg) {
+    final overview = briefing['overview'] as String? ?? '';
+    final roleBriefings = briefing['role_briefings'] as Map<String, dynamic>? ?? {};
+    final myBriefing = _myRole != null ? roleBriefings[_myRole] as String? ?? '' : '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.92),
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: AppColors.bgPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+            side: BorderSide(color: AppColors.accentPrimary, width: 2),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Padding(
+              padding: EdgeInsets.all(AppDimensions.spaceXL),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      'MISSION BRIEFING',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accentPrimary,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: AppDimensions.spaceLG),
+                  if (overview.isNotEmpty) ...[
+                    Text(
+                      overview,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontStyle: FontStyle.italic,
+                        height: 1.5,
+                      ),
+                    ),
+                    SizedBox(height: AppDimensions.spaceLG),
+                  ],
+                  if (myBriefing.isNotEmpty) ...[
+                    Text(
+                      'YOUR ROLE',
+                      style: TextStyle(
+                        color: AppColors.accentPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    SizedBox(height: AppDimensions.spaceSM),
+                    Container(
+                      padding: EdgeInsets.all(AppDimensions.spaceMD),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentPrimary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                        border: Border.all(color: AppColors.accentPrimary.withAlpha(80)),
+                      ),
+                      child: Text(
+                        myBriefing,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: AppDimensions.spaceLG),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: HeistPrimaryButton(
+                      text: 'BEGIN HEIST',
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _pushGameScreen(gameMsg);
+                      },
+                      icon: Icons.play_arrow,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -32,26 +32,26 @@ logger = logging.getLogger(__name__)
 
 DIFFICULTY_CONFIG = {
     "easy": {
-        "starting_rapport": 3.0,
-        "reveal_threshold": 3.0,
-        "max_turns": 10,
-        "rapport_build_range": (1.0, 1.5),   # rapport gain from a rapport-builder
-        "probe_cost_range": (0.5, 1.0),       # rapport lost from a direct probe
-        "fail_threshold": 0.5,                # rapport below this = NPC ends convo
+        "starting_rapport": 2.0,
+        "reveal_threshold": 4.0,        # need ~2 rapport turns before probing works
+        "max_turns": 12,
+        "rapport_build_range": (0.8, 1.2),
+        "probe_cost_range": (0.5, 1.0),
+        "fail_threshold": 0.5,
     },
     "medium": {
-        "starting_rapport": 2.0,
-        "reveal_threshold": 3.0,
-        "max_turns": 12,
+        "starting_rapport": 1.5,
+        "reveal_threshold": 4.0,        # need ~3-4 rapport turns
+        "max_turns": 14,
         "rapport_build_range": (0.5, 1.0),
         "probe_cost_range": (1.0, 1.5),
         "fail_threshold": 0.5,
     },
     "hard": {
         "starting_rapport": 1.0,
-        "reveal_threshold": 4.0,
-        "max_turns": 12,
-        "rapport_build_range": (0.5, 0.75),
+        "reveal_threshold": 4.5,        # need ~5-7 rapport turns
+        "max_turns": 14,
+        "rapport_build_range": (0.4, 0.7),
         "probe_cost_range": (1.5, 2.0),
         "fail_threshold": 0.5,
     },
@@ -297,16 +297,18 @@ Be natural and in character. Just the dialogue, no quotes or formatting."""
         self, npc: NPCData, cover: Optional[NPCCoverOption],
         session: ConversationSession, difficulty: str
     ) -> List[QuickResponseOption]:
-        """Generate 3 quick responses along the rapport/steer/probe spectrum."""
+        """Generate 3 quick responses along the rapport/steer/probe spectrum.
+        ~30% of the time, replaces the direct probe with a funny wildcard."""
 
         cfg = DIFFICULTY_CONFIG.get(difficulty, DIFFICULTY_CONFIG["medium"])
+        include_wildcard = random.random() < 0.30
 
-        # Rapport deltas for the three options
+        # Rapport deltas for the options
         rapport_build = round(random.uniform(*cfg["rapport_build_range"]), 1)
         steer_delta = round(random.uniform(-0.3, 0.3), 1)
         probe_cost = -round(random.uniform(*cfg["probe_cost_range"]), 1)
+        wildcard_cost = -round(random.uniform(2.0, 3.0), 1)
 
-        # Build target outcome descriptions for the prompt
         remaining_outcomes = self._remaining_outcomes_text(npc, session)
 
         recent = session.conversation_history[-6:]
@@ -315,7 +317,22 @@ Be natural and in character. Just the dialogue, no quotes or formatting."""
         )
         cover_desc = cover.description if cover else "Someone at the event"
 
-        prompt = f"""Generate 3 response options for a player in a heist NPC conversation.
+        option_count = 4 if include_wildcard else 3
+
+        wildcard_section = ""
+        if include_wildcard:
+            wildcard_section = f"""
+4. WILDCARD (rapport_delta: {wildcard_cost}):
+   An absurd, funny, or socially disastrous thing the player could blurt out.
+   This should be GENUINELY FUNNY and fit the NPC/setting context — the kind of thing
+   that makes players laugh out loud. It will almost certainly offend the NPC or blow
+   the cover. Examples:
+   - To a security guard: "So, hypothetically, how would one rob this place?"
+   - To a curator: "Is that painting real? I've seen better on hotel walls."
+   - To a janitor: "You look like a guy who knows where the bodies are buried."
+"""
+
+        prompt = f"""Generate {option_count} response options for a player in a heist NPC conversation.
 
 Player's cover identity: {cover_desc}
 NPC: {npc.name}, {npc.role}
@@ -325,7 +342,7 @@ Conversation so far:
 PLAYER'S SECRET OBJECTIVE (the player needs to extract this from the NPC):
 {remaining_outcomes if remaining_outcomes else "No specific objective — just building rapport."}
 
-Generate exactly 3 responses along this spectrum:
+Generate exactly {option_count} responses along this spectrum:
 
 1. RAPPORT BUILDER (rapport_delta: {rapport_build}):
    Safe, natural conversation that fits the cover identity. Reacts to what the NPC just said,
@@ -343,34 +360,35 @@ Generate exactly 3 responses along this spectrum:
    Asks more directly about the objective. Gets closer to the answer but feels pushy or
    suspicious. The NPC would notice this is a pointed question. Example: "What authentication
    does the vault access system use?"
-
+{wildcard_section}
 Rules:
 - Keep each response SHORT: 5-15 words. Like real dialogue.
 - All must fit the conversational context (respond to what the NPC just said).
 - The RAPPORT BUILDER should NOT reference the objective at all.
-- The SUBTLE STEER should be clever and cover-appropriate — the kind of thing only this
-  cover identity would naturally say.
+- The SUBTLE STEER should be clever and cover-appropriate.
 - The DIRECT PROBE should be noticeably more pointed but still something a person might say.
-- Do NOT make any option absurd, rude, or silly.
+{"- The WILDCARD should be genuinely hilarious and contextually specific to this NPC/setting." if include_wildcard else ""}
 
 Return ONLY a JSON array (no markdown):
-[{{"text": "...", "rapport_delta": {rapport_build}}}, {{"text": "...", "rapport_delta": {steer_delta}}}, {{"text": "...", "rapport_delta": {probe_cost}}}]"""
+[{{"text": "...", "rapport_delta": {rapport_build}}}, {{"text": "...", "rapport_delta": {steer_delta}}}, {{"text": "...", "rapport_delta": {probe_cost}}}{f', {{"text": "...", "rapport_delta": {wildcard_cost}, "is_wildcard": true}}' if include_wildcard else ""}]"""
 
         try:
-            raw = self._call_llm(prompt, self.quick_response_model, temperature=0.8, max_tokens=400)
+            raw = self._call_llm(prompt, self.quick_response_model, temperature=0.8, max_tokens=500)
             raw = self._strip_code_fences(raw)
             parsed = json.loads(raw)
 
             responses = []
-            for item in parsed[:3]:
+            for item in parsed[:option_count]:
                 rd = float(item.get("rapport_delta", 0))
+                wildcard = bool(item.get("is_wildcard", False))
                 responses.append(QuickResponseOption(
                     text=item["text"],
-                    fit_score=int(round(rd * 10)),  # store rapport_delta * 10 in fit_score
+                    fit_score=int(round(rd * 10)),
+                    is_wildcard=wildcard,
                 ))
 
             random.shuffle(responses)
-            logger.info(f"Quick responses: {[(r.text[:40], r.fit_score/10) for r in responses]}")
+            logger.info(f"Quick responses: {[(r.text[:40], r.fit_score/10, 'WILD' if r.is_wildcard else '') for r in responses]}")
             return responses
 
         except Exception as e:
@@ -439,10 +457,14 @@ Return ONLY a JSON array (no markdown):
         else:
             pacing = (
                 f"PACING: Rapport is HIGH ({rapport:.1f}/5). You trust this person. "
-                f"If the player asks about or steers toward your secret knowledge, you may share it. "
-                f"Include the outcome ID(s) in the outcomes array AND the specific details in your dialogue. "
-                f"If the player is just chatting (not asking about the objective), chat back naturally — "
-                f"don't volunteer secrets unprompted. {remaining} outcome(s) remaining."
+                f"However, you still only share secrets when DIRECTLY and SPECIFICALLY asked. "
+                f"A vague or tangential question is NOT enough — the player must ask about the "
+                f"specific topic (e.g., codes, frequencies, locations) for you to reveal it. "
+                f"When you DO reveal, share only ONE outcome per response — never dump everything at once. "
+                f"Include the outcome ID in the outcomes array AND the specific details in your dialogue. "
+                f"If the player is just chatting or asking vaguely about security, chat back naturally — "
+                f"you like them but you still don't volunteer secrets unprompted. "
+                f"{remaining} outcome(s) remaining."
             )
 
         recent = session.conversation_history[-10:]
@@ -477,7 +499,7 @@ Rules:
 - Keep response under 3 sentences.
 - If the player says something odd, off-topic, or suspiciously direct, deflect and do NOT share secrets. Return empty outcomes.
 - Only share target info when rapport is high enough AND the player's message naturally steers toward the topic.
-- When you DO share target info, include the SPECIFIC details (locations, times, names, codes) in your dialogue.
+- When you DO share target info, you MUST include the EXACT VALUES from the secret information (the specific numbers, codes, names, times). Do NOT paraphrase or speak vaguely about their existence — either give the real data or don't reveal at all.
 - If the player says something inconsistent with their claimed cover story, call it out naturally.
 
 RESPOND AS JSON (no markdown, no wrapping):
@@ -492,10 +514,23 @@ If nothing was revealed: {{"response": "your dialogue", "outcomes": []}}"""
             raw = self._strip_code_fences(raw)
             parsed = json.loads(raw)
             response_text = parsed.get("response", "...").strip().strip('"')
-            outcomes = parsed.get("outcomes", [])
+            claimed_outcomes = parsed.get("outcomes", [])
             response_text = re.sub(r'\s*\[[\w]+\]\s*', ' ', response_text).strip()
-            logger.info(f"NPC response: '{response_text[:80]}' | outcomes: {outcomes} | rapport: {rapport:.1f}")
-            return response_text, outcomes
+
+            # Verify claimed outcomes against actual secret values in the response
+            secret_map = self._get_secret_values_map(npc)
+            verified_outcomes = []
+            for oid in claimed_outcomes:
+                secret_val = secret_map.get(oid)
+                if not secret_val:
+                    verified_outcomes.append(oid)  # No secret_value to check against
+                elif self._verify_outcome(response_text, secret_val):
+                    verified_outcomes.append(oid)
+                else:
+                    logger.info(f"Stripped unverified outcome '{oid}' — NPC talked around it without revealing specifics")
+
+            logger.info(f"NPC response: '{response_text[:80]}' | claimed: {claimed_outcomes} | verified: {verified_outcomes} | rapport: {rapport:.1f}")
+            return response_text, verified_outcomes
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse NPC JSON: {e}. Raw: {raw[:200]}")
             return raw.strip().strip('"'), []
@@ -555,7 +590,8 @@ End this conversation naturally and firmly. 1-2 sentences. Just the dialogue."""
                 if item.info_id in already_achieved:
                     continue
                 elif item.info_id in target_outcomes:
-                    target_info.append(f"- [{item.info_id}] {item.description}")
+                    secret = f"\n    EXACT VALUE TO REVEAL: \"{item.secret_value}\"" if item.secret_value else ""
+                    target_info.append(f"- [{item.info_id}] {item.description}{secret}")
                 else:
                     background.append(f"- {item.description} (flavor)")
             else:
@@ -565,11 +601,56 @@ End this conversation naturally and firmly. 1-2 sentences. Just the dialogue."""
             if action.action_id in already_achieved:
                 continue
             elif action.action_id in target_outcomes:
-                target_actions.append(f"- [{action.action_id}] {action.description}")
+                secret = f"\n    EXACT COMMITMENT: \"{action.secret_value}\"" if action.secret_value else ""
+                target_actions.append(f"- [{action.action_id}] {action.description}{secret}")
             else:
                 background.append(f"- {action.description} (flavor)")
 
         return target_info, target_actions, background
+
+    def _get_secret_values_map(self, npc: NPCData) -> Dict[str, str]:
+        """Build a map of outcome_id -> secret_value for verification."""
+        secret_map = {}
+        for item in npc.information_known:
+            if item.info_id and item.secret_value:
+                secret_map[item.info_id] = item.secret_value
+        for action in npc.actions_available:
+            if action.action_id and action.secret_value:
+                secret_map[action.action_id] = action.secret_value
+        return secret_map
+
+    def _verify_outcome(self, response_text: str, secret_value: str) -> bool:
+        """Check if the NPC response actually contains the secret value's key data."""
+        response_lower = response_text.lower()
+
+        # Extract key tokens from the secret value (numbers, proper nouns, specific terms)
+        tokens = re.findall(r'\b[\w.]+\b', secret_value)
+        key_tokens = []
+        for token in tokens:
+            # Keep numbers, codes, specific data points
+            if re.match(r'\d', token):
+                key_tokens.append(token.lower())
+            # Keep words >= 4 chars that aren't common filler
+            elif len(token) >= 4 and token.lower() not in {
+                'will', 'that', 'this', 'with', 'from', 'they', 'have', 'been',
+                'were', 'their', 'about', 'would', 'could', 'should', 'exactly',
+                'specific', 'agreed', 'minutes', 'disable',
+            }:
+                key_tokens.append(token.lower())
+
+        if not key_tokens:
+            return True  # No verifiable tokens, trust the LLM
+
+        # Require at least half of key tokens to be present in the response
+        matches = sum(1 for t in key_tokens if t in response_lower)
+        threshold = max(1, len(key_tokens) // 2)
+        verified = matches >= threshold
+        if not verified:
+            logger.info(
+                f"Outcome verification FAILED: needed {threshold}/{len(key_tokens)} key tokens, "
+                f"found {matches}. Tokens: {key_tokens}"
+            )
+        return verified
 
     def _difficulty_prompt(self, difficulty: str) -> str:
         if difficulty == "easy":

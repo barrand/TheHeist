@@ -879,7 +879,7 @@ if __name__ == '__main__':
             id=n['id'], name=n['name'], role=n.get('role', ''),
             personality=n.get('personality', ''), location=n.get('location', ''),
             information_known=[
-                NPCInfoItem(info_id=info.get('info_id'), confidence=info.get('confidence', 'HIGH'), description=info.get('description', ''))
+                NPCInfoItem(info_id=info.get('info_id'), confidence=info.get('confidence', 'HIGH'), description=info.get('description', ''), secret_value=info.get('secret_value'))
                 for info in n.get('information_known', [])
             ],
         )
