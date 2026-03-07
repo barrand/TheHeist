@@ -46,23 +46,29 @@ def _parse_retry_after(error_str: str, default: float = 15.0) -> float:
     return default
 
 
-def get_location_prompt(location_name: str, visual_description: str = None) -> str:
+def get_location_prompt(location_name: str, visual_description: str = None,
+                        scenario_context: str = "") -> str:
     """Generate Imagen prompt for a location using detailed visual description.
     
     Args:
         location_name: Name of the location
         visual_description: Detailed visual description from experience file
+        scenario_context: Scenario theme string (e.g. "museum gala vault heist")
     
     Returns:
         Complete prompt for Imagen
     """
     
-    if visual_description:
-        # Use the rich visual description from the experience file
+    if visual_description and visual_description.strip().lower() not in (
+        "", "environment", f"{location_name.lower()} environment",
+    ):
         scene_description = visual_description
     else:
-        # Fallback to generic description
-        scene_description = f"{location_name}, dramatic lighting, detailed environment, heist atmosphere"
+        scene_description = f"{location_name}, dramatic lighting, detailed environment"
+    
+    # Always anchor the scene in the scenario setting
+    if scenario_context:
+        scene_description = f"{scene_description}, setting: {scenario_context}"
     
     prompt = f"""{HEIST_GAME_ART_STYLE},
 environment scene: {scene_description},
@@ -79,7 +85,8 @@ async def generate_location_image(
     experience_id: str,
     visual_description: str,
     client: genai.Client,
-    max_retries: int = 3
+    max_retries: int = 3,
+    scenario_context: str = "",
 ) -> str:
     """Generate a single location image with retry on rate limit."""
     
@@ -90,8 +97,8 @@ async def generate_location_image(
         print(f"✓ Location image already exists: {location_name}")
         return str(output_path)
     
-    # Generate prompt with visual description
-    prompt = get_location_prompt(location_name, visual_description)
+    # Generate prompt with visual description + scenario context
+    prompt = get_location_prompt(location_name, visual_description, scenario_context)
     
     print(f"🎨 Generating location image: {location_name} (model: {GEMINI_IMAGE_MODEL})")
     print(f"   Prompt: {prompt[:100]}...")
@@ -146,11 +153,18 @@ async def generate_location_image(
     return None
 
 
-async def generate_all_location_images(experience_id: str, locations: List[Dict], on_progress=None):
+async def generate_all_location_images(
+    experience_id: str,
+    locations: List[Dict],
+    on_progress=None,
+    scenario_context: str = "",
+):
     """Generate images for all locations in an experience."""
     
     print(f"\n{'='*60}")
     print(f"Generating Location Images for Experience: {experience_id}")
+    if scenario_context:
+        print(f"Scenario context: {scenario_context}")
     print(f"{'='*60}\n")
     
     # Initialize Gemini client
@@ -167,7 +181,8 @@ async def generate_all_location_images(experience_id: str, locations: List[Dict]
             location_id=location_id,
             experience_id=experience_id,
             visual_description=visual_description,
-            client=client
+            client=client,
+            scenario_context=scenario_context,
         )
         results.append(result)
         if on_progress:

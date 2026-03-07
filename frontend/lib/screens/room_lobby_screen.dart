@@ -69,6 +69,11 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
       _availableScenarios = scenarios;
       _scenariosLoading = false;
     });
+    // Send the default scenario selection to the backend so it's set
+    // even if the host never opens the scenario picker
+    if (_isHost) {
+      widget.wsService.selectScenario(_selectedScenarioId);
+    }
   }
 
   void _setupWebSocketListeners() {

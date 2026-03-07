@@ -111,6 +111,7 @@ async def generate_scenario(
             if player_msg and phase != last_phase:
                 last_phase = phase
                 await broadcast(player_msg)
+                await asyncio.sleep(0.4)
 
     # Drain any remaining messages after pipeline completes
     while not progress_queue.empty():
@@ -122,6 +123,7 @@ async def generate_scenario(
         if player_msg and phase != last_phase:
             last_phase = phase
             await broadcast(player_msg)
+            await asyncio.sleep(0.4)
 
     try:
         result = future.result()

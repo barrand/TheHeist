@@ -28,8 +28,18 @@ _MANIFEST_FILENAME = "_manifest.json"
 # ------------------------------------------------------------------
 
 def _content_hash(experience_dict: Dict) -> str:
-    """Deterministic MD5 hash of the experience data that drives image generation."""
-    serialized = json.dumps(experience_dict, sort_keys=True, default=str)
+    """Deterministic MD5 hash of the experience data that drives image generation.
+    
+    Only hashes fields that affect image content (locations, items, NPCs) —
+    metadata like scenario_id/objective are excluded so adding context fields
+    doesn't invalidate existing manifests.
+    """
+    image_data = {
+        k: experience_dict[k]
+        for k in ("locations", "items_by_location", "npcs")
+        if k in experience_dict
+    }
+    serialized = json.dumps(image_data, sort_keys=True, default=str)
     return hashlib.md5(serialized.encode()).hexdigest()
 
 
@@ -235,7 +245,12 @@ async def generate_all_images_for_experience(
 
     check = check_images_exist(experience_id, experience_dict, cache_name)
     if check.ready:
+        logger.info(f"✅ All images up-to-date for {experience_id}")
         return True
+
+    if broadcast:
+        total = len(check.missing)
+        await broadcast(f"🖼️ Generating {total} images...")
 
     # Clean stale images from local disk
     if check.stale:
@@ -246,10 +261,19 @@ async def generate_all_images_for_experience(
 
     locations, items, npcs = parse_experience_for_generation(experience_dict)
 
+    # Build scenario context string for image prompts
+    scenario_id = experience_dict.get("scenario_id", "")
+    objective = experience_dict.get("objective", "")
+    scenario_context = scenario_id.replace("_", " ") if scenario_id else ""
+    if objective:
+        scenario_context = f"{scenario_context} — {objective}" if scenario_context else objective
+
     logger.info(
         f"🎨 Generating images for {experience_id}: "
         f"{len(locations)} locations, {len(items)} items, {len(npcs)} NPCs"
     )
+    if scenario_context:
+        logger.info(f"🎨 Scenario context: {scenario_context}")
 
     try:
         import sys
@@ -278,7 +302,11 @@ async def generate_all_images_for_experience(
         phase_total[0] = len(locations)
         if broadcast:
             await broadcast(f"🖼️ Rendering {len(locations)} locations...")
-        await generate_all_location_images(experience_id, locations, on_progress=_on_image_done)
+        await generate_all_location_images(
+            experience_id, locations,
+            on_progress=_on_image_done,
+            scenario_context=scenario_context,
+        )
 
         logger.info(f"🎨 Step 2/3: Generating item images...")
         current_phase[0] = "Drawing items"

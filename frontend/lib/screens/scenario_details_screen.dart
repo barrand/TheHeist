@@ -56,6 +56,9 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
   String _generationTitle = 'Building Your Scenario';
   final List<String> _generationSteps = [];
 
+  StreamSubscription? _modalSub;
+  ScrollController? _modalScrollController;
+
   final List<StreamSubscription> _subs = [];
   final Map<String, String> _roleGenders = {};
   final _rng = Random();
@@ -107,11 +110,16 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
     _subs.add(widget.wsService.scenarioGenerating.listen((msg) {
       final text = msg['message'] as String? ?? '';
       final isImagePhase = text.startsWith('🖼️') || text.startsWith('🎨') || text.startsWith('🎭 Sketching');
+      final isPrepPhase = text.startsWith('🎯');
       if (!_isGenerating) {
         setState(() {
           _isGenerating = true;
           _generationSteps.clear();
-          _generationTitle = isImagePhase ? 'Creating Images' : 'Building Your Scenario';
+          _generationTitle = isImagePhase
+              ? 'Creating Images'
+              : isPrepPhase
+                  ? 'Preparing'
+                  : 'Building Your Scenario';
           _generationSteps.add(text);
         });
         _showGenerationModal();
@@ -131,6 +139,7 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
     _subs.add(widget.wsService.gameStarted.listen((msg) {
       if (_isGenerating && Navigator.canPop(context)) {
         Navigator.of(context).pop();
+        _dismissGenerationModal();
         _isGenerating = false;
       }
       _navigateToGame(msg);
@@ -251,74 +260,96 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
-            child: Padding(
-              padding: EdgeInsets.all(AppDimensions.spaceXL),
+            child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
-                    child: Text(
-                      'MISSION BRIEFING',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.accentPrimary,
-                        letterSpacing: 2,
+                  ClipRRect(
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(AppDimensions.radiusLG),
+                      topRight: Radius.circular(AppDimensions.radiusLG),
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Image.asset(
+                        'assets/static/${widget.scenarioId}.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                       ),
                     ),
                   ),
-                  SizedBox(height: AppDimensions.spaceLG),
-                  if (overview.isNotEmpty) ...[
-                    Text(
-                      overview,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15,
-                        fontStyle: FontStyle.italic,
-                        height: 1.5,
-                      ),
-                    ),
-                    SizedBox(height: AppDimensions.spaceLG),
-                  ],
-                  if (myBriefing.isNotEmpty) ...[
-                    Text(
-                      'YOUR ROLE',
-                      style: TextStyle(
-                        color: AppColors.accentPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    SizedBox(height: AppDimensions.spaceSM),
-                    Container(
-                      padding: EdgeInsets.all(AppDimensions.spaceMD),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentPrimary.withAlpha(20),
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-                        border: Border.all(color: AppColors.accentPrimary.withAlpha(80)),
-                      ),
-                      child: Text(
-                        myBriefing,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 14,
-                          height: 1.5,
+                  Padding(
+                    padding: EdgeInsets.all(AppDimensions.spaceXL),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Text(
+                            'MISSION BRIEFING',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.accentPrimary,
+                              letterSpacing: 2,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    SizedBox(height: AppDimensions.spaceLG),
-                  ],
-                  SizedBox(
-                    width: double.infinity,
-                    child: HeistPrimaryButton(
-                      text: 'BEGIN HEIST',
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        _pushGameScreen(gameMsg);
-                      },
-                      icon: Icons.play_arrow,
+                        SizedBox(height: AppDimensions.spaceLG),
+                        if (overview.isNotEmpty) ...[
+                          Text(
+                            overview,
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontStyle: FontStyle.italic,
+                              height: 1.5,
+                            ),
+                          ),
+                          SizedBox(height: AppDimensions.spaceLG),
+                        ],
+                        if (myBriefing.isNotEmpty) ...[
+                          Text(
+                            'YOUR ROLE',
+                            style: TextStyle(
+                              color: AppColors.accentPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          SizedBox(height: AppDimensions.spaceSM),
+                          Container(
+                            padding: EdgeInsets.all(AppDimensions.spaceMD),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentPrimary.withAlpha(20),
+                              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                              border: Border.all(color: AppColors.accentPrimary.withAlpha(80)),
+                            ),
+                            child: Text(
+                              myBriefing,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 14,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: AppDimensions.spaceLG),
+                        ],
+                        SizedBox(
+                          width: double.infinity,
+                          child: HeistPrimaryButton(
+                            text: 'BEGIN HEIST',
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                              _pushGameScreen(gameMsg);
+                            },
+                            icon: Icons.play_arrow,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -343,14 +374,15 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
     );
   }
 
+  void _dismissGenerationModal() {
+    _modalSub?.cancel();
+    _modalSub = null;
+    _modalScrollController?.dispose();
+    _modalScrollController = null;
+  }
+
   void _showGenerationModal() {
-    final heistMessages = [
-      'Prepping the getaway car...',
-      'Investigating the premises...',
-      'Reaching out to seedy contacts...',
-      'Reviewing the blueprints...',
-      'Preparing disguises...',
-    ];
+    _modalScrollController = ScrollController();
 
     showDialog(
       context: context,
@@ -359,7 +391,18 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
         canPop: false,
         child: StatefulBuilder(
           builder: (ctx, setModalState) {
-            widget.wsService.scenarioGenerating.listen((_) => setModalState(() {}));
+            _modalSub ??= widget.wsService.scenarioGenerating.listen((_) {
+              setModalState(() {});
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_modalScrollController?.hasClients ?? false) {
+                  _modalScrollController!.animateTo(
+                    _modalScrollController!.position.maxScrollExtent,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                  );
+                }
+              });
+            });
             return Dialog(
               backgroundColor: AppColors.bgPrimary,
               shape: RoundedRectangleBorder(
@@ -367,7 +410,7 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
                 side: BorderSide(color: AppColors.accentPrimary, width: 2),
               ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400, maxHeight: 420),
+                constraints: const BoxConstraints(maxWidth: 400, maxHeight: 480),
                 child: Padding(
                   padding: EdgeInsets.all(AppDimensions.spaceXL),
                   child: Column(
@@ -383,6 +426,7 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
                       if (_generationSteps.isNotEmpty)
                         Flexible(
                           child: ListView.builder(
+                            controller: _modalScrollController,
                             shrinkWrap: true,
                             itemCount: _generationSteps.length,
                             itemBuilder: (_, i) {
@@ -528,8 +572,9 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
   }
 
   Widget _buildQuickStartSection() {
-    final quick = _quickScenarios.where((q) => q['ready'] == true).toList();
-    if (quick.isEmpty) return const SizedBox.shrink();
+    if (_quickScenarios.isEmpty) return const SizedBox.shrink();
+
+    final hasReady = _quickScenarios.any((q) => q['ready'] == true);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,9 +590,12 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
           ],
         ),
         const SizedBox(height: 4),
-        Text('Ready to play — no wait!', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        Text(
+          hasReady ? 'Ready to play — no wait!' : 'Pick roles — scenario will generate on start',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
         SizedBox(height: AppDimensions.spaceMD),
-        for (final qs in quick) _buildQuickCard(qs),
+        for (final qs in _quickScenarios) _buildQuickCard(qs),
       ],
     );
   }

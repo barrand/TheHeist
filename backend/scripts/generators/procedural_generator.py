@@ -347,6 +347,7 @@ class ProceduralGraphGenerator:
     def _generate_locations_fallback(self, scenario_id: str) -> List[Location]:
         """Generic fallback locations used only when LLM generation fails."""
         location_count = random.randint(*self.config.location_count)
+        scenario_theme = scenario_id.replace("_", " ")
         templates = [
             ("entry_point", "Entry Point", "Exterior", "Initial access point"),
             ("main_area", "Main Area", "Interior", "Primary operational area"),
@@ -357,7 +358,7 @@ class ProceduralGraphGenerator:
         selected = random.sample(templates, min(location_count, len(templates)))
         return [
             Location(id=loc_id, name=name, description=desc, category=cat,
-                     visual=f"{name.lower()} environment")
+                     visual=f"{name.lower()} in a {scenario_theme} setting, dramatic lighting")
             for loc_id, name, cat, desc in selected
         ]
     
@@ -1546,7 +1547,11 @@ def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str], progress_f
     roles_str = ", ".join(role_ids)
     locations_str = ", ".join(location_names.values())
 
-    # --- Call 1: Items + tasks ---
+    # --- Call 1: Locations + Items + tasks ---
+    locations_ctx = [
+        {"id": loc.id, "name": loc.name, "category": loc.category, "description": loc.description}
+        for loc in graph.locations
+    ]
     items_ctx = [
         {"id": item.id, "location": location_names.get(item.location, item.location), "hidden": item.hidden}
         for item in graph.items
@@ -1561,7 +1566,9 @@ def _enrich_graph_with_llm(graph: ScenarioGraph, role_ids: List[str], progress_f
 
 SCENARIO: {scenario_name}
 ROLES: {roles_str}
-LOCATIONS: {locations_str}
+
+LOCATIONS (give each a vivid name specific to this scenario, a one-sentence atmospheric description, and a detailed visual prompt for image generation — 20-30 words describing the space, lighting, key objects, and mood):
+{json.dumps(locations_ctx, indent=2)}
 
 ITEMS (give each a name, short description, and a visual description for image generation):
 {json.dumps(items_ctx, indent=2)}
@@ -1571,14 +1578,23 @@ TASKS (give each a short action-oriented description, 8-15 words; escape tasks s
 
 Return ONLY this JSON (no markdown):
 {{
+  "locations": [{{"id": "loc_id", "name": "Vivid Location Name", "description": "One atmospheric sentence", "visual": "Detailed visual prompt for image gen, 20-30 words"}}],
   "items": [{{"id": "item_1", "name": "...", "description": "...", "visual": "..."}}],
   "tasks": [{{"id": "MM1", "description": "..."}}]
 }}"""
 
-    _p(f"Enriching items and task descriptions via LLM ({len(graph.items)} items, {len(graph.tasks)} tasks)...")
+    _p(f"Enriching locations, items, and tasks via LLM ({len(graph.locations)} locations, {len(graph.items)} items, {len(graph.tasks)} tasks)...")
     try:
         response = model.generate_content(items_tasks_prompt)
         data = json.loads(_clean_llm_json(response.text))
+
+        loc_map = {l["id"]: l for l in data.get("locations", [])}
+        for loc in graph.locations:
+            if loc.id in loc_map:
+                enriched = loc_map[loc.id]
+                loc.name = enriched.get("name", loc.name)
+                loc.description = enriched.get("description", loc.description)
+                loc.visual = enriched.get("visual", loc.visual)
 
         item_map = {i["id"]: i for i in data.get("items", [])}
         for item in graph.items:
@@ -1593,11 +1609,11 @@ Return ONLY this JSON (no markdown):
             if task.id in task_map:
                 task.description = task_map[task.id].get("description", task.description)
 
-        logger.info(f"[enrichment] Enriched {len(item_map)} items, {len(task_map)} tasks")
-        _p(f"Items and tasks enriched: {len(item_map)} items named, {len(task_map)} task descriptions written")
+        logger.info(f"[enrichment] Enriched {len(loc_map)} locations, {len(item_map)} items, {len(task_map)} tasks")
+        _p(f"Enriched: {len(loc_map)} locations, {len(item_map)} items, {len(task_map)} tasks")
     except Exception as e:
-        logger.warning(f"[enrichment] Items/tasks LLM call failed: {e}")
-        _p(f"Warning: items/tasks enrichment failed ({e}), using placeholders")
+        logger.warning(f"[enrichment] Locations/items/tasks LLM call failed: {e}")
+        _p(f"Warning: enrichment failed ({e}), using placeholders")
 
     # --- Call 2: Full NPC profiles ---
     # Build per-NPC task context so the LLM knows what each NPC needs to provide
