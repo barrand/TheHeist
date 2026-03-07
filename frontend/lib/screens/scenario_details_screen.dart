@@ -59,6 +59,14 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
   StreamSubscription? _modalSub;
   ScrollController? _modalScrollController;
 
+  static const _heistMessages = [
+    'Prepping the getaway car...',
+    'Investigating the premises...',
+    'Reaching out to seedy contacts...',
+    'Reviewing the blueprints...',
+    'Preparing disguises...',
+  ];
+
   final List<StreamSubscription> _subs = [];
   final Map<String, String> _roleGenders = {};
   final _rng = Random();
@@ -447,12 +455,12 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
                         )
                       else
                         StreamBuilder<int>(
-                          stream: Stream.periodic(const Duration(seconds: 2), (i) => i % heistMessages.length),
+                          stream: Stream.periodic(const Duration(seconds: 2), (i) => i % _heistMessages.length),
                           builder: (_, snap) {
                             final idx = snap.data ?? 0;
                             return AnimatedSwitcher(
                               duration: const Duration(milliseconds: 300),
-                              child: Text(heistMessages[idx], key: ValueKey(idx), style: TextStyle(fontSize: 16, color: AppColors.textSecondary), textAlign: TextAlign.center),
+                              child: Text(_heistMessages[idx], key: ValueKey(idx), style: TextStyle(fontSize: 16, color: AppColors.textSecondary), textAlign: TextAlign.center),
                             );
                           },
                         ),
