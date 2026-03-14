@@ -375,13 +375,13 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
     
     try:
         loader = ExperienceLoader(experiences_dir="experiences")
-
-        # Check if the experience file exists for this exact scenario + role combo
         from app.services.experience_loader import scenario_cache_filename
         cache_base = scenario_cache_filename(scenario, selected_roles)
-        md_file = loader.experiences_dir / (cache_base + ".md")
-        json_file = loader.experiences_dir / (cache_base + ".json")
-        if not md_file.exists() and not json_file.exists():
+
+        # Try loading (checks local disk then GCS). If missing, generate on the fly.
+        try:
+            game_state = loader.load_experience(scenario, selected_roles)
+        except FileNotFoundError:
             from app.services.scenario_generator_service import generate_scenario
 
             async def _broadcast(msg: str):
@@ -397,8 +397,7 @@ async def handle_start_game(room_code: str, player_id: str, data: Dict[str, Any]
                     "message": "Scenario generation failed. Please try again."
                 })
                 return
-
-        game_state = loader.load_experience(scenario, selected_roles)
+            game_state = loader.load_experience(scenario, selected_roles)
         
         # Store game state in game state manager
         game_state_manager = get_game_state_manager()

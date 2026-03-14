@@ -58,6 +58,23 @@ def _generate_scenario(entry: dict) -> bool:
     return result.success
 
 
+def _lookup_objective(scenario_id: str) -> str:
+    """Look up a scenario's objective from shared_data/scenarios.json."""
+    config_path = BACKEND_DIR.parent / "shared_data" / "scenarios.json"
+    try:
+        with open(config_path) as f:
+            for s in json.load(f).get("scenarios", []):
+                if s["scenario_id"] == scenario_id:
+                    return s.get("objective", "")
+    except Exception:
+        pass
+    return ""
+
+
+async def _async_log(msg: str):
+    logger.info(f"    {msg}")
+
+
 async def _generate_images(entry: dict) -> bool:
     from app.services.experience_loader import ExperienceLoader, scenario_cache_filename
     from app.services.image_generator import generate_all_images_for_experience
@@ -70,6 +87,8 @@ async def _generate_images(entry: dict) -> bool:
     game_state = loader.load_experience(scenario_id, roles)
 
     experience_dict = {
+        "scenario_id": scenario_id,
+        "objective": _lookup_objective(scenario_id),
         "locations": [loc.model_dump() for loc in game_state.locations],
         "items_by_location": {
             loc: [item.model_dump() for item in items]
@@ -83,9 +102,23 @@ async def _generate_images(entry: dict) -> bool:
         cache_base,
         experience_dict,
         cache_name=cache_base,
-        broadcast=lambda msg: logger.info(f"    {msg}"),
+        broadcast=_async_log,
     )
     return ok
+
+
+def _sync_to_gcs(cache_base: str):
+    """Push generated experience files and images to GCS if configured."""
+    from app.services.storage_service import storage
+    storage.configure()
+    if not storage._gcs_enabled:
+        logger.info("  GCS not configured — skipping sync")
+        return
+    logger.info(f"  Syncing experiences/ to GCS...")
+    storage.sync_local_to_gcs("experiences")
+    logger.info(f"  Syncing generated_images/{cache_base}/ to GCS...")
+    storage.sync_local_to_gcs(f"generated_images/{cache_base}")
+    logger.info("  GCS sync complete")
 
 
 def main():
@@ -107,7 +140,11 @@ def main():
             logger.error(f"Scenario generation failed for {sid} — skipping images")
             continue
 
+        from app.services.experience_loader import scenario_cache_filename
+        cache_base = scenario_cache_filename(sid, roles)
+
         asyncio.run(_generate_images(entry))
+        _sync_to_gcs(cache_base)
 
     logger.info("Done.")
 

@@ -4,12 +4,14 @@ REST API endpoints for room management
 
 import json
 import logging
+import time
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from app.services.room_manager import get_room_manager
+from app.services.storage_service import storage
 from app.models.room import GameRoom, RoomStatus
 
 logger = logging.getLogger(__name__)
@@ -69,6 +71,26 @@ class QuickScenarioResponse(BaseModel):
     ready: bool
 
 
+_ready_cache: dict[str, tuple[bool, float]] = {}
+_CACHE_TTL = 300  # 5 minutes
+
+
+def _is_scenario_ready(cache_base: str) -> bool:
+    """Check if a scenario file exists (local disk or GCS), with TTL cache."""
+    now = time.time()
+    cached = _ready_cache.get(cache_base)
+    if cached:
+        ready, ts = cached
+        if now - ts < _CACHE_TTL:
+            return ready
+    ready = (
+        storage.exists(f"experiences/{cache_base}.json")
+        or storage.exists(f"experiences/{cache_base}.md")
+    )
+    _ready_cache[cache_base] = (ready, now)
+    return ready
+
+
 @router.get("/quick-scenarios")
 async def get_quick_scenarios(player_count: int = Query(..., ge=2, le=12)):
     """Return quick-start scenarios available for a given player count."""
@@ -87,16 +109,13 @@ async def get_quick_scenarios(player_count: int = Query(..., ge=2, le=12)):
             continue
 
         cache_base = scenario_cache_filename(entry["scenario_id"], sorted(entry["roles"]))
-        experiences_dir = Path(__file__).parent.parent.parent / "experiences"
-        md_exists = (experiences_dir / f"{cache_base}.md").exists()
-        json_exists = (experiences_dir / f"{cache_base}.json").exists()
 
         results.append(QuickScenarioResponse(
             id=entry["id"],
             scenario_id=entry["scenario_id"],
             player_count=entry["player_count"],
             roles=entry["roles"],
-            ready=md_exists or json_exists,
+            ready=_is_scenario_ready(cache_base),
         ))
 
     return results

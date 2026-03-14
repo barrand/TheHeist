@@ -580,9 +580,8 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
   }
 
   Widget _buildQuickStartSection() {
-    if (_quickScenarios.isEmpty) return const SizedBox.shrink();
-
-    final hasReady = _quickScenarios.any((q) => q['ready'] == true);
+    final readyScenarios = _quickScenarios.where((q) => q['ready'] == true).toList();
+    if (readyScenarios.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -599,11 +598,11 @@ class _ScenarioDetailsScreenState extends State<ScenarioDetailsScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          hasReady ? 'Ready to play — no wait!' : 'Pick roles — scenario will generate on start',
+          'Ready to play — no wait!',
           style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
         SizedBox(height: AppDimensions.spaceMD),
-        for (final qs in _quickScenarios) _buildQuickCard(qs),
+        for (final qs in readyScenarios) _buildQuickCard(qs),
       ],
     );
   }
